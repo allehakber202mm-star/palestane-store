@@ -56,6 +56,7 @@ export default function AdminLogin() {
             title: "تم تسجيل الدخول بنجاح",
             description: "مرحباً بك في لوحة التحكم",
           });
+          setLocation("/admin/dashboard");
         },
         onError: () => {
           toast({
