@@ -390,7 +390,7 @@ export default function AdminAccounts() {
                 />
 
                 <div className="space-y-4 border p-4 rounded-lg bg-muted/10">
-                  <FormLabel>صورة الحساب</FormLabel>
+                  <p className="text-sm font-medium leading-none">صورة الحساب</p>
                   <div className="flex items-center gap-4">
                     {form.watch("imageUrl") ? (
                       <div className="relative w-24 h-24 rounded border overflow-hidden">

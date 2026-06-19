@@ -246,7 +246,7 @@ export default function AdminSettings() {
                 />
 
                 <div className="space-y-4">
-                  <FormLabel>خيارات الدفع المتاحة</FormLabel>
+                  <p className="text-sm font-medium leading-none">خيارات الدفع المتاحة</p>
                   {fields.map((field, index) => (
                     <div key={field.id} className="flex gap-2 items-center">
                       <FormField
