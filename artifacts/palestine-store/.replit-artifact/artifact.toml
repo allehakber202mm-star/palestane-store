@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Palestine Store - متجر فلسطين"
+version = "1.0.0"
+id = "artifacts/palestine-store"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23567
+
+[services.development]
+run = "pnpm --filter @workspace/palestine-store run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/palestine-store", "run", "build" ]
+publicDir = "artifacts/palestine-store/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23567"
+BASE_PATH = "/"
