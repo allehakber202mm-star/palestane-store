@@ -8,6 +8,12 @@ interface AccountCardProps {
   account: Account;
 }
 
+const guarantees = [
+  "متابعين حقيقيين",
+  "نظيف بدون انتهاكات",
+  "شغال لايف",
+];
+
 export function AccountCard({ account }: AccountCardProps) {
   const { data: settings } = useGetSettings();
   const trackClick = useTrackAccountClick();
@@ -15,107 +21,137 @@ export function AccountCard({ account }: AccountCardProps) {
   const handleBuyClick = () => {
     trackClick.mutate({ id: account.id });
     const phone = settings?.whatsapp?.replace(/\D/g, "") || "972566112031";
-    
-    const platformAr = 
-      account.platform === "tiktok" ? "تيك توك" :
-      account.platform === "instagram" ? "انستغرام" : "فيسبوك";
-      
+
+    const platformAr =
+      account.platform === "tiktok"
+        ? "تيك توك"
+        : account.platform === "instagram"
+        ? "انستغرام"
+        : "فيسبوك";
+
     const message = `مرحبا، أود شراء حساب ${platformAr} باسم "${account.name}". السعر: ${account.price} شيكل. المتابعين: ${account.followers}.`;
-    
-    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, "_blank");
+
+    window.open(
+      `https://wa.me/${phone}?text=${encodeURIComponent(message)}`,
+      "_blank"
+    );
   };
 
-  const PlatformIcon = 
-    account.platform === "tiktok" ? SiTiktok :
-    account.platform === "instagram" ? SiInstagram : SiFacebook;
+  const PlatformIcon =
+    account.platform === "tiktok"
+      ? SiTiktok
+      : account.platform === "instagram"
+      ? SiInstagram
+      : SiFacebook;
 
-  const platformColors = {
+  const platformColors: Record<string, string> = {
     tiktok: "text-black dark:text-white",
     instagram: "text-pink-600",
-    facebook: "text-blue-600"
+    facebook: "text-blue-600",
   };
 
-  const guarantees = [
-    "متابعين حقيقيين",
-    "نظيف بدون انتهاكات",
-    "شغال لايف",
-    "نظيف بالكامل"
-  ];
+  const isSold = account.status === "sold";
 
   return (
-    <div className="group overflow-hidden rounded-xl border bg-card shadow-sm transition-all hover:shadow-md hover:border-primary/50 flex flex-col h-full">
-      <div className="relative aspect-[4/3] bg-muted overflow-hidden flex items-center justify-center">
+    <div className="group overflow-hidden rounded-xl border bg-card shadow-sm transition-all hover:shadow-md hover:border-primary/40 flex flex-col">
+      {/* Image */}
+      <div className="relative h-40 sm:h-48 bg-muted overflow-hidden flex items-center justify-center">
         {account.imageUrl ? (
-          <img 
-            src={account.imageUrl} 
-            alt={account.name} 
+          <img
+            src={account.imageUrl}
+            alt={account.name}
             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
             loading="lazy"
           />
         ) : (
-          <PlatformIcon className={`w-16 h-16 opacity-20`} />
+          <PlatformIcon className="w-12 h-12 opacity-15" />
         )}
-        
-        {/* Followers Badge */}
-        <div className="absolute top-3 left-3 flex flex-col gap-2">
-          <Badge className="bg-black/70 hover:bg-black/80 text-white backdrop-blur-sm border-none shadow-sm font-semibold">
-            {account.followers >= 1000 
-              ? `${(account.followers / 1000).toFixed(1)}k متابع` 
+
+        {/* Top-left: followers + featured */}
+        <div className="absolute top-2 left-2 flex flex-col gap-1">
+          <Badge className="bg-black/65 hover:bg-black/75 text-white backdrop-blur-sm border-none text-[11px] px-2 py-0.5">
+            {account.followers >= 1000
+              ? `${(account.followers / 1000).toFixed(0)}k متابع`
               : `${account.followers} متابع`}
           </Badge>
           {account.featured && (
-            <Badge className="bg-accent/90 hover:bg-accent text-white backdrop-blur-sm border-none shadow-sm">
-              مميز
+            <Badge className="bg-yellow-500/90 text-white border-none text-[10px] px-2 py-0.5">
+              مميز ★
             </Badge>
           )}
         </div>
-        
-        {/* Status Badge */}
-        <div className="absolute top-3 right-3">
-          <Badge className={
-            account.status === "available" 
-              ? "bg-green-500/90 hover:bg-green-500 text-white" 
-              : "bg-destructive/90 hover:bg-destructive text-white"
-          }>
-            {account.status === "available" ? "متاح" : "تم البيع"}
+
+        {/* Top-right: status */}
+        <div className="absolute top-2 right-2">
+          <Badge
+            className={
+              isSold
+                ? "bg-destructive/90 text-white border-none text-[11px] px-2 py-0.5"
+                : "bg-green-500/90 text-white border-none text-[11px] px-2 py-0.5"
+            }
+          >
+            {isSold ? "مباع" : "متاح"}
           </Badge>
         </div>
       </div>
 
-      <div className="p-4 flex flex-col flex-1">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <PlatformIcon className={`w-4 h-4 ${platformColors[account.platform]}`} />
-            <h3 className="font-bold text-lg line-clamp-1" dir="ltr">{account.name}</h3>
+      {/* Body */}
+      <div className="p-3 sm:p-4 flex flex-col flex-1 gap-2">
+        {/* Name + Price */}
+        <div className="flex items-center justify-between gap-1">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <PlatformIcon
+              className={`w-3.5 h-3.5 shrink-0 ${platformColors[account.platform]}`}
+            />
+            <h3
+              className="font-bold text-sm sm:text-base line-clamp-1"
+              dir="ltr"
+            >
+              {account.name}
+            </h3>
           </div>
-          <span className="font-bold text-lg text-primary">{account.price} ₪</span>
+          <span className="font-black text-sm sm:text-base text-primary shrink-0">
+            {account.price} ₪
+          </span>
         </div>
 
+        {/* Description */}
         {account.description && (
-          <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+          <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
             {account.description}
           </p>
         )}
 
-        <div className="space-y-1 mb-4 flex-1">
-          {guarantees.map((g, i) => (
-            <div key={i} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Check className="w-3.5 h-3.5 text-primary" />
+        {/* Guarantees */}
+        <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+          {guarantees.map((g) => (
+            <div
+              key={g}
+              className="flex items-center gap-1 text-[11px] text-muted-foreground"
+            >
+              <Check className="w-3 h-3 text-primary shrink-0" />
               <span>{g}</span>
             </div>
           ))}
         </div>
 
-        {account.status === "available" ? (
-          <Button 
-            className="w-full font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm hover:shadow"
-            onClick={handleBuyClick}
+        {/* Button */}
+        {isSold ? (
+          <Button
+            disabled
+            size="sm"
+            variant="secondary"
+            className="w-full text-xs mt-auto"
           >
-            اشتري الآن
+            غير متوفر
           </Button>
         ) : (
-          <Button disabled className="w-full font-bold" variant="secondary">
-            غير متوفر
+          <Button
+            size="sm"
+            className="w-full font-bold text-xs bg-primary hover:bg-primary/90 mt-auto"
+            onClick={handleBuyClick}
+          >
+            اشتري الآن عبر واتساب
           </Button>
         )}
       </div>
