@@ -10,6 +10,7 @@ export const accountsTable = pgTable("accounts", {
   price: numeric("price", { precision: 10, scale: 2 }).notNull().default("0"),
   description: text("description"),
   imageUrl: text("image_url"),
+  accountUrl: text("account_url"),
   status: text("status").notNull().default("available"), // available | sold
   featured: boolean("featured").notNull().default(false),
   clickCount: integer("click_count").notNull().default(0),

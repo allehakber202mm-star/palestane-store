@@ -15,6 +15,7 @@ export interface AccountInput {
   price: number;
   description?: string;
   imageUrl?: string;
+  accountUrl?: string;
   status?: AccountInputStatus;
   featured?: boolean;
 }

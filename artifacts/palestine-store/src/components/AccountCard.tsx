@@ -1,5 +1,6 @@
 import { Account, useTrackAccountClick, useGetSettings } from "@workspace/api-client-react";
 import { Badge } from "@/components/ui/badge";
+import { ExternalLink } from "lucide-react";
 import { SiTiktok, SiInstagram, SiFacebook } from "react-icons/si";
 
 interface AccountCardProps {
@@ -99,6 +100,20 @@ export function AccountCard({ account }: AccountCardProps) {
           <p className="hidden sm:block text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">
             {account.description}
           </p>
+        )}
+
+        {/* Visit account button */}
+        {account.accountUrl && (
+          <a
+            href={account.accountUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full flex items-center justify-center gap-1.5 rounded-lg py-1.5 sm:py-2 text-[11px] sm:text-xs font-bold border border-border hover:border-primary/60 hover:bg-primary/5 transition-colors text-muted-foreground hover:text-primary"
+          >
+            <PlatformIcon className={`w-3 h-3 shrink-0 ${platformColor}`} />
+            زيارة الحساب
+            <ExternalLink className="w-2.5 h-2.5 opacity-60" />
+          </a>
         )}
 
         {/* Buy button */}

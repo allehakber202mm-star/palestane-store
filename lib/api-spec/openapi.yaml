@@ -352,6 +352,8 @@ components:
           type: ["string", "null"]
         imageUrl:
           type: ["string", "null"]
+        accountUrl:
+          type: ["string", "null"]
         status:
           type: string
           enum: [available, sold]
@@ -381,6 +383,8 @@ components:
           type: string
         imageUrl:
           type: string
+        accountUrl:
+          type: string
         status:
           type: string
           enum: [available, sold]
@@ -402,6 +406,8 @@ components:
         description:
           type: string
         imageUrl:
+          type: string
+        accountUrl:
           type: string
         status:
           type: string

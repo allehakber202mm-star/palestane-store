@@ -18,6 +18,8 @@ export interface Account {
   description?: string | null;
   /** @nullable */
   imageUrl?: string | null;
+  /** @nullable */
+  accountUrl?: string | null;
   status: AccountStatus;
   featured?: boolean;
   clickCount?: number;

@@ -39,7 +39,7 @@ import {
   Plus, Edit2, Trash2, DollarSign, Users, Image as ImageIcon,
   CheckCircle, XCircle, Settings, Package, MousePointerClick,
   MessageCircle, Loader2, UploadCloud, X, Check,
-  ShoppingBag, TrendingUp,
+  ShoppingBag, TrendingUp, ExternalLink,
 } from "lucide-react";
 import { SiTiktok, SiInstagram, SiFacebook } from "react-icons/si";
 
@@ -59,11 +59,11 @@ type AccountRow = Awaited<ReturnType<typeof import("@workspace/api-client-react"
 
 type FormState = {
   name: string; platform: string; followers: string; price: string;
-  description: string; status: string; featured: boolean; imageUrl: string;
+  description: string; status: string; featured: boolean; imageUrl: string; accountUrl: string;
 };
 const EMPTY_FORM: FormState = {
   name: "", platform: "tiktok", followers: "", price: "",
-  description: "", status: "available", featured: false, imageUrl: "",
+  description: "", status: "available", featured: false, imageUrl: "", accountUrl: "",
 };
 
 const PLT: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
@@ -139,6 +139,7 @@ export default function AdminDashboard() {
       name: acc.name, platform: acc.platform, followers: String(acc.followers),
       price: String(acc.price), description: acc.description || "",
       status: acc.status, featured: acc.featured, imageUrl: acc.imageUrl || "",
+      accountUrl: acc.accountUrl || "",
     });
     setErrors({});
     setMode("edit");
@@ -148,6 +149,12 @@ export default function AdminDashboard() {
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
+    const rawUrl = form.accountUrl.trim();
+    const urlValid = !rawUrl || /^https?:\/\/.+/.test(rawUrl);
+    if (!urlValid) {
+      setErrors((e) => ({ ...e, accountUrl: "الرابط غير صالح، يجب أن يبدأ بـ https://" }));
+      return;
+    }
     const payload = {
       name: form.name.trim(),
       platform: form.platform as "tiktok" | "instagram" | "facebook",
@@ -155,6 +162,7 @@ export default function AdminDashboard() {
       description: form.description || null,
       status: form.status as "available" | "sold",
       featured: form.featured, imageUrl: form.imageUrl || null,
+      accountUrl: rawUrl || null,
     };
     if (mode === "edit" && editRow) {
       updateMut.mutate({ id: editRow.id, data: payload as AccountUpdate }, {
@@ -562,6 +570,43 @@ export default function AdminDashboard() {
                   <Label>وصف (اختياري)</Label>
                   <Textarea rows={2} value={form.description}
                     onChange={(e) => setF("description", e.target.value)} placeholder="وصف مختصر..." />
+                </div>
+
+                {/* Account URL */}
+                <div className="space-y-1.5">
+                  <Label>رابط الحساب (اختياري)</Label>
+                  <div className="relative">
+                    <Input
+                      dir="ltr"
+                      className="text-left pe-9"
+                      value={form.accountUrl}
+                      onChange={(e) => setF("accountUrl", e.target.value)}
+                      placeholder={
+                        form.platform === "instagram"
+                          ? "https://www.instagram.com/username"
+                          : form.platform === "facebook"
+                          ? "https://www.facebook.com/page"
+                          : "https://www.tiktok.com/@username"
+                      }
+                    />
+                    {form.accountUrl && (
+                      <a
+                        href={form.accountUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="absolute top-1/2 -translate-y-1/2 left-2.5 text-muted-foreground hover:text-primary transition-colors"
+                        tabIndex={-1}
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                    )}
+                  </div>
+                  {errors.accountUrl && (
+                    <p className="text-xs text-destructive">{errors.accountUrl}</p>
+                  )}
+                  <p className="text-[10px] text-muted-foreground">
+                    سيظهر زر "زيارة الحساب" للزوار عند إضافة رابط
+                  </p>
                 </div>
 
                 {/* Image */}

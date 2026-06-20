@@ -15,6 +15,7 @@ export interface AccountUpdate {
   price?: number;
   description?: string;
   imageUrl?: string;
+  accountUrl?: string;
   status?: AccountUpdateStatus;
   featured?: boolean;
 }
