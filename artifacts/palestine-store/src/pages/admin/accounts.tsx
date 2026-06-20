@@ -1,3 +1,4 @@
+import { uploadImageToStorage } from "@/lib/uploadImage";
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import {
   useAdminListAccounts,
@@ -235,15 +236,9 @@ export default function AdminAccounts() {
     const file = e.target.files?.[0];
     if (!file || !activeAcc) return;
     setUploading(true);
-    const fd = new FormData(); fd.append("image", file);
     try {
-      const token = localStorage.getItem("admin_token");
-      const res = await fetch("/api/admin/accounts/upload-image", {
-        method: "POST", headers: { Authorization: `Bearer ${token}` }, body: fd,
-      });
-      if (!res.ok) throw new Error();
-      const data = await res.json();
-      updateMut.mutate({ id: activeAcc.id, data: { imageUrl: data.url } as AccountUpdate }, {
+      const url = await uploadImageToStorage(file);
+      updateMut.mutate({ id: activeAcc.id, data: { imageUrl: url } as AccountUpdate }, {
         onSuccess: () => { toast({ title: "✅ تم تحديث الصورة" }); setSheetMode(null); invalidate(); },
       });
     } catch {
@@ -256,15 +251,9 @@ export default function AdminAccounts() {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
-    const fd = new FormData(); fd.append("image", file);
     try {
-      const token = localStorage.getItem("admin_token");
-      const res = await fetch("/api/admin/accounts/upload-image", {
-        method: "POST", headers: { Authorization: `Bearer ${token}` }, body: fd,
-      });
-      if (!res.ok) throw new Error();
-      const d = await res.json();
-      setF("imageUrl", d.url);
+      const url = await uploadImageToStorage(file);
+      setF("imageUrl", url);
       toast({ title: "تم رفع الصورة" });
     } catch {
       toast({ variant: "destructive", title: "فشل رفع الصورة" });

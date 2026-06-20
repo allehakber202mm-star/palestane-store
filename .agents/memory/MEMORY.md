@@ -1,0 +1,1 @@
+- [Object Storage image upload](object-storage-upload.md) — images stored in GCS via presigned URL; serving URL = `/api/storage` + objectPath; no multer in admin.ts

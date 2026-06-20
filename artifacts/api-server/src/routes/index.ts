@@ -5,6 +5,7 @@ import authRouter from "./auth";
 import adminRouter from "./admin";
 import settingsRouter from "./settings";
 import statsRouter from "./stats";
+import storageRouter from "./storage";
 
 const router: IRouter = Router();
 
@@ -15,5 +16,6 @@ router.use("/admin", adminRouter);
 router.use("/settings", settingsRouter);
 router.use("/admin/settings", settingsRouter);
 router.use("/stats", statsRouter);
+router.use("/storage", storageRouter);
 
 export default router;
