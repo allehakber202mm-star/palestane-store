@@ -25,4 +25,12 @@ export interface Account {
   clickCount?: number;
   createdAt: string;
   updatedAt?: string;
+  /** @nullable */
+  earningsStatus?: string | null;
+  /** @nullable */
+  eligibleCountry?: string | null;
+  /** @nullable */
+  activationDate?: string | null;
+  /** @nullable */
+  earningsNotes?: string | null;
 }

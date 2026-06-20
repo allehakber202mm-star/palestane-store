@@ -68,6 +68,10 @@ router.post("/accounts", async (req, res) => {
       accountUrl: data.accountUrl ?? null,
       status: data.status ?? "available",
       featured: data.featured ?? false,
+      earningsStatus: data.earningsStatus ?? null,
+      eligibleCountry: data.eligibleCountry ?? null,
+      activationDate: data.activationDate ?? null,
+      earningsNotes: data.earningsNotes ?? null,
     })
     .returning();
   res.status(201).json(formatAccount(row as Record<string, unknown>));
@@ -94,6 +98,10 @@ router.patch("/accounts/:id", async (req, res) => {
   if (data.accountUrl !== undefined) updateData.accountUrl = data.accountUrl;
   if (data.status !== undefined) updateData.status = data.status;
   if (data.featured !== undefined) updateData.featured = data.featured;
+  if (data.earningsStatus !== undefined) updateData.earningsStatus = data.earningsStatus ?? null;
+  if (data.eligibleCountry !== undefined) updateData.eligibleCountry = data.eligibleCountry ?? null;
+  if (data.activationDate !== undefined) updateData.activationDate = data.activationDate ?? null;
+  if (data.earningsNotes !== undefined) updateData.earningsNotes = data.earningsNotes ?? null;
 
   const [row] = await db
     .update(accountsTable)

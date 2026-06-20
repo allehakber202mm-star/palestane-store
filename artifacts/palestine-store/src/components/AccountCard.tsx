@@ -1,6 +1,6 @@
 import { useLocation } from "wouter";
 import { Account } from "@workspace/api-client-react";
-import { CheckCircle2, ExternalLink } from "lucide-react";
+import { CheckCircle2, ExternalLink, DollarSign } from "lucide-react";
 import { SiTiktok, SiInstagram, SiFacebook } from "react-icons/si";
 
 interface AccountCardProps {
@@ -17,13 +17,15 @@ const PLATFORM_FEATURES = [
 export function AccountCard({ account }: AccountCardProps) {
   const [, navigate] = useLocation();
 
+  const isMonetized = account.platform === "tiktok_monetized";
+
   const PlatformIcon =
-    account.platform === "tiktok" ? SiTiktok
+    (account.platform === "tiktok" || isMonetized) ? SiTiktok
     : account.platform === "instagram" ? SiInstagram
     : SiFacebook;
 
   const platformColor =
-    account.platform === "tiktok" ? "text-foreground"
+    (account.platform === "tiktok" || isMonetized) ? "text-foreground"
     : account.platform === "instagram" ? "text-pink-600"
     : "text-blue-600";
 
@@ -66,7 +68,7 @@ export function AccountCard({ account }: AccountCardProps) {
           </span>
         </div>
 
-        {/* Followers + featured */}
+        {/* Followers + featured + monetized badge */}
         <div className="absolute top-1.5 left-1.5 flex flex-col gap-1">
           <span className="bg-black/65 text-white text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded-full leading-none">
             {followersLabel} متابع
@@ -74,6 +76,11 @@ export function AccountCard({ account }: AccountCardProps) {
           {account.featured && (
             <span className="bg-yellow-500/90 text-white text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded-full leading-none">
               مميز ★
+            </span>
+          )}
+          {isMonetized && (
+            <span className="bg-green-600/90 text-white text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded-full leading-none flex items-center gap-0.5">
+              <DollarSign className="w-2 h-2" />مفعّل الأرباح
             </span>
           )}
         </div>

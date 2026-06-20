@@ -13,4 +13,5 @@ export const AccountInputPlatform = {
   tiktok: 'tiktok',
   instagram: 'instagram',
   facebook: 'facebook',
+  tiktok_monetized: 'tiktok_monetized',
 } as const;

@@ -5,7 +5,7 @@ import {
   useTrackAccountClick,
 } from "@workspace/api-client-react";
 import { PublicLayout } from "@/components/layout/PublicLayout";
-import { CheckCircle2, ExternalLink, Users, ArrowRight, Tag } from "lucide-react";
+import { CheckCircle2, ExternalLink, Users, ArrowRight, Tag, DollarSign, Globe, Calendar } from "lucide-react";
 import { SiTiktok, SiInstagram, SiFacebook } from "react-icons/si";
 
 const PLATFORM_FEATURES = [
@@ -29,7 +29,8 @@ export default function AccountDetails() {
     trackClick.mutate({ id: account.id });
     const phone = settings?.whatsapp?.replace(/\D/g, "") || "972566112031";
     const platformAr =
-      account.platform === "tiktok" ? "تيك توك"
+      account.platform === "tiktok_monetized" ? "تيك توك أرباح المشاهدات"
+      : account.platform === "tiktok" ? "تيك توك"
       : account.platform === "instagram" ? "انستغرام"
       : "فيسبوك";
     const message = `مرحبا، أود شراء حساب ${platformAr} باسم "${account.name}". السعر: ${account.price} شيكل. المتابعين: ${account.followers}.`;
@@ -62,18 +63,22 @@ export default function AccountDetails() {
     );
   }
 
+  const isMonetized = account.platform === "tiktok_monetized";
+  const hasEarnings = isMonetized && account.earningsStatus === "active";
+
   const PlatformIcon =
-    account.platform === "tiktok" ? SiTiktok
+    (account.platform === "tiktok" || isMonetized) ? SiTiktok
     : account.platform === "instagram" ? SiInstagram
     : SiFacebook;
 
   const platformColor =
-    account.platform === "tiktok" ? "text-foreground"
+    (account.platform === "tiktok" || isMonetized) ? "text-foreground"
     : account.platform === "instagram" ? "text-pink-500"
     : "text-blue-500";
 
   const platformAr =
-    account.platform === "tiktok" ? "تيك توك"
+    account.platform === "tiktok_monetized" ? "تيك توك أرباح المشاهدات"
+    : account.platform === "tiktok" ? "تيك توك"
     : account.platform === "instagram" ? "انستغرام"
     : "فيسبوك";
 
@@ -88,7 +93,7 @@ export default function AccountDetails() {
 
   return (
     <PublicLayout>
-      <div className="max-w-lg mx-auto px-4 py-6 pb-24">
+      <div className="max-w-lg mx-auto px-4 py-6 pb-28">
 
         {/* Back button */}
         <button
@@ -120,7 +125,14 @@ export default function AccountDetails() {
           }`}>
             {isSold ? "مباع" : "متاح"}
           </span>
-          {account.featured && (
+          {/* Monetized badge */}
+          {isMonetized && (
+            <span className="absolute bottom-3 left-3 text-white text-xs font-bold px-3 py-1 rounded-full bg-green-700 flex items-center gap-1">
+              <DollarSign className="w-3 h-3" />
+              مفعّل الأرباح
+            </span>
+          )}
+          {account.featured && !isMonetized && (
             <span className="absolute bottom-3 left-3 text-white text-xs font-bold px-3 py-1 rounded-full bg-yellow-500">
               مميز ★
             </span>
@@ -168,6 +180,53 @@ export default function AccountDetails() {
           </div>
         )}
 
+        {/* Earnings info box — only for monetized accounts with active earnings */}
+        {isMonetized && (
+          <div className={`mb-5 rounded-xl border p-4 ${
+            hasEarnings
+              ? "bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800"
+              : "bg-muted/30 border-border"
+          }`}>
+            <div className="flex items-center gap-2 mb-2">
+              <DollarSign className={`w-4 h-4 shrink-0 ${hasEarnings ? "text-green-600" : "text-muted-foreground"}`} />
+              <h3 className={`font-bold text-sm ${hasEarnings ? "text-green-700 dark:text-green-400" : "text-foreground"}`}>
+                {hasEarnings ? "هذا الحساب مفعّل لبرنامج أرباح المشاهدات" : "برنامج أرباح المشاهدات"}
+              </h3>
+            </div>
+            {hasEarnings ? (
+              <>
+                <p className="text-xs text-green-700 dark:text-green-300 leading-relaxed mb-3">
+                  💰 هذا الحساب مؤهل لبرنامج أرباح المشاهدات في تيك توك.<br />
+                  يمكن تحقيق أرباح من المشاهدات المؤهلة حسب سياسات تيك توك الحالية.
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {account.eligibleCountry && (
+                    <div className="flex items-center gap-1.5 text-xs text-green-700 dark:text-green-300">
+                      <Globe className="w-3 h-3 shrink-0" />
+                      <span>الدولة: <strong>{account.eligibleCountry}</strong></span>
+                    </div>
+                  )}
+                  {account.activationDate && (
+                    <div className="flex items-center gap-1.5 text-xs text-green-700 dark:text-green-300">
+                      <Calendar className="w-3 h-3 shrink-0" />
+                      <span>التفعيل: <strong>{account.activationDate}</strong></span>
+                    </div>
+                  )}
+                </div>
+                {account.earningsNotes && (
+                  <p className="mt-2 text-xs text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30 rounded-lg px-3 py-2">
+                    {account.earningsNotes}
+                  </p>
+                )}
+              </>
+            ) : (
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                هذا الحساب في قسم تيك توك أرباح المشاهدات. تحقق من التفاصيل مع البائع.
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Platform features */}
         <div className="mb-6">
           <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">المميزات</h2>
@@ -181,7 +240,7 @@ export default function AccountDetails() {
           </ul>
         </div>
 
-        {/* Account username (from name field) */}
+        {/* Account username */}
         <div className="mb-6 bg-muted/40 rounded-xl px-4 py-3">
           <p className="text-xs text-muted-foreground mb-1">اسم المستخدم</p>
           <p className="font-bold text-sm" dir="ltr">{account.name}</p>

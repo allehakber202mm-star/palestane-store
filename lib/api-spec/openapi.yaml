@@ -45,7 +45,7 @@ paths:
           in: query
           schema:
             type: string
-            enum: [tiktok, instagram, facebook]
+            enum: [tiktok, instagram, facebook, tiktok_monetized]
         - name: status
           in: query
           schema:
@@ -395,7 +395,7 @@ components:
           type: string
         platform:
           type: string
-          enum: [tiktok, instagram, facebook]
+          enum: [tiktok, instagram, facebook, tiktok_monetized]
         followers:
           type: integer
         price:
@@ -417,6 +417,14 @@ components:
           type: string
         updatedAt:
           type: string
+        earningsStatus:
+          type: ["string", "null"]
+        eligibleCountry:
+          type: ["string", "null"]
+        activationDate:
+          type: ["string", "null"]
+        earningsNotes:
+          type: ["string", "null"]
 
     AccountInput:
       type: object
@@ -426,7 +434,7 @@ components:
           type: string
         platform:
           type: string
-          enum: [tiktok, instagram, facebook]
+          enum: [tiktok, instagram, facebook, tiktok_monetized]
         followers:
           type: integer
         price:
@@ -442,6 +450,14 @@ components:
           enum: [available, sold]
         featured:
           type: boolean
+        earningsStatus:
+          type: string
+        eligibleCountry:
+          type: string
+        activationDate:
+          type: string
+        earningsNotes:
+          type: string
 
     AccountUpdate:
       type: object
@@ -450,7 +466,7 @@ components:
           type: string
         platform:
           type: string
-          enum: [tiktok, instagram, facebook]
+          enum: [tiktok, instagram, facebook, tiktok_monetized]
         followers:
           type: integer
         price:
@@ -466,6 +482,14 @@ components:
           enum: [available, sold]
         featured:
           type: boolean
+        earningsStatus:
+          type: string
+        eligibleCountry:
+          type: string
+        activationDate:
+          type: string
+        earningsNotes:
+          type: string
 
     LoginInput:
       type: object

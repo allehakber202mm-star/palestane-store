@@ -18,4 +18,8 @@ export interface AccountInput {
   accountUrl?: string;
   status?: AccountInputStatus;
   featured?: boolean;
+  earningsStatus?: string;
+  eligibleCountry?: string;
+  activationDate?: string;
+  earningsNotes?: string;
 }

@@ -18,4 +18,8 @@ export interface AccountUpdate {
   accountUrl?: string;
   status?: AccountUpdateStatus;
   featured?: boolean;
+  earningsStatus?: string;
+  eligibleCountry?: string;
+  activationDate?: string;
+  earningsNotes?: string;
 }

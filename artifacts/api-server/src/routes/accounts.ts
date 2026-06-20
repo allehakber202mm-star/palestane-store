@@ -18,6 +18,10 @@ export function formatAccount(a: Record<string, unknown>) {
     status: a.status,
     featured: a.featured,
     clickCount: a.clickCount,
+    earningsStatus: a.earningsStatus ?? null,
+    eligibleCountry: a.eligibleCountry ?? null,
+    activationDate: a.activationDate ?? null,
+    earningsNotes: a.earningsNotes ?? null,
     createdAt: a.createdAt instanceof Date ? a.createdAt.toISOString() : String(a.createdAt),
     updatedAt: a.updatedAt instanceof Date ? a.updatedAt.toISOString() : String(a.updatedAt),
   };

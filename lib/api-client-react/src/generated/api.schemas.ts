@@ -16,6 +16,7 @@ export const AccountPlatform = {
   tiktok: 'tiktok',
   instagram: 'instagram',
   facebook: 'facebook',
+  tiktok_monetized: 'tiktok_monetized',
 } as const;
 
 export type AccountStatus = typeof AccountStatus[keyof typeof AccountStatus];
@@ -43,6 +44,14 @@ export interface Account {
   clickCount?: number;
   createdAt: string;
   updatedAt?: string;
+  /** @nullable */
+  earningsStatus?: string | null;
+  /** @nullable */
+  eligibleCountry?: string | null;
+  /** @nullable */
+  activationDate?: string | null;
+  /** @nullable */
+  earningsNotes?: string | null;
 }
 
 export type AccountInputPlatform = typeof AccountInputPlatform[keyof typeof AccountInputPlatform];
@@ -52,6 +61,7 @@ export const AccountInputPlatform = {
   tiktok: 'tiktok',
   instagram: 'instagram',
   facebook: 'facebook',
+  tiktok_monetized: 'tiktok_monetized',
 } as const;
 
 export type AccountInputStatus = typeof AccountInputStatus[keyof typeof AccountInputStatus];
@@ -72,6 +82,10 @@ export interface AccountInput {
   accountUrl?: string;
   status?: AccountInputStatus;
   featured?: boolean;
+  earningsStatus?: string;
+  eligibleCountry?: string;
+  activationDate?: string;
+  earningsNotes?: string;
 }
 
 export type AccountUpdatePlatform = typeof AccountUpdatePlatform[keyof typeof AccountUpdatePlatform];
@@ -81,6 +95,7 @@ export const AccountUpdatePlatform = {
   tiktok: 'tiktok',
   instagram: 'instagram',
   facebook: 'facebook',
+  tiktok_monetized: 'tiktok_monetized',
 } as const;
 
 export type AccountUpdateStatus = typeof AccountUpdateStatus[keyof typeof AccountUpdateStatus];
@@ -101,6 +116,10 @@ export interface AccountUpdate {
   accountUrl?: string;
   status?: AccountUpdateStatus;
   featured?: boolean;
+  earningsStatus?: string;
+  eligibleCountry?: string;
+  activationDate?: string;
+  earningsNotes?: string;
 }
 
 export interface LoginInput {
@@ -199,6 +218,7 @@ export const ListAccountsPlatform = {
   tiktok: 'tiktok',
   instagram: 'instagram',
   facebook: 'facebook',
+  tiktok_monetized: 'tiktok_monetized',
 } as const;
 
 export type ListAccountsStatus = typeof ListAccountsStatus[keyof typeof ListAccountsStatus];

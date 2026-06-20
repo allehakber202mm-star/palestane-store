@@ -5,19 +5,21 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useListAccounts } from "@workspace/api-client-react";
 import { ListAccountsPlatform } from "@workspace/api-client-react";
 import { SiTiktok, SiInstagram, SiFacebook } from "react-icons/si";
+import { DollarSign } from "lucide-react";
 
-type Platform = "tiktok" | "instagram" | "facebook";
+type Platform = "tiktok" | "instagram" | "facebook" | "tiktok_monetized";
 
 const filters: { value: Platform; label: string; icon: React.ReactNode; color: string }[] = [
-  { value: "tiktok",    label: "تيك توك",  icon: <SiTiktok className="w-4 h-4" />,                        color: "text-foreground" },
-  { value: "instagram", label: "انستغرام", icon: <SiInstagram className="w-4 h-4 text-pink-500" />,        color: "text-pink-500" },
-  { value: "facebook",  label: "فيسبوك",   icon: <SiFacebook className="w-4 h-4 text-blue-600" />,         color: "text-blue-600" },
+  { value: "tiktok",           label: "تيك توك",              icon: <SiTiktok className="w-4 h-4" />,                              color: "text-foreground" },
+  { value: "tiktok_monetized", label: "تيك توك أرباح",         icon: <DollarSign className="w-4 h-4 text-green-500" />,             color: "text-green-600" },
+  { value: "instagram",        label: "انستغرام",              icon: <SiInstagram className="w-4 h-4 text-pink-500" />,             color: "text-pink-500" },
+  { value: "facebook",         label: "فيسبوك",                icon: <SiFacebook className="w-4 h-4 text-blue-600" />,              color: "text-blue-600" },
 ];
 
 export default function Accounts() {
   const params = new URLSearchParams(window.location.search);
   const urlPlatform = params.get("platform") as Platform | null;
-  const validPlatforms: Platform[] = ["tiktok", "instagram", "facebook"];
+  const validPlatforms: Platform[] = ["tiktok", "instagram", "facebook", "tiktok_monetized"];
   const initialPlatform: Platform = (urlPlatform && validPlatforms.includes(urlPlatform))
     ? urlPlatform
     : "tiktok";
@@ -61,14 +63,21 @@ export default function Accounts() {
             <button
               key={f.value}
               onClick={() => setActive(f.value)}
-              className={`flex items-center gap-1.5 px-5 py-2.5 rounded-full font-bold text-sm whitespace-nowrap transition-all border ${
+              className={`flex items-center gap-1.5 px-4 py-2.5 rounded-full font-bold text-sm whitespace-nowrap transition-all border ${
                 active === f.value
-                  ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                  ? f.value === "tiktok_monetized"
+                    ? "bg-green-600 text-white border-green-600 shadow-sm"
+                    : "bg-primary text-primary-foreground border-primary shadow-sm"
                   : "bg-background text-foreground border-border hover:border-primary/50 hover:bg-muted"
               }`}
             >
               {f.icon}
               {f.label}
+              {f.value === "tiktok_monetized" && active !== f.value && (
+                <span className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-[9px] font-black px-1.5 py-0.5 rounded-full leading-none">
+                  جديد
+                </span>
+              )}
             </button>
           ))}
         </div>

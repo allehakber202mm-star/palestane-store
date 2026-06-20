@@ -20,7 +20,7 @@ export const HealthCheckResponse = zod.object({
  * @summary List all available accounts
  */
 export const ListAccountsQueryParams = zod.object({
-  "platform": zod.enum(['tiktok', 'instagram', 'facebook']).optional(),
+  "platform": zod.enum(['tiktok', 'instagram', 'facebook', 'tiktok_monetized']).optional(),
   "status": zod.enum(['available', 'sold']).optional(),
   "featured": zod.coerce.boolean().optional(),
   "limit": zod.coerce.number().optional(),
@@ -30,7 +30,7 @@ export const ListAccountsQueryParams = zod.object({
 export const ListAccountsResponseItem = zod.object({
   "id": zod.number(),
   "name": zod.string(),
-  "platform": zod.enum(['tiktok', 'instagram', 'facebook']),
+  "platform": zod.enum(['tiktok', 'instagram', 'facebook', 'tiktok_monetized']),
   "followers": zod.number(),
   "price": zod.number(),
   "description": zod.string().nullish(),
@@ -40,7 +40,11 @@ export const ListAccountsResponseItem = zod.object({
   "featured": zod.boolean().optional(),
   "clickCount": zod.number().optional(),
   "createdAt": zod.string(),
-  "updatedAt": zod.string().optional()
+  "updatedAt": zod.string().optional(),
+  "earningsStatus": zod.string().nullish(),
+  "eligibleCountry": zod.string().nullish(),
+  "activationDate": zod.string().nullish(),
+  "earningsNotes": zod.string().nullish()
 })
 export const ListAccountsResponse = zod.array(ListAccountsResponseItem)
 
@@ -51,7 +55,7 @@ export const ListAccountsResponse = zod.array(ListAccountsResponseItem)
 export const ListFeaturedAccountsResponseItem = zod.object({
   "id": zod.number(),
   "name": zod.string(),
-  "platform": zod.enum(['tiktok', 'instagram', 'facebook']),
+  "platform": zod.enum(['tiktok', 'instagram', 'facebook', 'tiktok_monetized']),
   "followers": zod.number(),
   "price": zod.number(),
   "description": zod.string().nullish(),
@@ -61,7 +65,11 @@ export const ListFeaturedAccountsResponseItem = zod.object({
   "featured": zod.boolean().optional(),
   "clickCount": zod.number().optional(),
   "createdAt": zod.string(),
-  "updatedAt": zod.string().optional()
+  "updatedAt": zod.string().optional(),
+  "earningsStatus": zod.string().nullish(),
+  "eligibleCountry": zod.string().nullish(),
+  "activationDate": zod.string().nullish(),
+  "earningsNotes": zod.string().nullish()
 })
 export const ListFeaturedAccountsResponse = zod.array(ListFeaturedAccountsResponseItem)
 
@@ -72,7 +80,7 @@ export const ListFeaturedAccountsResponse = zod.array(ListFeaturedAccountsRespon
 export const ListRecentAccountsResponseItem = zod.object({
   "id": zod.number(),
   "name": zod.string(),
-  "platform": zod.enum(['tiktok', 'instagram', 'facebook']),
+  "platform": zod.enum(['tiktok', 'instagram', 'facebook', 'tiktok_monetized']),
   "followers": zod.number(),
   "price": zod.number(),
   "description": zod.string().nullish(),
@@ -82,7 +90,11 @@ export const ListRecentAccountsResponseItem = zod.object({
   "featured": zod.boolean().optional(),
   "clickCount": zod.number().optional(),
   "createdAt": zod.string(),
-  "updatedAt": zod.string().optional()
+  "updatedAt": zod.string().optional(),
+  "earningsStatus": zod.string().nullish(),
+  "eligibleCountry": zod.string().nullish(),
+  "activationDate": zod.string().nullish(),
+  "earningsNotes": zod.string().nullish()
 })
 export const ListRecentAccountsResponse = zod.array(ListRecentAccountsResponseItem)
 
@@ -97,7 +109,7 @@ export const GetAccountParams = zod.object({
 export const GetAccountResponse = zod.object({
   "id": zod.number(),
   "name": zod.string(),
-  "platform": zod.enum(['tiktok', 'instagram', 'facebook']),
+  "platform": zod.enum(['tiktok', 'instagram', 'facebook', 'tiktok_monetized']),
   "followers": zod.number(),
   "price": zod.number(),
   "description": zod.string().nullish(),
@@ -107,7 +119,11 @@ export const GetAccountResponse = zod.object({
   "featured": zod.boolean().optional(),
   "clickCount": zod.number().optional(),
   "createdAt": zod.string(),
-  "updatedAt": zod.string().optional()
+  "updatedAt": zod.string().optional(),
+  "earningsStatus": zod.string().nullish(),
+  "eligibleCountry": zod.string().nullish(),
+  "activationDate": zod.string().nullish(),
+  "earningsNotes": zod.string().nullish()
 })
 
 
@@ -156,7 +172,7 @@ export const AdminListAccountsQueryParams = zod.object({
 export const AdminListAccountsResponseItem = zod.object({
   "id": zod.number(),
   "name": zod.string(),
-  "platform": zod.enum(['tiktok', 'instagram', 'facebook']),
+  "platform": zod.enum(['tiktok', 'instagram', 'facebook', 'tiktok_monetized']),
   "followers": zod.number(),
   "price": zod.number(),
   "description": zod.string().nullish(),
@@ -166,7 +182,11 @@ export const AdminListAccountsResponseItem = zod.object({
   "featured": zod.boolean().optional(),
   "clickCount": zod.number().optional(),
   "createdAt": zod.string(),
-  "updatedAt": zod.string().optional()
+  "updatedAt": zod.string().optional(),
+  "earningsStatus": zod.string().nullish(),
+  "eligibleCountry": zod.string().nullish(),
+  "activationDate": zod.string().nullish(),
+  "earningsNotes": zod.string().nullish()
 })
 export const AdminListAccountsResponse = zod.array(AdminListAccountsResponseItem)
 
@@ -176,14 +196,18 @@ export const AdminListAccountsResponse = zod.array(AdminListAccountsResponseItem
  */
 export const CreateAccountBody = zod.object({
   "name": zod.string(),
-  "platform": zod.enum(['tiktok', 'instagram', 'facebook']),
+  "platform": zod.enum(['tiktok', 'instagram', 'facebook', 'tiktok_monetized']),
   "followers": zod.number(),
   "price": zod.number(),
   "description": zod.string().optional(),
   "imageUrl": zod.string().optional(),
   "accountUrl": zod.string().optional(),
   "status": zod.enum(['available', 'sold']).optional(),
-  "featured": zod.boolean().optional()
+  "featured": zod.boolean().optional(),
+  "earningsStatus": zod.string().optional(),
+  "eligibleCountry": zod.string().optional(),
+  "activationDate": zod.string().optional(),
+  "earningsNotes": zod.string().optional()
 })
 
 
@@ -196,20 +220,24 @@ export const UpdateAccountParams = zod.object({
 
 export const UpdateAccountBody = zod.object({
   "name": zod.string().optional(),
-  "platform": zod.enum(['tiktok', 'instagram', 'facebook']).optional(),
+  "platform": zod.enum(['tiktok', 'instagram', 'facebook', 'tiktok_monetized']).optional(),
   "followers": zod.number().optional(),
   "price": zod.number().optional(),
   "description": zod.string().optional(),
   "imageUrl": zod.string().optional(),
   "accountUrl": zod.string().optional(),
   "status": zod.enum(['available', 'sold']).optional(),
-  "featured": zod.boolean().optional()
+  "featured": zod.boolean().optional(),
+  "earningsStatus": zod.string().optional(),
+  "eligibleCountry": zod.string().optional(),
+  "activationDate": zod.string().optional(),
+  "earningsNotes": zod.string().optional()
 })
 
 export const UpdateAccountResponse = zod.object({
   "id": zod.number(),
   "name": zod.string(),
-  "platform": zod.enum(['tiktok', 'instagram', 'facebook']),
+  "platform": zod.enum(['tiktok', 'instagram', 'facebook', 'tiktok_monetized']),
   "followers": zod.number(),
   "price": zod.number(),
   "description": zod.string().nullish(),
@@ -219,7 +247,11 @@ export const UpdateAccountResponse = zod.object({
   "featured": zod.boolean().optional(),
   "clickCount": zod.number().optional(),
   "createdAt": zod.string(),
-  "updatedAt": zod.string().optional()
+  "updatedAt": zod.string().optional(),
+  "earningsStatus": zod.string().nullish(),
+  "eligibleCountry": zod.string().nullish(),
+  "activationDate": zod.string().nullish(),
+  "earningsNotes": zod.string().nullish()
 })
 
 
@@ -291,7 +323,7 @@ export const GetDashboardStatsResponse = zod.object({
   "topAccounts": zod.array(zod.object({
   "id": zod.number(),
   "name": zod.string(),
-  "platform": zod.enum(['tiktok', 'instagram', 'facebook']),
+  "platform": zod.enum(['tiktok', 'instagram', 'facebook', 'tiktok_monetized']),
   "followers": zod.number(),
   "price": zod.number(),
   "description": zod.string().nullish(),
@@ -301,7 +333,11 @@ export const GetDashboardStatsResponse = zod.object({
   "featured": zod.boolean().optional(),
   "clickCount": zod.number().optional(),
   "createdAt": zod.string(),
-  "updatedAt": zod.string().optional()
+  "updatedAt": zod.string().optional(),
+  "earningsStatus": zod.string().nullish(),
+  "eligibleCountry": zod.string().nullish(),
+  "activationDate": zod.string().nullish(),
+  "earningsNotes": zod.string().nullish()
 }))
 })
 

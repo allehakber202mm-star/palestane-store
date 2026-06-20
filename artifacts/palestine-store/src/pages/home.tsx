@@ -145,6 +145,7 @@ export default function Home() {
   const { data: settings } = useGetSettings();
 
   const { data: rawTiktok, isLoading: isLoadingTiktok } = useListAccounts({ platform: "tiktok", limit: 8 });
+  const { data: rawMonetized, isLoading: isLoadingMonetized } = useListAccounts({ platform: "tiktok_monetized", limit: 8 });
   const { data: rawInstagram, isLoading: isLoadingInstagram } = useListAccounts({ platform: "instagram", limit: 8 });
   const { data: rawFacebook, isLoading: isLoadingFacebook } = useListAccounts({ platform: "facebook", limit: 8 });
 
@@ -152,6 +153,7 @@ export default function Home() {
     arr ? [...arr].sort((a, b) => (a.status === b.status ? 0 : a.status === "available" ? -1 : 1)) : undefined;
 
   const tiktok = sortByStatus(rawTiktok);
+  const monetized = sortByStatus(rawMonetized);
   const instagram = sortByStatus(rawInstagram);
   const facebook = sortByStatus(rawFacebook);
 
@@ -227,6 +229,19 @@ export default function Home() {
           />
           <AccountGrid accounts={tiktok} isLoading={isLoadingTiktok} />
         </Section>
+
+        {/* ── TikTok Monetized ── */}
+        {(isLoadingMonetized || (monetized && monetized.length > 0)) && (
+          <Section>
+            <SectionHeader
+              title="💰 تيك توك أرباح المشاهدات"
+              icon={<span className="text-green-500 font-black text-base">₪</span>}
+              linkHref="/accounts?platform=tiktok_monetized"
+              linkLabel="تصفح حسابات الأرباح"
+            />
+            <AccountGrid accounts={monetized} isLoading={isLoadingMonetized} />
+          </Section>
+        )}
 
         {/* ── Instagram ── */}
         <Section>

@@ -39,15 +39,17 @@ import { SiTiktok, SiInstagram, SiFacebook } from "react-icons/si";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const PLT: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
-  tiktok:    { label: "تيك توك",  icon: <SiTiktok />,   color: "text-foreground" },
-  instagram: { label: "انستغرام", icon: <SiInstagram />, color: "text-pink-500" },
-  facebook:  { label: "فيسبوك",   icon: <SiFacebook />,  color: "text-blue-500" },
+  tiktok:            { label: "تيك توك",          icon: <SiTiktok />,   color: "text-foreground" },
+  tiktok_monetized:  { label: "تيك توك أرباح",    icon: <SiTiktok />,   color: "text-green-600" },
+  instagram:         { label: "انستغرام",          icon: <SiInstagram />, color: "text-pink-500" },
+  facebook:          { label: "فيسبوك",            icon: <SiFacebook />,  color: "text-blue-500" },
 };
 
 const TABS = [
-  { key: "tiktok",    label: "تيك توك",  icon: <SiTiktok className="w-3 h-3" /> },
-  { key: "instagram", label: "انستغرام", icon: <SiInstagram className="w-3 h-3 text-pink-500" /> },
-  { key: "facebook",  label: "فيسبوك",   icon: <SiFacebook className="w-3 h-3 text-blue-500" /> },
+  { key: "tiktok",           label: "تيك توك",       icon: <SiTiktok className="w-3 h-3" /> },
+  { key: "tiktok_monetized", label: "أرباح المشاهدات", icon: <SiTiktok className="w-3 h-3 text-green-600" /> },
+  { key: "instagram",        label: "انستغرام",      icon: <SiInstagram className="w-3 h-3 text-pink-500" /> },
+  { key: "facebook",         label: "فيسبوك",        icon: <SiFacebook className="w-3 h-3 text-blue-500" /> },
 ];
 
 function fmt(n: number) {
@@ -63,16 +65,22 @@ type FormState = {
   name: string; platform: string; followers: string; price: string;
   description: string; status: string; featured: boolean;
   imageUrl: string; accountUrl: string;
+  earningsStatus: string; eligibleCountry: string;
+  activationDate: string; earningsNotes: string;
 };
 const EMPTY: FormState = {
   name: "", platform: "tiktok", followers: "", price: "",
   description: "", status: "available", featured: false,
   imageUrl: "", accountUrl: "",
+  earningsStatus: "", eligibleCountry: "",
+  activationDate: "", earningsNotes: "",
 };
 
 type AccRow = { id: number; name: string; platform: string; followers: number;
   price: number; description: string | null; status: string; featured: boolean;
-  imageUrl: string | null; accountUrl?: string | null; clickCount: number; createdAt: string; updatedAt?: string; };
+  imageUrl: string | null; accountUrl?: string | null; clickCount: number; createdAt: string; updatedAt?: string;
+  earningsStatus?: string | null; eligibleCountry?: string | null;
+  activationDate?: string | null; earningsNotes?: string | null; };
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function AdminAccounts() {
@@ -132,6 +140,10 @@ export default function AdminAccounts() {
       description: acc.description || "", status: acc.status,
       featured: acc.featured, imageUrl: acc.imageUrl || "",
       accountUrl: acc.accountUrl || "",
+      earningsStatus: acc.earningsStatus || "",
+      eligibleCountry: acc.eligibleCountry || "",
+      activationDate: acc.activationDate || "",
+      earningsNotes: acc.earningsNotes || "",
     });
     setErrors({});
     setSheetMode("form");
@@ -170,15 +182,20 @@ export default function AdminAccounts() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
+    const isMonetizedForm = form.platform === "tiktok_monetized";
     const payload = {
       name: form.name.trim(),
-      platform: form.platform as "tiktok" | "instagram" | "facebook",
+      platform: form.platform as "tiktok" | "instagram" | "facebook" | "tiktok_monetized",
       followers: Number(form.followers), price: Number(form.price),
       description: form.description || null,
       status: form.status as "available" | "sold",
       featured: form.featured,
       imageUrl: form.imageUrl || null,
       accountUrl: form.accountUrl.trim() || null,
+      earningsStatus: isMonetizedForm && form.earningsStatus ? form.earningsStatus : null,
+      eligibleCountry: isMonetizedForm && form.eligibleCountry ? form.eligibleCountry : null,
+      activationDate: isMonetizedForm && form.activationDate ? form.activationDate : null,
+      earningsNotes: isMonetizedForm && form.earningsNotes ? form.earningsNotes : null,
     };
     if (editingId) {
       updateMut.mutate({ id: editingId, data: payload as AccountUpdate }, {
@@ -477,18 +494,64 @@ export default function AdminAccounts() {
                 {/* Platform */}
                 <div className="space-y-1.5">
                   <Label>المنصة</Label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {(["tiktok","instagram","facebook"] as const).map((p) => (
+                  <div className="grid grid-cols-2 gap-2">
+                    {(["tiktok","tiktok_monetized","instagram","facebook"] as const).map((p) => (
                       <button key={p} type="button" onClick={() => setF("platform", p)}
                         className={`flex flex-col items-center gap-1 py-2.5 rounded-xl border text-xs font-bold transition-all ${
-                          form.platform === p ? "border-primary bg-primary/10 text-primary" : "border-border hover:border-primary/50"
+                          form.platform === p
+                            ? p === "tiktok_monetized"
+                              ? "border-green-600 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400"
+                              : "border-primary bg-primary/10 text-primary"
+                            : "border-border hover:border-primary/50"
                         }`}>
                         <span className={`text-base ${PLT[p].color}`}>{PLT[p].icon}</span>
                         {PLT[p].label}
+                        {p === "tiktok_monetized" && (
+                          <span className="text-[9px] font-normal text-green-600">أرباح المشاهدات</span>
+                        )}
                       </button>
                     ))}
                   </div>
                 </div>
+
+                {/* Earnings fields — only for tiktok_monetized */}
+                {form.platform === "tiktok_monetized" && (
+                  <div className="rounded-xl border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/30 p-4 space-y-4">
+                    <p className="text-xs font-bold text-green-700 dark:text-green-400 flex items-center gap-1.5">
+                      💰 معلومات برنامج أرباح المشاهدات (اختياري)
+                    </p>
+                    <div className="space-y-1.5">
+                      <Label>حالة الأرباح</Label>
+                      <Select value={form.earningsStatus} onValueChange={(v) => setF("earningsStatus", v)}>
+                        <SelectTrigger><SelectValue placeholder="اختر..." /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="active">✅ مفعّل</SelectItem>
+                          <SelectItem value="inactive">⏸️ غير مفعّل</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label>الدولة المؤهلة</Label>
+                        <Input value={form.eligibleCountry}
+                          onChange={(e) => setF("eligibleCountry", e.target.value)}
+                          placeholder="مثال: السعودية" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>تاريخ التفعيل</Label>
+                        <Input value={form.activationDate}
+                          onChange={(e) => setF("activationDate", e.target.value)}
+                          placeholder="مثال: 2024-01-15" />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>ملاحظات الأرباح</Label>
+                      <Textarea rows={2} value={form.earningsNotes}
+                        onChange={(e) => setF("earningsNotes", e.target.value)}
+                        placeholder="أي معلومات إضافية عن أرباح الحساب..." />
+                    </div>
+                  </div>
+                )}
 
                 {/* Followers + Price */}
                 <div className="grid grid-cols-2 gap-4">
