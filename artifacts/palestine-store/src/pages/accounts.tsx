@@ -29,10 +29,16 @@ export default function Accounts() {
     if (p && validPlatforms.includes(p) && p !== active) setActive(p);
   }, []);
 
-  const { data: accounts, isLoading } = useListAccounts({
+  const { data: rawAccounts, isLoading } = useListAccounts({
     platform: active as ListAccountsPlatform,
-    status: "available",
   });
+
+  const accounts = rawAccounts
+    ? [...rawAccounts].sort((a, b) => {
+        if (a.status === b.status) return 0;
+        return a.status === "available" ? -1 : 1;
+      })
+    : undefined;
 
   const activeFilter = filters.find((f) => f.value === active)!;
 
@@ -41,7 +47,7 @@ export default function Accounts() {
       {/* Page Header */}
       <div className="bg-muted/30 border-b">
         <div className="container mx-auto px-4 py-8 sm:py-12">
-          <h1 className="text-2xl sm:text-4xl font-black mb-2">جميع الحسابات المتاحة</h1>
+          <h1 className="text-2xl sm:text-4xl font-black mb-2">جميع الحسابات</h1>
           <p className="text-sm sm:text-base text-muted-foreground">
             تصفح مجموعتنا الواسعة من الحسابات المميزة والجاهزة للبدء
           </p>
@@ -72,7 +78,7 @@ export default function Accounts() {
           <p className="text-xs text-muted-foreground mb-4">
             <span className={activeFilter.color}>{activeFilter.label}</span>
             {" — "}
-            {accounts.length} حساب متاح
+            {accounts.length} حساب
           </p>
         )}
 

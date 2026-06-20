@@ -144,21 +144,16 @@ const features = [
 export default function Home() {
   const { data: settings } = useGetSettings();
 
-  const { data: tiktok, isLoading: isLoadingTiktok } = useListAccounts({
-    platform: "tiktok",
-    status: "available",
-    limit: 4,
-  });
-  const { data: instagram, isLoading: isLoadingInstagram } = useListAccounts({
-    platform: "instagram",
-    status: "available",
-    limit: 4,
-  });
-  const { data: facebook, isLoading: isLoadingFacebook } = useListAccounts({
-    platform: "facebook",
-    status: "available",
-    limit: 4,
-  });
+  const { data: rawTiktok, isLoading: isLoadingTiktok } = useListAccounts({ platform: "tiktok", limit: 8 });
+  const { data: rawInstagram, isLoading: isLoadingInstagram } = useListAccounts({ platform: "instagram", limit: 8 });
+  const { data: rawFacebook, isLoading: isLoadingFacebook } = useListAccounts({ platform: "facebook", limit: 8 });
+
+  const sortByStatus = (arr?: typeof rawTiktok) =>
+    arr ? [...arr].sort((a, b) => (a.status === b.status ? 0 : a.status === "available" ? -1 : 1)) : undefined;
+
+  const tiktok = sortByStatus(rawTiktok);
+  const instagram = sortByStatus(rawInstagram);
+  const facebook = sortByStatus(rawFacebook);
 
   const phone = settings?.whatsapp?.replace(/\D/g, "") || "972566112031";
 
