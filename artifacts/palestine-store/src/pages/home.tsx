@@ -29,10 +29,10 @@ function AccountGrid({
 }) {
   if (isLoading) {
     return (
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {[...Array(4)].map((_, i) => (
           <div key={i} className="flex flex-col gap-2">
-            <Skeleton className="h-36 w-full rounded-xl" />
+            <Skeleton className="h-40 w-full rounded-xl" />
             <Skeleton className="h-4 w-2/3" />
             <Skeleton className="h-7 w-full mt-1" />
           </div>
@@ -50,7 +50,7 @@ function AccountGrid({
   }
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
       {accounts.map((account) => (
         <AccountCard key={account.id} account={account} />
       ))}
