@@ -14,9 +14,10 @@ import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Plus, Search, Edit2, Trash2, Image as ImageIcon,
-  Star, Check, X, Loader2, UploadCloud,
+  Plus, Edit2, Trash2, Image as ImageIcon, DollarSign, Users,
+  Link2, Check, X, Loader2, UploadCloud, ExternalLink, TrendingUp,
 } from "lucide-react";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
@@ -35,47 +36,68 @@ import {
 } from "@/components/ui/alert-dialog";
 import { SiTiktok, SiInstagram, SiFacebook } from "react-icons/si";
 
-const PLATFORM_MAP: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
-  tiktok:    { label: "تيك توك",  icon: <SiTiktok />,    color: "text-foreground" },
-  instagram: { label: "انستغرام", icon: <SiInstagram />,  color: "text-pink-500" },
-  facebook:  { label: "فيسبوك",   icon: <SiFacebook />,   color: "text-blue-500" },
+// ─── Constants ────────────────────────────────────────────────────────────────
+const PLT: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
+  tiktok:    { label: "تيك توك",  icon: <SiTiktok />,   color: "text-foreground" },
+  instagram: { label: "انستغرام", icon: <SiInstagram />, color: "text-pink-500" },
+  facebook:  { label: "فيسبوك",   icon: <SiFacebook />,  color: "text-blue-500" },
 };
+
+const TABS = [
+  { key: "all",       label: "الكل",     icon: null },
+  { key: "tiktok",    label: "تيك توك",  icon: <SiTiktok className="w-3 h-3" /> },
+  { key: "instagram", label: "انستغرام", icon: <SiInstagram className="w-3 h-3 text-pink-500" /> },
+  { key: "facebook",  label: "فيسبوك",   icon: <SiFacebook className="w-3 h-3 text-blue-500" /> },
+];
+
+function fmt(n: number) {
+  return n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M`
+       : n >= 1000      ? `${(n / 1000).toFixed(0)}K`
+       : String(n);
+}
+
+// ─── Sheet modes ──────────────────────────────────────────────────────────────
+type SheetMode = "form" | "price" | "followers" | "image" | "link" | null;
 
 type FormState = {
-  name: string;
-  platform: string;
-  followers: string;
-  price: string;
-  description: string;
-  status: string;
-  featured: boolean;
-  imageUrl: string;
+  name: string; platform: string; followers: string; price: string;
+  description: string; status: string; featured: boolean;
+  imageUrl: string; accountUrl: string;
 };
-
-const EMPTY_FORM: FormState = {
+const EMPTY: FormState = {
   name: "", platform: "tiktok", followers: "", price: "",
-  description: "", status: "available", featured: false, imageUrl: "",
+  description: "", status: "available", featured: false,
+  imageUrl: "", accountUrl: "",
 };
 
+type AccRow = { id: number; name: string; platform: string; followers: number;
+  price: number; description: string | null; status: string; featured: boolean;
+  imageUrl: string | null; accountUrl?: string | null; clickCount: number; createdAt: string; updatedAt?: string; };
+
+// ─── Component ────────────────────────────────────────────────────────────────
 export default function AdminAccounts() {
-  const [search, setSearch]     = useState("");
-  const [platform, setPlatform] = useState("all");
-  const [status, setStatus]     = useState("all");
-  const [open, setOpen]         = useState(false);
+  const [tab, setTab]         = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [sheetMode, setSheetMode] = useState<SheetMode>(null);
+  const [activeAcc, setActiveAcc] = useState<AccRow | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [form, setForm]         = useState<FormState>(EMPTY_FORM);
-  const [errors, setErrors]     = useState<Partial<Record<keyof FormState, string>>>({});
+  const [form, setForm]       = useState<FormState>(EMPTY);
+  const [errors, setErrors]   = useState<Partial<Record<keyof FormState, string>>>({});
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [quickVal, setQuickVal] = useState("");
+  const [quickSaving, setQuickSaving] = useState(false);
+  const [urlVal, setUrlVal]   = useState("");
+  const [urlError, setUrlError] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
+  const formFileRef = useRef<HTMLInputElement>(null);
 
   const qc = useQueryClient();
   const { toast } = useToast();
 
   const { data: accounts, isLoading } = useAdminListAccounts({
-    search: search || undefined,
-    platform: platform !== "all" ? platform : undefined,
-    status: status !== "all" ? status : undefined,
+    platform: tab !== "all" ? tab : undefined,
+    status:   statusFilter !== "all" ? statusFilter : undefined,
   });
 
   const createMut = useCreateAccount();
@@ -87,268 +109,372 @@ export default function AdminAccounts() {
     qc.invalidateQueries({ queryKey: getGetDashboardStatsQueryKey() });
   };
 
-  const setField = <K extends keyof FormState>(k: K, v: FormState[K]) => {
+  const setF = <K extends keyof FormState>(k: K, v: FormState[K]) => {
     setForm((f) => ({ ...f, [k]: v }));
     setErrors((e) => ({ ...e, [k]: undefined }));
   };
 
+  // ── Open helpers ─────────────────────────────────────────────────────────
   const openAdd = () => {
     setEditingId(null);
-    setForm(EMPTY_FORM);
+    setActiveAcc(null);
+    setForm(EMPTY);
     setErrors({});
-    setOpen(true);
+    setSheetMode("form");
   };
 
-  const openEdit = (acc: any) => {
+  const openEdit = (acc: AccRow) => {
     setEditingId(acc.id);
+    setActiveAcc(acc);
     setForm({
-      name: acc.name,
-      platform: acc.platform,
-      followers: String(acc.followers),
-      price: String(acc.price),
-      description: acc.description || "",
-      status: acc.status,
-      featured: acc.featured,
-      imageUrl: acc.imageUrl || "",
+      name: acc.name, platform: acc.platform,
+      followers: String(acc.followers), price: String(acc.price),
+      description: acc.description || "", status: acc.status,
+      featured: acc.featured, imageUrl: acc.imageUrl || "",
+      accountUrl: acc.accountUrl || "",
     });
     setErrors({});
-    setOpen(true);
+    setSheetMode("form");
   };
 
-  const validate = (): boolean => {
+  const openQuick = (acc: AccRow, mode: "price" | "followers") => {
+    setActiveAcc(acc);
+    setQuickVal(String(mode === "price" ? acc.price : acc.followers));
+    setSheetMode(mode);
+  };
+
+  const openLink = (acc: AccRow) => {
+    setActiveAcc(acc);
+    setUrlVal(acc.accountUrl || "");
+    setUrlError("");
+    setSheetMode("link");
+  };
+
+  const openImage = (acc: AccRow) => {
+    setActiveAcc(acc);
+    setSheetMode("image");
+  };
+
+  // ── Form submit ───────────────────────────────────────────────────────────
+  const validate = () => {
     const e: typeof errors = {};
-    if (!form.name.trim()) e.name = "الاسم مطلوب";
+    if (!form.name.trim())                               e.name = "الاسم مطلوب";
     if (!form.followers || isNaN(Number(form.followers))) e.followers = "عدد غير صالح";
-    if (!form.price || isNaN(Number(form.price))) e.price = "سعر غير صالح";
+    if (!form.price || isNaN(Number(form.price)))         e.price = "سعر غير صالح";
+    if (form.accountUrl && !/^https?:\/\/.+/.test(form.accountUrl.trim()))
+      e.accountUrl = "يجب أن يبدأ بـ https://";
     setErrors(e);
-    return Object.keys(e).length === 0;
+    return !Object.keys(e).length;
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
-
     const payload = {
       name: form.name.trim(),
       platform: form.platform as "tiktok" | "instagram" | "facebook",
-      followers: Number(form.followers),
-      price: Number(form.price),
+      followers: Number(form.followers), price: Number(form.price),
       description: form.description || null,
       status: form.status as "available" | "sold",
       featured: form.featured,
       imageUrl: form.imageUrl || null,
+      accountUrl: form.accountUrl.trim() || null,
     };
-
     if (editingId) {
-      updateMut.mutate(
-        { id: editingId, data: payload as AccountUpdate },
-        {
-          onSuccess: () => {
-            toast({ title: "✅ تم تحديث الحساب" });
-            setOpen(false);
-            invalidate();
-          },
-          onError: () => toast({ variant: "destructive", title: "فشل التحديث" }),
-        }
-      );
+      updateMut.mutate({ id: editingId, data: payload as AccountUpdate }, {
+        onSuccess: () => { toast({ title: "✅ تم التحديث" }); setSheetMode(null); invalidate(); },
+        onError: () => toast({ variant: "destructive", title: "فشل التحديث" }),
+      });
     } else {
-      createMut.mutate(
-        { data: payload as AccountInput },
-        {
-          onSuccess: () => {
-            toast({ title: "✅ تم إضافة الحساب" });
-            setOpen(false);
-            invalidate();
-          },
-          onError: () => toast({ variant: "destructive", title: "فشل الإضافة" }),
-        }
-      );
+      createMut.mutate({ data: payload as AccountInput }, {
+        onSuccess: () => { toast({ title: "✅ تمت الإضافة" }); setSheetMode(null); invalidate(); },
+        onError: () => toast({ variant: "destructive", title: "فشل الإضافة" }),
+      });
     }
   };
 
-  const handleDelete = () => {
-    if (!deleteId) return;
-    deleteMut.mutate(
-      { id: deleteId },
-      {
-        onSuccess: () => {
-          toast({ title: "🗑️ تم حذف الحساب" });
-          setDeleteId(null);
-          invalidate();
-        },
-      }
-    );
+  // ── Quick save (price / followers) ────────────────────────────────────────
+  const handleQuickSave = () => {
+    if (!activeAcc || isNaN(Number(quickVal))) return;
+    setQuickSaving(true);
+    const field = sheetMode as "price" | "followers";
+    updateMut.mutate({ id: activeAcc.id, data: { [field]: Number(quickVal) } as AccountUpdate }, {
+      onSuccess: () => {
+        toast({ title: `✅ تم تحديث ${field === "price" ? "السعر" : "المتابعين"}` });
+        setSheetMode(null);
+        invalidate();
+      },
+      onError: () => toast({ variant: "destructive", title: "فشل التحديث" }),
+      onSettled: () => setQuickSaving(false),
+    });
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // ── Link save ─────────────────────────────────────────────────────────────
+  const handleLinkSave = () => {
+    if (!activeAcc) return;
+    const raw = urlVal.trim();
+    if (raw && !/^https?:\/\/.+/.test(raw)) {
+      setUrlError("الرابط يجب أن يبدأ بـ https://");
+      return;
+    }
+    updateMut.mutate({ id: activeAcc.id, data: { accountUrl: raw || null } as AccountUpdate }, {
+      onSuccess: () => { toast({ title: "✅ تم حفظ الرابط" }); setSheetMode(null); invalidate(); },
+      onError: () => toast({ variant: "destructive", title: "فشل الحفظ" }),
+    });
+  };
+
+  // ── Toggle status ─────────────────────────────────────────────────────────
+  const toggleStatus = (acc: AccRow) => {
+    const ns = acc.status === "available" ? "sold" : "available";
+    updateMut.mutate({ id: acc.id, data: { status: ns } as AccountUpdate }, {
+      onSuccess: () => { toast({ title: `تم تحديث الحالة إلى ${ns === "sold" ? "مباع" : "متاح"}` }); invalidate(); },
+    });
+  };
+
+  // ── Image upload (direct on card) ─────────────────────────────────────────
+  const handleDirectImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !activeAcc) return;
     setUploading(true);
-    const fd = new FormData();
-    fd.append("image", file);
+    const fd = new FormData(); fd.append("image", file);
     try {
       const token = localStorage.getItem("admin_token");
       const res = await fetch("/api/admin/accounts/upload-image", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        body: fd,
+        method: "POST", headers: { Authorization: `Bearer ${token}` }, body: fd,
       });
       if (!res.ok) throw new Error();
       const data = await res.json();
-      setField("imageUrl", data.url);
+      updateMut.mutate({ id: activeAcc.id, data: { imageUrl: data.url } as AccountUpdate }, {
+        onSuccess: () => { toast({ title: "✅ تم تحديث الصورة" }); setSheetMode(null); invalidate(); },
+      });
+    } catch {
+      toast({ variant: "destructive", title: "فشل رفع الصورة" });
+    } finally { setUploading(false); e.target.value = ""; }
+  };
+
+  // ── Image upload (inside form) ────────────────────────────────────────────
+  const handleFormImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    const fd = new FormData(); fd.append("image", file);
+    try {
+      const token = localStorage.getItem("admin_token");
+      const res = await fetch("/api/admin/accounts/upload-image", {
+        method: "POST", headers: { Authorization: `Bearer ${token}` }, body: fd,
+      });
+      if (!res.ok) throw new Error();
+      const d = await res.json();
+      setF("imageUrl", d.url);
       toast({ title: "تم رفع الصورة" });
     } catch {
       toast({ variant: "destructive", title: "فشل رفع الصورة" });
-    } finally {
-      setUploading(false);
-    }
+    } finally { setUploading(false); }
+  };
+
+  // ── Delete ────────────────────────────────────────────────────────────────
+  const handleDelete = () => {
+    if (!deleteId) return;
+    deleteMut.mutate({ id: deleteId }, {
+      onSuccess: () => { toast({ title: "🗑️ تم الحذف" }); setDeleteId(null); invalidate(); },
+    });
   };
 
   const isPending = createMut.isPending || updateMut.isPending;
 
+  // ── Sheet title ───────────────────────────────────────────────────────────
+  const sheetTitle = sheetMode === "form"
+    ? (editingId ? "✏️ تعديل الحساب" : "➕ إضافة حساب جديد")
+    : sheetMode === "price"     ? `💰 تعديل السعر — ${activeAcc?.name}`
+    : sheetMode === "followers" ? `👥 تعديل المتابعين — ${activeAcc?.name}`
+    : sheetMode === "link"      ? `🔗 رابط الحساب — ${activeAcc?.name}`
+    : sheetMode === "image"     ? `📷 تغيير الصورة — ${activeAcc?.name}`
+    : "";
+
+  const totalCount = accounts?.length ?? 0;
+
   return (
     <AdminLayout>
       <div className="space-y-5">
-        {/* Header */}
+
+        {/* ── Header ─────────────────────────────────────────────────────── */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">إدارة الحسابات</h1>
+            <h1 className="text-2xl font-black">إدارة الحسابات</h1>
             <p className="text-sm text-muted-foreground mt-0.5">
-              {accounts?.length ?? "..."} حساب مسجّل
+              {isLoading ? "..." : totalCount} حساب {tab !== "all" ? `في ${PLT[tab]?.label}` : ""}
             </p>
           </div>
-          <Button onClick={openAdd} className="gap-2 font-bold">
+          <Button onClick={openAdd} className="gap-1.5 font-bold">
             <Plus className="h-4 w-4" /> إضافة
           </Button>
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-3 bg-card p-3 rounded-xl border">
-          <div className="relative flex-1">
-            <Search className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="بحث بالاسم..."
-              className="pr-9 h-9"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+        {/* ── Platform Tabs ──────────────────────────────────────────────── */}
+        <div className="flex items-center gap-1.5 bg-muted/50 p-1 rounded-xl border overflow-x-auto scrollbar-hide">
+          {TABS.map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap flex-shrink-0 ${
+                tab === t.key
+                  ? "bg-background shadow-sm text-foreground border"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {t.icon}
+              {t.label}
+              {tab === t.key && !isLoading && (
+                <span className="bg-primary/10 text-primary text-[10px] px-1.5 py-0 rounded-full font-bold">
+                  {totalCount}
+                </span>
+              )}
+            </button>
+          ))}
+          {/* Status quick filter */}
+          <div className="mr-auto flex-shrink-0">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="h-9 w-32 text-xs border-0 bg-transparent focus:ring-0">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">كل الحالات</SelectItem>
+                <SelectItem value="available">✅ متاح</SelectItem>
+                <SelectItem value="sold">❌ مباع</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          <Select value={platform} onValueChange={setPlatform}>
-            <SelectTrigger className="h-9 w-full sm:w-40">
-              <SelectValue placeholder="المنصة" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">كل المنصات</SelectItem>
-              <SelectItem value="tiktok">تيك توك</SelectItem>
-              <SelectItem value="instagram">انستغرام</SelectItem>
-              <SelectItem value="facebook">فيسبوك</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={status} onValueChange={setStatus}>
-            <SelectTrigger className="h-9 w-full sm:w-40">
-              <SelectValue placeholder="الحالة" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">كل الحالات</SelectItem>
-              <SelectItem value="available">متاح</SelectItem>
-              <SelectItem value="sold">مباع</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
 
-        {/* Accounts Grid */}
+        {/* ── Cards Grid ─────────────────────────────────────────────────── */}
         {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
             {[...Array(8)].map((_, i) => (
-              <div key={i} className="h-40 rounded-xl bg-muted animate-pulse" />
+              <Skeleton key={i} className="h-64 rounded-xl" />
             ))}
           </div>
         ) : !accounts?.length ? (
           <div className="text-center py-20 border border-dashed rounded-xl text-muted-foreground">
-            لا يوجد حسابات مطابقة
+            <p className="text-lg mb-1">لا يوجد حسابات</p>
+            <p className="text-sm opacity-60">
+              {tab !== "all" ? `لا توجد حسابات ${PLT[tab]?.label} بعد` : "اضغط إضافة لإنشاء أول حساب"}
+            </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
             {accounts.map((acc) => {
-              const plt = PLATFORM_MAP[acc.platform] ?? PLATFORM_MAP.tiktok;
+              const plt = PLT[acc.platform] ?? PLT.tiktok;
+              const isSold = acc.status === "sold";
               return (
                 <div
                   key={acc.id}
-                  className="group relative bg-card border rounded-xl overflow-hidden shadow-sm hover:shadow-md hover:border-primary/40 transition-all flex flex-col"
+                  className="group relative bg-card border rounded-xl overflow-hidden shadow-sm hover:shadow-md hover:border-primary/30 transition-all flex flex-col"
                 >
-                  {/* Image */}
-                  <div className="relative h-36 bg-muted flex items-center justify-center overflow-hidden">
+                  {/* ── Image area ── */}
+                  <div className="relative h-36 sm:h-44 bg-muted flex items-center justify-center overflow-hidden shrink-0">
                     {acc.imageUrl ? (
                       <img
                         src={acc.imageUrl}
                         alt={acc.name}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                         loading="lazy"
                       />
                     ) : (
-                      <ImageIcon className="w-10 h-10 text-muted-foreground/30" />
+                      <div className={`text-2xl sm:text-3xl opacity-20 ${plt.color}`}>{plt.icon}</div>
                     )}
-                    {/* Badges */}
-                    <div className="absolute top-2 left-2 flex gap-1">
-                      <Badge
-                        className={`text-[10px] px-1.5 py-0 border-none ${
-                          acc.status === "available"
-                            ? "bg-green-500/90 text-white"
-                            : "bg-destructive/90 text-white"
-                        }`}
-                      >
-                        {acc.status === "available" ? "متاح" : "مباع"}
+
+                    {/* Status + Featured badges */}
+                    <div className="absolute top-2 right-2 flex flex-col gap-1">
+                      <Badge className={`text-[10px] px-1.5 py-0 border-none leading-5 ${
+                        isSold ? "bg-destructive/90 text-white" : "bg-green-500/90 text-white"
+                      }`}>
+                        {isSold ? "مباع" : "متاح"}
                       </Badge>
                       {acc.featured && (
-                        <Badge className="text-[10px] px-1.5 py-0 bg-yellow-500/90 text-white border-none">
-                          <Star className="w-2.5 h-2.5 mr-0.5" />مميز
-                        </Badge>
+                        <Badge className="text-[10px] px-1.5 py-0 bg-yellow-500/90 text-white border-none leading-5">★</Badge>
                       )}
                     </div>
-                    {/* Action buttons — appear on hover */}
-                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                      <button
-                        onClick={() => openEdit(acc)}
-                        className="flex items-center gap-1.5 bg-white text-foreground text-xs font-bold px-3 py-1.5 rounded-full hover:bg-primary hover:text-white transition-colors"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" /> تعديل
-                      </button>
-                      <button
-                        onClick={() => setDeleteId(acc.id)}
-                        className="flex items-center gap-1.5 bg-white text-destructive text-xs font-bold px-3 py-1.5 rounded-full hover:bg-destructive hover:text-white transition-colors"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" /> حذف
-                      </button>
+
+                    {/* Followers badge */}
+                    <div className="absolute top-2 left-2">
+                      <Badge className="bg-black/60 text-white border-none text-[10px] px-1.5 py-0 leading-5">
+                        {fmt(acc.followers)}
+                      </Badge>
+                    </div>
+
+                    {/* Hover overlay — desktop */}
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity hidden sm:flex items-center justify-center">
+                      <div className="grid grid-cols-3 gap-1.5 px-3">
+                        {[
+                          { icon: <Edit2 className="w-3.5 h-3.5" />,    label: "تعديل",    action: () => openEdit(acc as AccRow),                    cls: "hover:bg-primary hover:text-white" },
+                          { icon: <DollarSign className="w-3.5 h-3.5" />, label: "السعر",   action: () => openQuick(acc as AccRow, "price"),           cls: "hover:bg-yellow-500 hover:text-white" },
+                          { icon: <TrendingUp className="w-3.5 h-3.5" />, label: "متابعين", action: () => openQuick(acc as AccRow, "followers"),       cls: "hover:bg-purple-500 hover:text-white" },
+                          { icon: <ImageIcon className="w-3.5 h-3.5" />, label: "صورة",     action: () => openImage(acc as AccRow),                    cls: "hover:bg-pink-500 hover:text-white" },
+                          { icon: <Link2 className="w-3.5 h-3.5" />,    label: "رابط",     action: () => openLink(acc as AccRow),                     cls: "hover:bg-blue-500 hover:text-white" },
+                          { icon: <Trash2 className="w-3.5 h-3.5" />,   label: "حذف",      action: () => setDeleteId(acc.id),                         cls: "hover:bg-destructive hover:text-white" },
+                        ].map((btn, i) => (
+                          <button
+                            key={i}
+                            onClick={btn.action}
+                            className={`flex flex-col items-center gap-0.5 bg-white/95 text-foreground rounded-lg px-2 py-1.5 text-[10px] font-bold transition-colors ${btn.cls}`}
+                          >
+                            {btn.icon}
+                            <span>{btn.label}</span>
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
 
-                  {/* Info */}
-                  <div className="p-3 flex flex-col gap-1.5 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <span className={`text-xs ${plt.color}`}>{plt.icon}</span>
-                      <span className="font-bold text-sm line-clamp-1" dir="ltr">{acc.name}</span>
+                  {/* ── Body ── */}
+                  <div className="p-2.5 flex flex-col gap-2 flex-1">
+                    {/* Name + platform */}
+                    <div className="flex items-center gap-1 min-w-0">
+                      <span className={`text-xs shrink-0 ${plt.color}`}>{plt.icon}</span>
+                      <span className="font-bold text-xs line-clamp-1 min-w-0" dir="ltr">{acc.name}</span>
                     </div>
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>
-                        {acc.followers >= 1000
-                          ? `${(acc.followers / 1000).toFixed(0)}K`
-                          : acc.followers}{" "}
-                        متابع
-                      </span>
-                      <span className="font-black text-primary text-sm">{acc.price}₪</span>
-                    </div>
-                    {/* Quick edit buttons on mobile (always visible) */}
-                    <div className="flex gap-1.5 mt-1 sm:hidden">
+
+                    {/* Price */}
+                    <div className="flex items-center justify-between">
+                      <span className="font-black text-sm text-primary">{acc.price}₪</span>
+                      {/* Toggle status button */}
                       <button
-                        onClick={() => openEdit(acc)}
-                        className="flex-1 flex items-center justify-center gap-1 border rounded-lg py-1.5 text-xs font-bold hover:bg-primary hover:text-white hover:border-primary transition-colors"
+                        onClick={() => toggleStatus(acc as AccRow)}
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full border transition-colors ${
+                          isSold
+                            ? "text-green-600 border-green-400/40 hover:bg-green-500/10"
+                            : "text-orange-500 border-orange-400/40 hover:bg-orange-500/10"
+                        }`}
+                        title={isSold ? "اجعله متاحاً" : "اجعله مباعاً"}
                       >
+                        {isSold ? "متاح ←" : "مباع ←"}
+                      </button>
+                    </div>
+
+                    {/* Mobile action buttons (always visible on mobile) */}
+                    <div className="grid grid-cols-3 gap-1 sm:hidden">
+                      <button onClick={() => openEdit(acc as AccRow)}
+                        className="flex flex-col items-center gap-0.5 border rounded-lg py-1.5 text-[10px] font-bold hover:bg-primary/10 hover:border-primary hover:text-primary transition-colors">
                         <Edit2 className="w-3 h-3" /> تعديل
                       </button>
-                      <button
-                        onClick={() => setDeleteId(acc.id)}
-                        className="flex-1 flex items-center justify-center gap-1 border rounded-lg py-1.5 text-xs font-bold text-destructive hover:bg-destructive hover:text-white hover:border-destructive transition-colors"
-                      >
+                      <button onClick={() => openQuick(acc as AccRow, "price")}
+                        className="flex flex-col items-center gap-0.5 border rounded-lg py-1.5 text-[10px] font-bold hover:bg-yellow-500/10 hover:border-yellow-500 hover:text-yellow-600 transition-colors">
+                        <DollarSign className="w-3 h-3" /> سعر
+                      </button>
+                      <button onClick={() => openQuick(acc as AccRow, "followers")}
+                        className="flex flex-col items-center gap-0.5 border rounded-lg py-1.5 text-[10px] font-bold hover:bg-purple-500/10 hover:border-purple-500 hover:text-purple-600 transition-colors">
+                        <Users className="w-3 h-3" /> متابعين
+                      </button>
+                      <button onClick={() => openImage(acc as AccRow)}
+                        className="flex flex-col items-center gap-0.5 border rounded-lg py-1.5 text-[10px] font-bold hover:bg-pink-500/10 hover:border-pink-500 hover:text-pink-600 transition-colors">
+                        <ImageIcon className="w-3 h-3" /> صورة
+                      </button>
+                      <button onClick={() => openLink(acc as AccRow)}
+                        className="flex flex-col items-center gap-0.5 border rounded-lg py-1.5 text-[10px] font-bold hover:bg-blue-500/10 hover:border-blue-500 hover:text-blue-600 transition-colors">
+                        <Link2 className="w-3 h-3" /> رابط
+                      </button>
+                      <button onClick={() => setDeleteId(acc.id)}
+                        className="flex flex-col items-center gap-0.5 border rounded-lg py-1.5 text-[10px] font-bold text-destructive hover:bg-destructive/10 hover:border-destructive transition-colors">
                         <Trash2 className="w-3 h-3" /> حذف
                       </button>
                     </div>
@@ -360,210 +486,274 @@ export default function AdminAccounts() {
         )}
       </div>
 
-      {/* ─── Edit / Add Sheet ─── */}
-      <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto p-0">
-          <SheetHeader className="px-5 pt-5 pb-4 border-b bg-muted/30">
-            <SheetTitle className="text-lg font-bold">
-              {editingId ? "✏️ تعديل الحساب" : "➕ إضافة حساب جديد"}
-            </SheetTitle>
+      {/* ── Hidden file input for direct image change ─────────────────────── */}
+      <input type="file" accept="image/*" className="hidden" ref={fileRef} onChange={handleDirectImageChange} />
+
+      {/* ════════════════════════════════════════════════════════════════════
+          Sheet Panel
+      ════════════════════════════════════════════════════════════════════ */}
+      <Sheet open={!!sheetMode} onOpenChange={(o) => !o && setSheetMode(null)}>
+        <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto p-0 flex flex-col">
+          <SheetHeader className="px-5 pt-5 pb-4 border-b bg-muted/30 shrink-0">
+            <SheetTitle className="text-base font-bold">{sheetTitle}</SheetTitle>
           </SheetHeader>
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-5 p-5 pb-8">
-            {/* Name */}
-            <div className="space-y-1.5">
-              <Label htmlFor="name">اسم الحساب (يوزر)</Label>
-              <Input
-                id="name"
-                dir="ltr"
-                className="text-left"
-                value={form.name}
-                onChange={(e) => setField("name", e.target.value)}
-                placeholder="@username"
-              />
-              {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
-            </div>
+          <div className="flex-1 overflow-y-auto">
 
-            {/* Platform */}
-            <div className="space-y-1.5">
-              <Label>المنصة</Label>
-              <div className="grid grid-cols-3 gap-2">
-                {(["tiktok", "instagram", "facebook"] as const).map((p) => (
-                  <button
-                    key={p}
-                    type="button"
-                    onClick={() => setField("platform", p)}
-                    className={`flex flex-col items-center gap-1 py-2.5 rounded-xl border text-xs font-bold transition-all ${
-                      form.platform === p
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border hover:border-primary/50"
-                    }`}
-                  >
-                    <span className={`text-base ${PLATFORM_MAP[p].color}`}>
-                      {PLATFORM_MAP[p].icon}
-                    </span>
-                    {PLATFORM_MAP[p].label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Followers + Price */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="followers">المتابعين</Label>
-                <Input
-                  id="followers"
-                  type="number"
-                  dir="ltr"
-                  className="text-left"
-                  value={form.followers}
-                  onChange={(e) => setField("followers", e.target.value)}
-                  placeholder="10000"
-                />
-                {errors.followers && <p className="text-xs text-destructive">{errors.followers}</p>}
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="price">السعر (₪)</Label>
-                <Input
-                  id="price"
-                  type="number"
-                  dir="ltr"
-                  className="text-left"
-                  value={form.price}
-                  onChange={(e) => setField("price", e.target.value)}
-                  placeholder="500"
-                />
-                {errors.price && <p className="text-xs text-destructive">{errors.price}</p>}
-              </div>
-            </div>
-
-            {/* Description */}
-            <div className="space-y-1.5">
-              <Label htmlFor="desc">وصف (اختياري)</Label>
-              <Textarea
-                id="desc"
-                rows={3}
-                value={form.description}
-                onChange={(e) => setField("description", e.target.value)}
-                placeholder="وصف مختصر للحساب..."
-              />
-            </div>
-
-            {/* Image upload */}
-            <div className="space-y-2">
-              <Label>صورة الحساب</Label>
-              <div className="flex items-center gap-3">
-                <div className="w-20 h-20 rounded-lg border overflow-hidden bg-muted flex items-center justify-center shrink-0">
-                  {form.imageUrl ? (
-                    <img src={form.imageUrl} alt="" className="w-full h-full object-cover" />
-                  ) : (
-                    <ImageIcon className="w-6 h-6 text-muted-foreground/40" />
-                  )}
+            {/* ── Full Add / Edit Form ────────────────────────────────── */}
+            {sheetMode === "form" && (
+              <form onSubmit={handleSubmit} className="flex flex-col gap-5 p-5 pb-8">
+                {/* Name */}
+                <div className="space-y-1.5">
+                  <Label>اسم الحساب (يوزر)</Label>
+                  <Input dir="ltr" className="text-left" value={form.name}
+                    onChange={(e) => setF("name", e.target.value)} placeholder="@username" />
+                  {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
                 </div>
-                <div className="flex flex-col gap-2">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    ref={fileRef}
-                    onChange={handleImageUpload}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => fileRef.current?.click()}
-                    disabled={uploading}
-                    className="gap-1.5"
-                  >
-                    {uploading ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+
+                {/* Platform */}
+                <div className="space-y-1.5">
+                  <Label>المنصة</Label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {(["tiktok","instagram","facebook"] as const).map((p) => (
+                      <button key={p} type="button" onClick={() => setF("platform", p)}
+                        className={`flex flex-col items-center gap-1 py-2.5 rounded-xl border text-xs font-bold transition-all ${
+                          form.platform === p ? "border-primary bg-primary/10 text-primary" : "border-border hover:border-primary/50"
+                        }`}>
+                        <span className={`text-base ${PLT[p].color}`}>{PLT[p].icon}</span>
+                        {PLT[p].label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Followers + Price */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label>المتابعين</Label>
+                    <Input type="number" dir="ltr" className="text-left" value={form.followers}
+                      onChange={(e) => setF("followers", e.target.value)} placeholder="10000" />
+                    {errors.followers && <p className="text-xs text-destructive">{errors.followers}</p>}
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>السعر (₪)</Label>
+                    <Input type="number" dir="ltr" className="text-left" value={form.price}
+                      onChange={(e) => setF("price", e.target.value)} placeholder="500" />
+                    {errors.price && <p className="text-xs text-destructive">{errors.price}</p>}
+                  </div>
+                </div>
+
+                {/* Description */}
+                <div className="space-y-1.5">
+                  <Label>وصف (اختياري)</Label>
+                  <Textarea rows={2} value={form.description}
+                    onChange={(e) => setF("description", e.target.value)} placeholder="وصف مختصر..." />
+                </div>
+
+                {/* Account URL */}
+                <div className="space-y-1.5">
+                  <Label>رابط الحساب (اختياري)</Label>
+                  <div className="relative">
+                    <Input dir="ltr" className="text-left ps-9" value={form.accountUrl}
+                      onChange={(e) => setF("accountUrl", e.target.value)}
+                      placeholder={
+                        form.platform === "instagram" ? "https://www.instagram.com/username"
+                        : form.platform === "facebook" ? "https://www.facebook.com/page"
+                        : "https://www.tiktok.com/@username"
+                      }
+                    />
+                    {form.accountUrl ? (
+                      <a href={form.accountUrl} target="_blank" rel="noopener noreferrer"
+                        className="absolute top-1/2 -translate-y-1/2 right-2.5 text-muted-foreground hover:text-primary" tabIndex={-1}>
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
                     ) : (
-                      <UploadCloud className="w-3.5 h-3.5" />
+                      <Link2 className="absolute top-1/2 -translate-y-1/2 right-2.5 w-3.5 h-3.5 text-muted-foreground/40" />
                     )}
-                    {uploading ? "جاري الرفع..." : "رفع صورة"}
+                  </div>
+                  {errors.accountUrl && <p className="text-xs text-destructive">{errors.accountUrl}</p>}
+                  <p className="text-[10px] text-muted-foreground">سيظهر زر "زيارة الحساب" للزوار عند إضافة رابط</p>
+                </div>
+
+                {/* Image */}
+                <div className="space-y-2">
+                  <Label>صورة الحساب</Label>
+                  <div className="flex items-center gap-3">
+                    <div className="w-16 h-16 rounded-lg border overflow-hidden bg-muted flex items-center justify-center shrink-0">
+                      {form.imageUrl
+                        ? <img src={form.imageUrl} alt="" className="w-full h-full object-cover" />
+                        : <ImageIcon className="w-5 h-5 text-muted-foreground/40" />}
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <input type="file" accept="image/*" className="hidden" ref={formFileRef} onChange={handleFormImageUpload} />
+                      <Button type="button" variant="outline" size="sm"
+                        onClick={() => formFileRef.current?.click()} disabled={uploading} className="gap-1.5">
+                        {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UploadCloud className="w-3.5 h-3.5" />}
+                        {uploading ? "جاري الرفع..." : "رفع صورة"}
+                      </Button>
+                      {form.imageUrl && (
+                        <button type="button" onClick={() => setF("imageUrl", "")}
+                          className="text-xs text-destructive hover:underline flex items-center gap-1">
+                          <X className="w-3 h-3" /> إزالة
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Status + Featured */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label>الحالة</Label>
+                    <Select value={form.status} onValueChange={(v) => setF("status", v)}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="available">✅ متاح للبيع</SelectItem>
+                        <SelectItem value="sold">❌ تم البيع</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>مميز</Label>
+                    <div className="flex items-center gap-3 h-10 px-3 border rounded-md bg-background">
+                      <Switch checked={form.featured} onCheckedChange={(v) => setF("featured", v)} />
+                      <span className="text-sm text-muted-foreground">{form.featured ? "نعم ⭐" : "لا"}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-1">
+                  <Button type="button" variant="outline" className="flex-1" onClick={() => setSheetMode(null)}>إلغاء</Button>
+                  <Button type="submit" className="flex-1 gap-1.5 font-bold" disabled={isPending}>
+                    {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                    {editingId ? "حفظ التعديلات" : "إضافة الحساب"}
                   </Button>
-                  {form.imageUrl && (
-                    <button
-                      type="button"
-                      onClick={() => setField("imageUrl", "")}
-                      className="text-xs text-destructive hover:underline flex items-center gap-1"
-                    >
-                      <X className="w-3 h-3" /> إزالة الصورة
-                    </button>
-                  )}
+                </div>
+              </form>
+            )}
+
+            {/* ── Quick: Price / Followers ────────────────────────────── */}
+            {(sheetMode === "price" || sheetMode === "followers") && activeAcc && (
+              <div className="p-5 flex flex-col gap-5">
+                <div className="flex items-center gap-3 bg-muted/30 rounded-xl p-4 border">
+                  <div className="w-14 h-14 rounded-lg overflow-hidden border bg-muted shrink-0">
+                    {activeAcc.imageUrl
+                      ? <img src={activeAcc.imageUrl} alt="" className="w-full h-full object-cover" />
+                      : <div className={`w-full h-full flex items-center justify-center ${PLT[activeAcc.platform]?.color}`}>
+                          {PLT[activeAcc.platform]?.icon}
+                        </div>}
+                  </div>
+                  <div>
+                    <div className="font-bold" dir="ltr">{activeAcc.name}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {sheetMode === "price" ? `السعر الحالي: ${activeAcc.price}₪` : `المتابعون الحاليون: ${fmt(activeAcc.followers)}`}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>{sheetMode === "price" ? "السعر الجديد (₪)" : "عدد المتابعين الجديد"}</Label>
+                  <Input type="number" dir="ltr" className="text-left text-lg h-12 font-bold"
+                    value={quickVal} onChange={(e) => setQuickVal(e.target.value)}
+                    placeholder={sheetMode === "price" ? "500" : "10000"} />
+                </div>
+
+                <div className="flex gap-3">
+                  <Button variant="outline" className="flex-1" onClick={() => setSheetMode(null)}>إلغاء</Button>
+                  <Button className="flex-1 gap-1.5 font-bold" onClick={handleQuickSave} disabled={quickSaving}>
+                    {quickSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                    حفظ
+                  </Button>
                 </div>
               </div>
-            </div>
+            )}
 
-            {/* Status + Featured */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label>الحالة</Label>
-                <Select value={form.status} onValueChange={(v) => setField("status", v)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="available">✅ متاح للبيع</SelectItem>
-                    <SelectItem value="sold">❌ تم البيع</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>حساب مميز</Label>
-                <div className="flex items-center gap-3 h-10 px-3 border rounded-md bg-background">
-                  <Switch
-                    checked={form.featured}
-                    onCheckedChange={(v) => setField("featured", v)}
-                  />
-                  <span className="text-sm text-muted-foreground">
-                    {form.featured ? "نعم ⭐" : "لا"}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Submit */}
-            <div className="flex gap-3 pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                className="flex-1"
-                onClick={() => setOpen(false)}
-              >
-                إلغاء
-              </Button>
-              <Button type="submit" className="flex-1 gap-1.5 font-bold" disabled={isPending}>
-                {isPending ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Check className="w-4 h-4" />
+            {/* ── Quick: Link ─────────────────────────────────────────── */}
+            {sheetMode === "link" && activeAcc && (
+              <div className="p-5 flex flex-col gap-5">
+                {activeAcc.accountUrl && (
+                  <a href={activeAcc.accountUrl} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-xs text-primary hover:underline bg-primary/5 px-3 py-2 rounded-lg border border-primary/20">
+                    <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate" dir="ltr">{activeAcc.accountUrl}</span>
+                  </a>
                 )}
-                {editingId ? "حفظ التعديلات" : "إضافة الحساب"}
-              </Button>
-            </div>
-          </form>
+
+                <div className="space-y-1.5">
+                  <Label>رابط الحساب</Label>
+                  <Input dir="ltr" className="text-left" value={urlVal}
+                    onChange={(e) => { setUrlVal(e.target.value); setUrlError(""); }}
+                    placeholder={
+                      activeAcc.platform === "instagram" ? "https://www.instagram.com/username"
+                      : activeAcc.platform === "facebook" ? "https://www.facebook.com/page"
+                      : "https://www.tiktok.com/@username"
+                    }
+                  />
+                  {urlError && <p className="text-xs text-destructive">{urlError}</p>}
+                  <p className="text-[10px] text-muted-foreground">اتركه فارغاً لإزالة الرابط</p>
+                </div>
+
+                <div className="flex gap-3">
+                  <Button variant="outline" className="flex-1" onClick={() => setSheetMode(null)}>إلغاء</Button>
+                  <Button className="flex-1 gap-1.5 font-bold" onClick={handleLinkSave} disabled={updateMut.isPending}>
+                    {updateMut.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                    حفظ الرابط
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* ── Quick: Image ─────────────────────────────────────────── */}
+            {sheetMode === "image" && activeAcc && (
+              <div className="p-5 flex flex-col gap-5 items-center">
+                <div className="w-40 h-40 rounded-xl border overflow-hidden bg-muted flex items-center justify-center">
+                  {activeAcc.imageUrl
+                    ? <img src={activeAcc.imageUrl} alt="" className="w-full h-full object-cover" />
+                    : <ImageIcon className="w-10 h-10 text-muted-foreground/30" />}
+                </div>
+
+                <div className="text-center space-y-1">
+                  <p className="font-bold" dir="ltr">{activeAcc.name}</p>
+                  <p className="text-sm text-muted-foreground">اختر صورة جديدة للحساب</p>
+                </div>
+
+                <Button className="gap-2 font-bold w-full" disabled={uploading}
+                  onClick={() => fileRef.current?.click()}>
+                  {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <UploadCloud className="w-4 h-4" />}
+                  {uploading ? "جاري الرفع..." : "رفع صورة جديدة"}
+                </Button>
+
+                {activeAcc.imageUrl && (
+                  <Button variant="outline" className="gap-2 text-destructive border-destructive/30 w-full"
+                    disabled={updateMut.isPending}
+                    onClick={() => {
+                      updateMut.mutate({ id: activeAcc.id, data: { imageUrl: null } as AccountUpdate }, {
+                        onSuccess: () => { toast({ title: "تم إزالة الصورة" }); setSheetMode(null); invalidate(); },
+                      });
+                    }}>
+                    <X className="w-4 h-4" /> إزالة الصورة
+                  </Button>
+                )}
+
+                <Button variant="ghost" className="w-full" onClick={() => setSheetMode(null)}>إلغاء</Button>
+              </div>
+            )}
+
+          </div>
         </SheetContent>
       </Sheet>
 
-      {/* Delete Confirm */}
+      {/* ── Delete Confirm ───────────────────────────────────────────────── */}
       <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>حذف الحساب؟</AlertDialogTitle>
-            <AlertDialogDescription>
-              هذا الإجراء لا يمكن التراجع عنه. سيُحذف الحساب نهائياً.
-            </AlertDialogDescription>
+            <AlertDialogDescription>هذا الإجراء لا يمكن التراجع عنه.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>إلغاء</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
+            <AlertDialogAction onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               حذف
             </AlertDialogAction>
           </AlertDialogFooter>
