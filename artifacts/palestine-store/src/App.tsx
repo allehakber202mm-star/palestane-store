@@ -47,7 +47,7 @@ function Router() {
       {/* Public Routes */}
       <Route path="/" component={Home} />
       <Route path="/accounts" component={Accounts} />
-      <Route path="/accounts/:id" component={AccountDetails} />
+      <Route path="/account/:id" component={AccountDetails} />
 
       {/* Admin Routes */}
       <Route path="/admin" component={AdminRedirect} />

@@ -38,7 +38,7 @@ export function AccountCard({ account }: AccountCardProps) {
       ? `${Math.round(account.followers / 1000)}K`
       : `${account.followers}`;
 
-  const goToDetails = () => navigate(`/accounts/${account.id}`);
+  const goToDetails = () => navigate(`/account/${account.id}`);
 
   return (
     <div
