@@ -363,17 +363,12 @@ export default function AdminAccounts() {
                       <div className={`text-2xl sm:text-3xl opacity-20 ${plt.color}`}>{plt.icon}</div>
                     )}
 
-                    {/* Status + Featured badges */}
-                    <div className="absolute top-2 right-2 flex flex-col gap-1">
-                      <Badge className={`text-[10px] px-1.5 py-0 border-none leading-5 ${
-                        isSold ? "bg-destructive/90 text-white" : "bg-green-500/90 text-white"
-                      }`}>
-                        {isSold ? "مباع" : "متاح"}
-                      </Badge>
-                      {acc.featured && (
+                    {/* Featured badge only */}
+                    {acc.featured && (
+                      <div className="absolute top-2 right-2">
                         <Badge className="text-[10px] px-1.5 py-0 bg-yellow-500/90 text-white border-none leading-5">★</Badge>
-                      )}
-                    </div>
+                      </div>
+                    )}
 
                     {/* Followers badge */}
                     <div className="absolute top-2 left-2">

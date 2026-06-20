@@ -746,13 +746,9 @@ export default function AdminDashboard() {
                         <span className="font-black text-primary text-sm">{acc.price}₪</span>
                         <button
                           onClick={() => toggleStatus(acc)}
-                          className={`text-[10px] px-2 py-0.5 rounded-full border font-bold transition-colors ${
-                            acc.status === "sold"
-                              ? "bg-green-500/10 text-green-600 border-green-400/30 hover:bg-green-500/20"
-                              : "bg-destructive/10 text-destructive border-destructive/30 hover:bg-destructive/20"
-                          }`}
+                          className="text-[10px] px-2 py-0.5 rounded-full border font-bold transition-colors border-border text-muted-foreground hover:bg-muted"
                         >
-                          {acc.status === "sold" ? "← اجعله متاحاً" : "← اجعله مباعاً"}
+                          تغيير الحالة
                         </button>
                       </div>
                     </div>
