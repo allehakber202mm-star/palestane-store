@@ -1,11 +1,17 @@
 import { Account, useTrackAccountClick, useGetSettings } from "@workspace/api-client-react";
 import { Badge } from "@/components/ui/badge";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, CheckCircle2 } from "lucide-react";
 import { SiTiktok, SiInstagram, SiFacebook } from "react-icons/si";
 
 interface AccountCardProps {
   account: Account;
 }
+
+const PLATFORM_FEATURES = [
+  "متابعين حقيقيين",
+  "شغال لايف",
+  "نظيف بالكامل",
+];
 
 export function AccountCard({ account }: AccountCardProps) {
   const { data: settings } = useGetSettings();
@@ -43,8 +49,9 @@ export function AccountCard({ account }: AccountCardProps) {
 
   return (
     <div className="group overflow-hidden rounded-xl border bg-card shadow-sm transition-all hover:shadow-md hover:border-primary/40 flex flex-col">
+
       {/* ── Image ── */}
-      <div className="relative h-[140px] sm:h-[180px] bg-muted overflow-hidden flex items-center justify-center shrink-0">
+      <div className="relative h-[130px] sm:h-[180px] bg-muted overflow-hidden flex items-center justify-center shrink-0">
         {account.imageUrl ? (
           <img
             src={account.imageUrl}
@@ -56,7 +63,7 @@ export function AccountCard({ account }: AccountCardProps) {
           <PlatformIcon className="w-10 h-10 sm:w-14 sm:h-14 opacity-15" />
         )}
 
-        {/* Top-left: followers */}
+        {/* Followers badge */}
         <div className="absolute top-1.5 left-1.5 flex flex-col gap-1">
           <Badge className="bg-black/65 hover:bg-black/70 text-white border-none text-[10px] px-1.5 py-0 leading-5">
             {followersLabel} متابع
@@ -68,12 +75,10 @@ export function AccountCard({ account }: AccountCardProps) {
           )}
         </div>
 
-        {/* Top-right: status */}
+        {/* Status badge */}
         <div className="absolute top-1.5 right-1.5">
           <Badge className={`border-none text-[10px] px-1.5 py-0 leading-5 ${
-            isSold
-              ? "bg-destructive/90 text-white"
-              : "bg-green-500/90 text-white"
+            isSold ? "bg-destructive/90 text-white" : "bg-green-500/90 text-white"
           }`}>
             {isSold ? "مباع" : "متاح"}
           </Badge>
@@ -81,8 +86,9 @@ export function AccountCard({ account }: AccountCardProps) {
       </div>
 
       {/* ── Body ── */}
-      <div className="p-2.5 sm:p-3.5 flex flex-col gap-1.5 sm:gap-2 flex-1">
-        {/* Name + Price row */}
+      <div className="p-2.5 sm:p-3.5 flex flex-col gap-2 flex-1">
+
+        {/* Name + Price */}
         <div className="flex items-start justify-between gap-1">
           <div className="flex items-center gap-1 min-w-0">
             <PlatformIcon className={`w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0 ${platformColor}`} />
@@ -95,20 +101,30 @@ export function AccountCard({ account }: AccountCardProps) {
           </span>
         </div>
 
-        {/* Description — hidden on mobile, 2 lines on sm+ */}
+        {/* Description — always visible on all screens */}
         {account.description && (
-          <p className="hidden sm:block text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
             {account.description}
           </p>
         )}
 
-        {/* Visit account button */}
+        {/* Features — always visible with ✓ marks */}
+        <ul className="flex flex-col gap-0.5">
+          {PLATFORM_FEATURES.map((feat) => (
+            <li key={feat} className="flex items-center gap-1 text-[10px] sm:text-[11px] text-muted-foreground">
+              <CheckCircle2 className="w-3 h-3 text-green-500 shrink-0" />
+              {feat}
+            </li>
+          ))}
+        </ul>
+
+        {/* Visit account link */}
         {account.accountUrl && (
           <a
             href={account.accountUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full flex items-center justify-center gap-1.5 rounded-lg py-1.5 sm:py-2 text-[11px] sm:text-xs font-bold border border-border hover:border-primary/60 hover:bg-primary/5 transition-colors text-muted-foreground hover:text-primary"
+            className="w-full flex items-center justify-center gap-1.5 rounded-lg py-1.5 text-[11px] font-bold border border-border hover:border-primary/60 hover:bg-primary/5 transition-colors text-muted-foreground hover:text-primary"
           >
             <PlatformIcon className={`w-3 h-3 shrink-0 ${platformColor}`} />
             زيارة الحساب
@@ -120,7 +136,7 @@ export function AccountCard({ account }: AccountCardProps) {
         <button
           onClick={isSold ? undefined : handleBuyClick}
           disabled={isSold}
-          className={`w-full mt-auto rounded-lg py-1.5 sm:py-2 text-[11px] sm:text-xs font-bold transition-colors ${
+          className={`w-full mt-auto rounded-lg py-2 text-[11px] sm:text-xs font-bold transition-colors ${
             isSold
               ? "bg-muted text-muted-foreground cursor-not-allowed"
               : "bg-primary hover:bg-primary/90 text-primary-foreground"
