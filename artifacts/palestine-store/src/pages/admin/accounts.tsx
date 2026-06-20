@@ -223,14 +223,6 @@ export default function AdminAccounts() {
     });
   };
 
-  // ── Toggle status ─────────────────────────────────────────────────────────
-  const toggleStatus = (acc: AccRow) => {
-    const ns = acc.status === "available" ? "sold" : "available";
-    updateMut.mutate({ id: acc.id, data: { status: ns } as AccountUpdate }, {
-      onSuccess: () => { toast({ title: `تم تحديث الحالة إلى ${ns === "sold" ? "مباع" : "متاح"}` }); invalidate(); },
-    });
-  };
-
   // ── Image upload (direct on card) ─────────────────────────────────────────
   const handleDirectImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -425,18 +417,6 @@ export default function AdminAccounts() {
                     {/* Price */}
                     <div className="flex items-center justify-between">
                       <span className="font-black text-sm text-primary">{acc.price}₪</span>
-                      {/* Toggle status button */}
-                      <button
-                        onClick={() => toggleStatus(acc as AccRow)}
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full border transition-colors ${
-                          isSold
-                            ? "text-green-600 border-green-400/40 hover:bg-green-500/10"
-                            : "text-orange-500 border-orange-400/40 hover:bg-orange-500/10"
-                        }`}
-                        title={isSold ? "اجعله متاحاً" : "اجعله مباعاً"}
-                      >
-                        {isSold ? "متاح ←" : "مباع ←"}
-                      </button>
                     </div>
 
                     {/* Mobile action buttons (always visible on mobile) */}
