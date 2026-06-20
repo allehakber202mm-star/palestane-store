@@ -44,7 +44,6 @@ const PLT: Record<string, { label: string; icon: React.ReactNode; color: string 
 };
 
 const TABS = [
-  { key: "all",       label: "الكل",     icon: null },
   { key: "tiktok",    label: "تيك توك",  icon: <SiTiktok className="w-3 h-3" /> },
   { key: "instagram", label: "انستغرام", icon: <SiInstagram className="w-3 h-3 text-pink-500" /> },
   { key: "facebook",  label: "فيسبوك",   icon: <SiFacebook className="w-3 h-3 text-blue-500" /> },
@@ -76,7 +75,7 @@ type AccRow = { id: number; name: string; platform: string; followers: number;
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function AdminAccounts() {
-  const [tab, setTab]         = useState("all");
+  const [tab, setTab]         = useState("tiktok");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sheetMode, setSheetMode] = useState<SheetMode>(null);
   const [activeAcc, setActiveAcc] = useState<AccRow | null>(null);
@@ -96,7 +95,7 @@ export default function AdminAccounts() {
   const { toast } = useToast();
 
   const { data: accounts, isLoading } = useAdminListAccounts({
-    platform: tab !== "all" ? tab : undefined,
+    platform: tab,
     status:   statusFilter !== "all" ? statusFilter : undefined,
   });
 
@@ -302,7 +301,7 @@ export default function AdminAccounts() {
           <div>
             <h1 className="text-2xl font-black">إدارة الحسابات</h1>
             <p className="text-sm text-muted-foreground mt-0.5">
-              {isLoading ? "..." : totalCount} حساب {tab !== "all" ? `في ${PLT[tab]?.label}` : ""}
+              {isLoading ? "..." : totalCount} حساب في {PLT[tab]?.label}
             </p>
           </div>
           <Button onClick={openAdd} className="gap-1.5 font-bold">
@@ -357,7 +356,7 @@ export default function AdminAccounts() {
           <div className="text-center py-20 border border-dashed rounded-xl text-muted-foreground">
             <p className="text-lg mb-1">لا يوجد حسابات</p>
             <p className="text-sm opacity-60">
-              {tab !== "all" ? `لا توجد حسابات ${PLT[tab]?.label} بعد` : "اضغط إضافة لإنشاء أول حساب"}
+              {`لا توجد حسابات ${PLT[tab]?.label} بعد`}
             </p>
           </div>
         ) : (
@@ -727,7 +726,7 @@ export default function AdminAccounts() {
                   <Button variant="outline" className="gap-2 text-destructive border-destructive/30 w-full"
                     disabled={updateMut.isPending}
                     onClick={() => {
-                      updateMut.mutate({ id: activeAcc.id, data: { imageUrl: null } as AccountUpdate }, {
+                      updateMut.mutate({ id: activeAcc.id, data: { imageUrl: undefined } as AccountUpdate }, {
                         onSuccess: () => { toast({ title: "تم إزالة الصورة" }); setSheetMode(null); invalidate(); },
                       });
                     }}>

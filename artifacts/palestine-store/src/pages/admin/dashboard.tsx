@@ -138,7 +138,7 @@ export default function AdminDashboard() {
     setForm({
       name: acc.name, platform: acc.platform, followers: String(acc.followers),
       price: String(acc.price), description: acc.description || "",
-      status: acc.status, featured: acc.featured, imageUrl: acc.imageUrl || "",
+      status: acc.status, featured: acc.featured ?? false, imageUrl: acc.imageUrl || "",
       accountUrl: acc.accountUrl || "",
     });
     setErrors({});

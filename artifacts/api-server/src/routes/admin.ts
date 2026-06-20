@@ -89,6 +89,7 @@ router.post("/accounts", async (req, res) => {
       price: String(data.price),
       description: data.description ?? null,
       imageUrl: data.imageUrl ?? null,
+      accountUrl: (data as Record<string, unknown>).accountUrl as string ?? null,
       status: data.status ?? "available",
       featured: data.featured ?? false,
     })
@@ -114,6 +115,8 @@ router.patch("/accounts/:id", async (req, res) => {
   if (data.price !== undefined) updateData.price = String(data.price);
   if (data.description !== undefined) updateData.description = data.description;
   if (data.imageUrl !== undefined) updateData.imageUrl = data.imageUrl;
+  if ((data as Record<string, unknown>).accountUrl !== undefined)
+    updateData.accountUrl = (data as Record<string, unknown>).accountUrl;
   if (data.status !== undefined) updateData.status = data.status;
   if (data.featured !== undefined) updateData.featured = data.featured;
 

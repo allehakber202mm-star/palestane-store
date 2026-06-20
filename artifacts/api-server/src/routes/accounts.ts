@@ -14,6 +14,7 @@ export function formatAccount(a: Record<string, unknown>) {
     price: parseFloat(String(a.price)),
     description: a.description ?? null,
     imageUrl: a.imageUrl ?? null,
+    accountUrl: a.accountUrl ?? null,
     status: a.status,
     featured: a.featured,
     clickCount: a.clickCount,
