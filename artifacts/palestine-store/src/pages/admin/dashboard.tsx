@@ -17,7 +17,6 @@ import {
   SiteSettingsUpdate,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -391,7 +390,6 @@ export default function AdminDashboard() {
                       <th className="text-right py-3 px-3 font-semibold text-xs text-muted-foreground hidden sm:table-cell">المنصة</th>
                       <th className="text-right py-3 px-3 font-semibold text-xs text-muted-foreground hidden md:table-cell">المتابعين</th>
                       <th className="text-right py-3 px-3 font-semibold text-xs text-muted-foreground">السعر</th>
-                      <th className="text-right py-3 px-3 font-semibold text-xs text-muted-foreground">الحالة</th>
                       <th className="text-left  py-3 px-3 font-semibold text-xs text-muted-foreground">إجراءات</th>
                     </tr>
                   </thead>
@@ -426,18 +424,6 @@ export default function AdminDashboard() {
                           {/* Price */}
                           <td className="py-2 px-3">
                             <span className="font-black text-primary text-sm">{acc.price}₪</span>
-                          </td>
-                          {/* Status */}
-                          <td className="py-2 px-3">
-                            <button onClick={() => toggleStatus(acc)}>
-                              <Badge className={`text-[10px] cursor-pointer transition-opacity hover:opacity-80 ${
-                                acc.status === "available"
-                                  ? "bg-green-500/20 text-green-700 dark:text-green-400 border-green-500/30"
-                                  : "bg-destructive/20 text-destructive border-destructive/30"
-                              }`}>
-                                {acc.status === "available" ? "متاح" : "مباع"}
-                              </Badge>
-                            </button>
                           </td>
                           {/* Actions */}
                           <td className="py-2 px-3">
