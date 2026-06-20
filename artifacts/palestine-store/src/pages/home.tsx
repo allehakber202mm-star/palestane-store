@@ -11,14 +11,12 @@ import {
   Users,
   CheckCircle2,
   Video,
-  Sparkles,
   MessageCircle,
+  LayoutGrid,
 } from "lucide-react";
 import { SiTiktok, SiInstagram, SiFacebook } from "react-icons/si";
 import {
   useGetSettings,
-  useListFeaturedAccounts,
-  useListRecentAccounts,
   useListAccounts,
 } from "@workspace/api-client-react";
 import { Account } from "@workspace/api-client-react";
@@ -149,9 +147,6 @@ const features = [
 
 export default function Home() {
   const { data: settings } = useGetSettings();
-  const { data: featured, isLoading: isLoadingFeatured } =
-    useListFeaturedAccounts();
-  const { data: recent, isLoading: isLoadingRecent } = useListRecentAccounts();
 
   const { data: tiktok, isLoading: isLoadingTiktok } = useListAccounts({
     platform: "tiktok",
@@ -210,29 +205,6 @@ export default function Home() {
       {/* ── Main content ── */}
       <div className="container mx-auto px-4 py-8 space-y-6">
 
-        {/* Featured */}
-        {((featured && featured.length > 0) || isLoadingFeatured) && (
-          <Section>
-            <SectionHeader
-              title="الحسابات المميزة"
-              icon={<Sparkles className="w-5 h-5 text-yellow-500" />}
-              linkHref="/accounts"
-              linkLabel="عرض الكل"
-            />
-            <AccountGrid accounts={featured} isLoading={isLoadingFeatured} />
-          </Section>
-        )}
-
-        {/* Recent */}
-        <Section>
-          <SectionHeader
-            title="أحدث الحسابات"
-            icon={<Zap className="w-5 h-5 text-accent" />}
-            linkHref="/accounts"
-            linkLabel="عرض الكل"
-          />
-          <AccountGrid accounts={recent} isLoading={isLoadingRecent} />
-        </Section>
 
         {/* TikTok */}
         <Section>
