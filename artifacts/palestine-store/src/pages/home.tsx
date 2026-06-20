@@ -12,7 +12,6 @@ import {
   CheckCircle2,
   Video,
   MessageCircle,
-  LayoutGrid,
 } from "lucide-react";
 import { SiTiktok, SiInstagram, SiFacebook } from "react-icons/si";
 import {
@@ -71,7 +70,7 @@ function SectionHeader({
   linkLabel?: string;
 }) {
   return (
-    <div className="flex items-center justify-between mb-6">
+    <div className="flex items-center justify-between mb-5">
       <h2 className="text-xl sm:text-2xl font-black flex items-center gap-2">
         {icon}
         {title}
@@ -97,9 +96,7 @@ function Section({
   className?: string;
 }) {
   return (
-    <section
-      className={`bg-card border rounded-2xl shadow-sm p-5 sm:p-8 ${className}`}
-    >
+    <section className={`bg-card border rounded-2xl shadow-sm p-5 sm:p-8 ${className}`}>
       {children}
     </section>
   );
@@ -107,37 +104,37 @@ function Section({
 
 const features = [
   {
-    icon: <ShieldCheck className="w-7 h-7 text-green-500" />,
+    icon: <ShieldCheck className="w-6 h-6 text-green-500" />,
     title: "ضمان أمان 100%",
     desc: "جميع الحسابات مفحوصة ومضمونة وموثقة بالكامل",
     color: "bg-green-500/10 border-green-500/20",
   },
   {
-    icon: <Users className="w-7 h-7 text-blue-500" />,
+    icon: <Users className="w-6 h-6 text-blue-500" />,
     title: "متابعين حقيقيين",
     desc: "متابعون حقيقيون وفعليون بدون أي بوتات أو حسابات وهمية",
     color: "bg-blue-500/10 border-blue-500/20",
   },
   {
-    icon: <CheckCircle2 className="w-7 h-7 text-emerald-500" />,
+    icon: <CheckCircle2 className="w-6 h-6 text-emerald-500" />,
     title: "نظيف بدون انتهاكات",
     desc: "حسابات نظيفة بالكامل خالية من أي انتهاكات أو تحذيرات",
     color: "bg-emerald-500/10 border-emerald-500/20",
   },
   {
-    icon: <Video className="w-7 h-7 text-purple-500" />,
+    icon: <Video className="w-6 h-6 text-purple-500" />,
     title: "شغال لايف",
     desc: "جميع الحسابات مفعّلة لميزة البث المباشر",
     color: "bg-purple-500/10 border-purple-500/20",
   },
   {
-    icon: <Zap className="w-7 h-7 text-yellow-500" />,
+    icon: <Zap className="w-6 h-6 text-yellow-500" />,
     title: "تسليم فوري",
     desc: "استلم حسابك فور إتمام عملية الدفع مباشرةً عبر واتساب",
     color: "bg-yellow-500/10 border-yellow-500/20",
   },
   {
-    icon: <HeadphonesIcon className="w-7 h-7 text-primary" />,
+    icon: <HeadphonesIcon className="w-6 h-6 text-primary" />,
     title: "دعم متواصل",
     desc: "فريق الدعم جاهز لمساعدتك على مدار الساعة",
     color: "bg-primary/10 border-primary/20",
@@ -163,13 +160,12 @@ export default function Home() {
     limit: 4,
   });
 
-  const phone =
-    settings?.whatsapp?.replace(/\D/g, "") || "972566112031";
+  const phone = settings?.whatsapp?.replace(/\D/g, "") || "972566112031";
 
   return (
     <PublicLayout>
       {/* ── Hero ── */}
-      <section className="relative overflow-hidden bg-primary/5 py-10 sm:py-16 lg:py-20">
+      <section className="relative bg-primary/5 py-10 sm:py-16 lg:py-20">
         <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-primary via-transparent to-transparent" />
         <div className="container relative z-10 px-4 mx-auto text-center">
           <h1 className="text-2xl sm:text-4xl lg:text-6xl font-black text-foreground mb-4 tracking-tight max-w-3xl mx-auto leading-tight">
@@ -191,9 +187,7 @@ export default function Home() {
               size="lg"
               variant="outline"
               className="h-12 px-7 text-base font-bold rounded-full w-full sm:w-auto"
-              onClick={() =>
-                window.open(`https://wa.me/${phone}`, "_blank")
-              }
+              onClick={() => window.open(`https://wa.me/${phone}`, "_blank")}
             >
               تواصل معنا
             </Button>
@@ -202,10 +196,33 @@ export default function Home() {
       </section>
 
       {/* ── Main content ── */}
-      <div className="container mx-auto px-4 py-8 space-y-6">
+      <div className="container mx-auto px-4 py-6 sm:py-8 space-y-5 sm:space-y-6">
 
+        {/* ── لماذا متجر فلسطين؟ — Features (أعلى الصفحة لتظهر على الهاتف) ── */}
+        <section>
+          <div className="text-center mb-5">
+            <h2 className="text-xl sm:text-3xl font-black mb-1">لماذا متجر فلسطين؟</h2>
+            <p className="text-muted-foreground text-sm">نضمن لك تجربة شراء آمنة وموثوقة</p>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+            {features.map((f, i) => (
+              <div
+                key={i}
+                className={`flex items-start gap-3 p-4 rounded-2xl border shadow-sm ${f.color}`}
+              >
+                <div className="shrink-0 mt-0.5">{f.icon}</div>
+                <div>
+                  <h3 className="font-bold text-sm sm:text-base mb-0.5">{f.title}</h3>
+                  <p className="text-muted-foreground text-xs sm:text-sm leading-relaxed hidden sm:block">
+                    {f.desc}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
 
-        {/* TikTok */}
+        {/* ── TikTok ── */}
         <Section>
           <SectionHeader
             title="حسابات تيك توك"
@@ -216,7 +233,7 @@ export default function Home() {
           <AccountGrid accounts={tiktok} isLoading={isLoadingTiktok} />
         </Section>
 
-        {/* Instagram */}
+        {/* ── Instagram ── */}
         <Section>
           <SectionHeader
             title="حسابات انستغرام"
@@ -227,7 +244,7 @@ export default function Home() {
           <AccountGrid accounts={instagram} isLoading={isLoadingInstagram} />
         </Section>
 
-        {/* Facebook */}
+        {/* ── Facebook ── */}
         <Section>
           <SectionHeader
             title="حسابات فيسبوك"
@@ -238,33 +255,25 @@ export default function Home() {
           <AccountGrid accounts={facebook} isLoading={isLoadingFacebook} />
         </Section>
 
-        {/* Payment Methods */}
+        {/* ── Payment Methods ── */}
         <Section className="text-center">
-          <h2 className="text-xl sm:text-2xl font-bold mb-5">
-            طرق الدفع المتاحة
-          </h2>
-          <div className="flex flex-wrap justify-center gap-3 mb-4">
+          <h2 className="text-xl sm:text-2xl font-bold mb-5">طرق الدفع المتاحة</h2>
+          <div className="flex flex-wrap justify-center gap-2 sm:gap-3 mb-4">
             {settings?.paymentMethods && settings.paymentMethods.length > 0 ? (
               settings.paymentMethods.map((method, i) => (
                 <div
                   key={i}
-                  className="px-5 py-2.5 bg-background rounded-full font-medium border shadow-sm text-sm"
+                  className="px-4 sm:px-5 py-2 sm:py-2.5 bg-background rounded-full font-medium border shadow-sm text-sm"
                 >
                   {method}
                 </div>
               ))
             ) : (
               <>
-                {[
-                  "بنك فلسطين",
-                  "البنك العربي",
-                  "Reflect",
-                  "بنك هبوعليم",
-                  "شركة توصيل",
-                ].map((m) => (
+                {["بنك فلسطين", "البنك العربي", "Reflect", "بنك هبوعليم", "شركة توصيل"].map((m) => (
                   <div
                     key={m}
-                    className="px-5 py-2.5 bg-background rounded-full font-medium border shadow-sm text-sm"
+                    className="px-4 sm:px-5 py-2 sm:py-2.5 bg-background rounded-full font-medium border shadow-sm text-sm"
                   >
                     {m}
                   </div>
@@ -273,19 +282,16 @@ export default function Home() {
             )}
           </div>
           {settings?.paymentNote && (
-            <p className="text-muted-foreground text-sm">
-              {settings.paymentNote}
-            </p>
+            <p className="text-muted-foreground text-sm">{settings.paymentNote}</p>
           )}
         </Section>
 
-        {/* Contact */}
+        {/* ── Contact ── */}
         <Section className="text-center bg-primary/5 border-primary/20">
           <MessageCircle className="w-10 h-10 text-green-500 mx-auto mb-3" />
           <h2 className="text-xl sm:text-2xl font-bold mb-2">تواصل معنا</h2>
           <p className="text-muted-foreground text-sm mb-5 max-w-md mx-auto">
-            هل لديك سؤال أو تريد شراء حساب؟ تواصل معنا عبر واتساب وسنرد عليك
-            فوراً.
+            هل لديك سؤال أو تريد شراء حساب؟ تواصل معنا عبر واتساب وسنرد عليك فوراً.
           </p>
           <Button
             size="lg"
@@ -295,34 +301,6 @@ export default function Home() {
             واتساب الآن
           </Button>
         </Section>
-
-        {/* Why Palestine Store — Features */}
-        <section className="py-2">
-          <div className="text-center mb-8">
-            <h2 className="text-2xl sm:text-3xl font-black mb-2">
-              لماذا متجر فلسطين؟
-            </h2>
-            <p className="text-muted-foreground text-sm">
-              نضمن لك تجربة شراء آمنة وموثوقة
-            </p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {features.map((f, i) => (
-              <div
-                key={i}
-                className={`flex items-start gap-4 p-5 rounded-2xl border shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5 ${f.color}`}
-              >
-                <div className="shrink-0 mt-0.5">{f.icon}</div>
-                <div>
-                  <h3 className="font-bold text-base mb-1">{f.title}</h3>
-                  <p className="text-muted-foreground text-sm leading-relaxed">
-                    {f.desc}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
 
       </div>
     </PublicLayout>
