@@ -9,6 +9,7 @@ import NotFound from "@/pages/not-found";
 // Public Pages
 import Home from "@/pages/home";
 import Accounts from "@/pages/accounts";
+import AccountDetails from "@/pages/account-details";
 
 // Admin Pages
 import AdminLogin from "@/pages/admin/login";
@@ -46,6 +47,7 @@ function Router() {
       {/* Public Routes */}
       <Route path="/" component={Home} />
       <Route path="/accounts" component={Accounts} />
+      <Route path="/accounts/:id" component={AccountDetails} />
 
       {/* Admin Routes */}
       <Route path="/admin" component={AdminRedirect} />
