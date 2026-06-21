@@ -1,6 +1,5 @@
 import { PublicLayout } from "@/components/layout/PublicLayout";
 import { AccountCard } from "@/components/AccountCard";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
 import {
@@ -11,7 +10,6 @@ import {
   Users,
   CheckCircle2,
   Video,
-  MessageCircle,
 } from "lucide-react";
 import { SiTiktok, SiInstagram, SiFacebook } from "react-icons/si";
 import {
@@ -172,22 +170,31 @@ export default function Home() {
             {settings?.bannerSubtitle ||
               "حسابات موثوقة، تسليم فوري، ودعم فني على مدار الساعة."}
           </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
-            <Button
-              size="lg"
-              className="h-12 px-7 text-base font-bold rounded-full w-full sm:w-auto"
-              asChild
-            >
-              <Link href="/accounts">تصفح الحسابات</Link>
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              className="h-12 px-7 text-base font-bold rounded-full w-full sm:w-auto"
-              onClick={() => window.open(`https://wa.me/${phone}`, "_blank")}
-            >
-              تواصل معنا
-            </Button>
+          <div className="flex flex-wrap justify-center gap-3 mt-2">
+            <Link href="/accounts?platform=tiktok">
+              <div className="flex items-center gap-2 bg-background border rounded-2xl px-5 py-3 shadow-sm hover:shadow-md hover:border-primary/40 transition-all cursor-pointer">
+                <SiTiktok className="w-5 h-5" />
+                <span className="font-bold text-sm">تيك توك</span>
+              </div>
+            </Link>
+            <Link href="/accounts?platform=tiktok_monetized">
+              <div className="flex items-center gap-2 bg-background border rounded-2xl px-5 py-3 shadow-sm hover:shadow-md hover:border-green-500/40 transition-all cursor-pointer">
+                <span className="text-green-500 font-black text-base">₪</span>
+                <span className="font-bold text-sm">تيك توك أرباح</span>
+              </div>
+            </Link>
+            <Link href="/accounts?platform=instagram">
+              <div className="flex items-center gap-2 bg-background border rounded-2xl px-5 py-3 shadow-sm hover:shadow-md hover:border-pink-500/40 transition-all cursor-pointer">
+                <SiInstagram className="w-5 h-5 text-pink-600" />
+                <span className="font-bold text-sm">انستغرام</span>
+              </div>
+            </Link>
+            <Link href="/accounts?platform=facebook">
+              <div className="flex items-center gap-2 bg-background border rounded-2xl px-5 py-3 shadow-sm hover:shadow-md hover:border-blue-500/40 transition-all cursor-pointer">
+                <SiFacebook className="w-5 h-5 text-blue-600" />
+                <span className="font-bold text-sm">فيسبوك</span>
+              </div>
+            </Link>
           </div>
         </div>
       </section>
@@ -296,21 +303,6 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ── Contact ── */}
-        <Section className="text-center bg-primary/5 border-primary/20">
-          <MessageCircle className="w-10 h-10 text-green-500 mx-auto mb-3" />
-          <h2 className="text-xl sm:text-2xl font-bold mb-2">تواصل معنا</h2>
-          <p className="text-muted-foreground text-sm mb-5 max-w-md mx-auto">
-            هل لديك سؤال أو تريد شراء حساب؟ تواصل معنا عبر واتساب وسنرد عليك فوراً.
-          </p>
-          <Button
-            size="lg"
-            className="bg-green-500 hover:bg-green-600 text-white font-bold rounded-full h-12 px-8 w-full sm:w-auto"
-            onClick={() => window.open(`https://wa.me/${phone}`, "_blank")}
-          >
-            واتساب الآن
-          </Button>
-        </Section>
 
       </div>
     </PublicLayout>
