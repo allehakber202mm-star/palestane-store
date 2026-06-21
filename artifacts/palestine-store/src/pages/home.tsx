@@ -172,22 +172,28 @@ export default function Home() {
             {settings?.bannerSubtitle ||
               "حسابات موثوقة، تسليم فوري، ودعم فني على مدار الساعة."}
           </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
-            <Button
-              size="lg"
-              className="h-12 px-7 text-base font-bold rounded-full w-full sm:w-auto"
-              asChild
-            >
-              <Link href="/accounts">تصفح الحسابات</Link>
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              className="h-12 px-7 text-base font-bold rounded-full w-full sm:w-auto"
-              onClick={() => window.open(`https://wa.me/${phone}`, "_blank")}
-            >
-              تواصل معنا
-            </Button>
+          {/* ── Platform quick-access grid ── */}
+          <div className="grid grid-cols-2 gap-3 max-w-sm mx-auto mt-2 w-full">
+            <Link href="/accounts?platform=tiktok"
+              className="flex flex-col items-center gap-2 bg-background/80 hover:bg-background border border-border hover:border-foreground/20 rounded-2xl py-4 px-3 transition-all shadow-sm hover:shadow-md group">
+              <span className="text-2xl">📱</span>
+              <span className="font-bold text-sm">تيك توك</span>
+            </Link>
+            <Link href="/accounts?platform=tiktok_monetized"
+              className="flex flex-col items-center gap-2 bg-background/80 hover:bg-background border border-green-200 hover:border-green-400 dark:border-green-800 dark:hover:border-green-600 rounded-2xl py-4 px-3 transition-all shadow-sm hover:shadow-md group">
+              <span className="text-2xl">💰</span>
+              <span className="font-bold text-sm text-green-700 dark:text-green-400">تيك توك أرباح</span>
+            </Link>
+            <Link href="/accounts?platform=instagram"
+              className="flex flex-col items-center gap-2 bg-background/80 hover:bg-background border border-border hover:border-pink-300 dark:hover:border-pink-700 rounded-2xl py-4 px-3 transition-all shadow-sm hover:shadow-md group">
+              <span className="text-2xl">📸</span>
+              <span className="font-bold text-sm text-pink-600 dark:text-pink-400">إنستغرام</span>
+            </Link>
+            <Link href="/accounts?platform=facebook"
+              className="flex flex-col items-center gap-2 bg-background/80 hover:bg-background border border-border hover:border-blue-300 dark:hover:border-blue-700 rounded-2xl py-4 px-3 transition-all shadow-sm hover:shadow-md group">
+              <span className="text-2xl">📘</span>
+              <span className="font-bold text-sm text-blue-600 dark:text-blue-400">فيسبوك</span>
+            </Link>
           </div>
         </div>
       </section>
