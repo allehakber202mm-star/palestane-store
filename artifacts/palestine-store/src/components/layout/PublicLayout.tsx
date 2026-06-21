@@ -2,25 +2,8 @@ import { ReactNode, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useGetSettings } from "@workspace/api-client-react";
 import { WhatsAppButton } from "../WhatsAppButton";
-import { Moon, Sun, Menu, X, Home, Info, Star, Phone } from "lucide-react";
-import { useTheme } from "next-themes";
+import { Menu, X, Home, Info, Star, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
-function ThemeToggle() {
-  const { theme, setTheme } = useTheme();
-  return (
-    <Button
-      variant="ghost"
-      size="icon"
-      onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-      title="تبديل المظهر"
-    >
-      <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-      <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-      <span className="sr-only">تبديل المظهر</span>
-    </Button>
-  );
-}
 
 const sidebarLinks = [
   { href: "/", label: "الرئيسية", icon: <Home className="w-5 h-5" /> },
@@ -81,37 +64,28 @@ function Navbar({ onMenuOpen }: { onMenuOpen: () => void }) {
 
   return (
     <header className="sticky top-0 z-30 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-        <div className="flex items-center gap-1">
-          <ThemeToggle />
-        </div>
-        <nav className="hidden md:flex gap-6 items-center">
-          <Link href="/" className="text-sm font-medium hover:text-primary transition-colors">
-            الرئيسية
-          </Link>
-          <Link href="/accounts" className="text-sm font-medium hover:text-primary transition-colors">
-            جميع الحسابات
-          </Link>
-          <Link href="/accounts?platform=tiktok" className="text-sm font-medium hover:text-primary transition-colors">
-            تيك توك
-          </Link>
-          <Link href="/accounts?platform=instagram" className="text-sm font-medium hover:text-primary transition-colors">
-            انستغرام
-          </Link>
-        </nav>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={onMenuOpen} title="القائمة">
+      <div className="container mx-auto px-4 h-14 sm:h-16 grid grid-cols-3 items-center">
+        {/* Right — hamburger (RTL: first column = right) */}
+        <div className="flex items-center justify-start">
+          <Button variant="ghost" size="icon" onClick={onMenuOpen} title="القائمة" className="shrink-0">
             <Menu className="w-5 h-5" />
           </Button>
-          <Link href="/" className="flex items-center gap-2">
+        </div>
+
+        {/* Center — store name */}
+        <div className="flex items-center justify-center min-w-0">
+          <Link href="/" className="flex items-center gap-2 min-w-0">
             {settings?.logoUrl && (
-              <img src={settings.logoUrl} alt="Logo" className="h-8 w-auto object-contain" />
+              <img src={settings.logoUrl} alt="Logo" className="h-7 w-auto object-contain shrink-0" />
             )}
-            <span className="font-bold text-xl text-primary">
+            <span className="font-bold text-lg sm:text-xl text-primary truncate">
               {settings?.storeNameAr || settings?.storeName || "متجر فلسطين"}
             </span>
           </Link>
         </div>
+
+        {/* Left — empty (RTL: third column = left) */}
+        <div />
       </div>
     </header>
   );
