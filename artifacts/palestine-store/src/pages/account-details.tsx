@@ -13,12 +13,47 @@ import {
 } from "lucide-react";
 import { SiTiktok, SiInstagram, SiFacebook } from "react-icons/si";
 
-const PLATFORM_FEATURES = [
-  "متابعين حقيقيين",
-  "شغال لايف",
-  "نظيف بالكامل",
-  "بدون انتهاكات",
+const TIKTOK_FEATURES = [
+  "متابعين حقيقيين 100%",
+  "جمهور نشط ومتفاعل",
+  "بدون متابعين وهميين أو بوتات",
+  "نمو طبيعي وآمن للحساب",
+  "مناسب للإعلانات والتسويق",
+  "جاهز للاستخدام مباشرة",
 ];
+
+/** Returns true if description signals a monetized TikTok account */
+function isMonetizedDescription(description: string | null | undefined): boolean {
+  if (!description) return false;
+  const d = description.toLowerCase();
+  return (
+    d.includes("أرباح المشاهدات") ||
+    d.includes("فيه أرباح") ||
+    d.includes("كل 10ك مشاهدات") ||
+    d.includes("كل 10k مشاهدات") ||
+    d.includes("tiktok creativity") ||
+    d.includes("creator fund") ||
+    d.includes("صندوق المبدعين")
+  );
+}
+
+/** Extract the earnings-relevant lines from a description (first 2 matching lines) */
+function extractEarningsLines(description: string | null | undefined): string[] {
+  if (!description) return [];
+  return description
+    .split("\n")
+    .map(l => l.trim())
+    .filter(l =>
+      l.includes("أرباح") ||
+      l.includes("10ك مشاهدات") ||
+      l.includes("10k مشاهدات") ||
+      l.includes("يربح") ||
+      l.includes("بتربح") ||
+      l.includes("creator fund") ||
+      l.includes("Creativity")
+    )
+    .slice(0, 3);
+}
 
 function formatDate(dateStr: string) {
   try {
@@ -243,7 +278,7 @@ export default function AccountDetails() {
     );
   }
 
-  const isMonetized       = account.platform === "tiktok_monetized";
+  const isMonetized       = account.platform === "tiktok_monetized" || isMonetizedDescription(account.description);
   const hasActiveEarnings = isMonetized && account.earningsStatus === "active";
   const isSold            = account.status === "sold";
 
@@ -380,13 +415,49 @@ export default function AccountDetails() {
           </div>
         </div>
 
-        {/* ── Description ── */}
-        {account.description && (
-          <div className="mb-5">
-            <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">الوصف</h2>
-            <p className="text-sm sm:text-base leading-relaxed">{account.description}</p>
-          </div>
-        )}
+        {/* ── Description / Smart TikTok block ── */}
+        {(() => {
+          const isTikTok = account.platform === "tiktok" || account.platform === "tiktok_monetized" || isMonetized;
+          if (!isTikTok) {
+            // Non-TikTok: show raw description as before
+            return account.description ? (
+              <div className="mb-5">
+                <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">الوصف</h2>
+                <p className="text-sm sm:text-base leading-relaxed whitespace-pre-line">{account.description}</p>
+              </div>
+            ) : null;
+          }
+
+          // TikTok (regular or monetized): smart block
+          const earningsLines = isMonetized ? extractEarningsLines(account.description) : [];
+
+          return (
+            <div className="mb-5 rounded-2xl border border-border bg-muted/30 overflow-hidden">
+              {/* Earnings header (only for monetized) */}
+              {isMonetized && earningsLines.length > 0 && (
+                <div className="bg-green-50 dark:bg-green-950/40 border-b border-green-200 dark:border-green-800 px-4 py-3">
+                  {earningsLines.map((line, i) => (
+                    <p key={i} className="font-bold text-sm text-green-700 dark:text-green-400 leading-snug">
+                      {line}
+                    </p>
+                  ))}
+                </div>
+              )}
+              {/* Features list */}
+              <div className="px-4 py-3">
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">مميزات الحساب</p>
+                <ul className="space-y-2">
+                  {TIKTOK_FEATURES.map((feat) => (
+                    <li key={feat} className="flex items-center gap-2 text-sm font-medium">
+                      <span className="text-green-500 text-base leading-none shrink-0">✓</span>
+                      {feat}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* ── Additional info ── */}
         <div className="mb-5 bg-muted/40 rounded-xl overflow-hidden border">
@@ -454,18 +525,6 @@ export default function AccountDetails() {
           </div>
         )}
 
-        {/* ── Features ── */}
-        <div className="mb-6">
-          <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">مميزات الحساب</h2>
-          <ul className="grid grid-cols-2 gap-2">
-            {PLATFORM_FEATURES.map((feat) => (
-              <li key={feat} className="flex items-center gap-2 text-sm">
-                <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
-                {feat}
-              </li>
-            ))}
-          </ul>
-        </div>
 
         {/* ── Share URL ── */}
         <div className="mb-6 bg-muted/30 rounded-xl px-4 py-3 border border-dashed border-border">

@@ -133,6 +133,27 @@ export function parsePostText(rawText: string, messageId: number): ParsedAccount
     platformLog = `المنصة: ${platform} (من الكلمات المفتاحية)`;
   }
 
+  // ── 3b. TikTok Monetized detection ────────────────────────────────────────
+  // Must run AFTER platform is determined and only for TikTok accounts
+  if (platform === "tiktok") {
+    const monetizedKeywords = [
+      "أرباح المشاهدات",
+      "فيه أرباح",
+      "كل 10ك مشاهدات",
+      "tiktok creativity",
+      "creator fund",
+      "صندوق المبدعين",
+      "tiktok_monetized",
+      "أرباح تيك توك",
+    ];
+    const lowerText = text.toLowerCase();
+    const isMonetized = monetizedKeywords.some(kw => lowerText.includes(kw.toLowerCase()));
+    if (isMonetized) {
+      platform = "tiktok_monetized";
+      platformLog = `المنصة: tiktok_monetized (اكتُشفت كلمات الأرباح)`;
+    }
+  }
+
   // ── 4. Followers ─────────────────────────────────────────────────────────
   let followers   = 0;
   let followersLog = "لم يُعثر على عدد المتابعين";
@@ -406,7 +427,12 @@ async function tick() {
   try {
     const result = await runTelegramSync();
     if (result.imported > 0) {
-      logger.info(result, "Telegram auto-sync: حسابات جديدة أُضيفت");
+      logger.info(result, "Telegram auto-sync: ✅ حسابات جديدة أُضيفت");
+    } else {
+      logger.info(
+        { total: result.total, skipped: result.skipped },
+        "Telegram auto-sync: tick — لا منشورات جديدة",
+      );
     }
   } catch (err) {
     logger.warn({ err }, "Telegram auto-sync: خطأ (سيُعاد المحاولة)");

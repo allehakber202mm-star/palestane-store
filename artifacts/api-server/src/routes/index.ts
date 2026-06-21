@@ -20,6 +20,7 @@ router.use("/admin/settings", settingsRouter);
 router.use("/stats", statsRouter);
 router.use("/storage", storageRouter);
 router.use("/telegram", telegramRouter);
+router.use("/admin/telegram", telegramRouter);
 router.use("/reviews", reviewsRouter);
 router.use("/", reviewsRouter);
 
