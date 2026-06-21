@@ -11,6 +11,7 @@ export interface DashboardStats {
   totalAccounts: number;
   soldAccounts: number;
   availableAccounts: number;
+  monetizedAccounts: number;
   totalClicks: number;
   whatsappClicks: number;
   topAccounts: Account[];

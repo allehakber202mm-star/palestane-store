@@ -18,6 +18,7 @@ export const accountsTable = pgTable("accounts", {
   eligibleCountry: text("eligible_country"),
   activationDate: text("activation_date"),
   earningsNotes: text("earnings_notes"),
+  avgEarningsPer10k: numeric("avg_earnings_per_10k"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

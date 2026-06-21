@@ -67,6 +67,7 @@ type FormState = {
   imageUrl: string; accountUrl: string;
   earningsStatus: string; eligibleCountry: string;
   activationDate: string; earningsNotes: string;
+  avgEarningsPer10k: string;
 };
 const EMPTY: FormState = {
   name: "", platform: "tiktok", followers: "", price: "",
@@ -74,13 +75,15 @@ const EMPTY: FormState = {
   imageUrl: "", accountUrl: "",
   earningsStatus: "", eligibleCountry: "",
   activationDate: "", earningsNotes: "",
+  avgEarningsPer10k: "",
 };
 
 type AccRow = { id: number; name: string; platform: string; followers: number;
   price: number; description: string | null; status: string; featured: boolean;
   imageUrl: string | null; accountUrl?: string | null; clickCount: number; createdAt: string; updatedAt?: string;
   earningsStatus?: string | null; eligibleCountry?: string | null;
-  activationDate?: string | null; earningsNotes?: string | null; };
+  activationDate?: string | null; earningsNotes?: string | null;
+  avgEarningsPer10k?: number | null; };
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function AdminAccounts() {
@@ -144,6 +147,7 @@ export default function AdminAccounts() {
       eligibleCountry: acc.eligibleCountry || "",
       activationDate: acc.activationDate || "",
       earningsNotes: acc.earningsNotes || "",
+      avgEarningsPer10k: acc.avgEarningsPer10k != null ? String(acc.avgEarningsPer10k) : "",
     });
     setErrors({});
     setSheetMode("form");
@@ -196,6 +200,7 @@ export default function AdminAccounts() {
       eligibleCountry: isMonetizedForm && form.eligibleCountry ? form.eligibleCountry : null,
       activationDate: isMonetizedForm && form.activationDate ? form.activationDate : null,
       earningsNotes: isMonetizedForm && form.earningsNotes ? form.earningsNotes : null,
+      avgEarningsPer10k: isMonetizedForm && form.avgEarningsPer10k ? Number(form.avgEarningsPer10k) : null,
     };
     if (editingId) {
       updateMut.mutate({ id: editingId, data: payload as AccountUpdate }, {
@@ -544,11 +549,20 @@ export default function AdminAccounts() {
                           placeholder="مثال: 2024-01-15" />
                       </div>
                     </div>
-                    <div className="space-y-1.5">
-                      <Label>ملاحظات الأرباح</Label>
-                      <Textarea rows={2} value={form.earningsNotes}
-                        onChange={(e) => setF("earningsNotes", e.target.value)}
-                        placeholder="أي معلومات إضافية عن أرباح الحساب..." />
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label>متوسط الربح / 10,000 مشاهدة (₪)</Label>
+                        <Input type="number" dir="ltr" className="text-left"
+                          value={form.avgEarningsPer10k}
+                          onChange={(e) => setF("avgEarningsPer10k", e.target.value)}
+                          placeholder="مثال: 12.5" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>ملاحظات الأرباح</Label>
+                        <Input value={form.earningsNotes}
+                          onChange={(e) => setF("earningsNotes", e.target.value)}
+                          placeholder="أي ملاحظات إضافية..." />
+                      </div>
                     </div>
                   </div>
                 )}

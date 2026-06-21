@@ -22,6 +22,7 @@ export function formatAccount(a: Record<string, unknown>) {
     eligibleCountry: a.eligibleCountry ?? null,
     activationDate: a.activationDate ?? null,
     earningsNotes: a.earningsNotes ?? null,
+    avgEarningsPer10k: a.avgEarningsPer10k != null ? parseFloat(String(a.avgEarningsPer10k)) : null,
     createdAt: a.createdAt instanceof Date ? a.createdAt.toISOString() : String(a.createdAt),
     updatedAt: a.updatedAt instanceof Date ? a.updatedAt.toISOString() : String(a.updatedAt),
   };

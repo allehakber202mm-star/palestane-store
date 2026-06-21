@@ -22,4 +22,5 @@ export interface AccountInput {
   eligibleCountry?: string;
   activationDate?: string;
   earningsNotes?: string;
+  avgEarningsPer10k?: number;
 }

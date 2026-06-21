@@ -44,7 +44,8 @@ export const ListAccountsResponseItem = zod.object({
   "earningsStatus": zod.string().nullish(),
   "eligibleCountry": zod.string().nullish(),
   "activationDate": zod.string().nullish(),
-  "earningsNotes": zod.string().nullish()
+  "earningsNotes": zod.string().nullish(),
+  "avgEarningsPer10k": zod.number().nullish()
 })
 export const ListAccountsResponse = zod.array(ListAccountsResponseItem)
 
@@ -69,7 +70,8 @@ export const ListFeaturedAccountsResponseItem = zod.object({
   "earningsStatus": zod.string().nullish(),
   "eligibleCountry": zod.string().nullish(),
   "activationDate": zod.string().nullish(),
-  "earningsNotes": zod.string().nullish()
+  "earningsNotes": zod.string().nullish(),
+  "avgEarningsPer10k": zod.number().nullish()
 })
 export const ListFeaturedAccountsResponse = zod.array(ListFeaturedAccountsResponseItem)
 
@@ -94,7 +96,8 @@ export const ListRecentAccountsResponseItem = zod.object({
   "earningsStatus": zod.string().nullish(),
   "eligibleCountry": zod.string().nullish(),
   "activationDate": zod.string().nullish(),
-  "earningsNotes": zod.string().nullish()
+  "earningsNotes": zod.string().nullish(),
+  "avgEarningsPer10k": zod.number().nullish()
 })
 export const ListRecentAccountsResponse = zod.array(ListRecentAccountsResponseItem)
 
@@ -123,7 +126,8 @@ export const GetAccountResponse = zod.object({
   "earningsStatus": zod.string().nullish(),
   "eligibleCountry": zod.string().nullish(),
   "activationDate": zod.string().nullish(),
-  "earningsNotes": zod.string().nullish()
+  "earningsNotes": zod.string().nullish(),
+  "avgEarningsPer10k": zod.number().nullish()
 })
 
 
@@ -186,7 +190,8 @@ export const AdminListAccountsResponseItem = zod.object({
   "earningsStatus": zod.string().nullish(),
   "eligibleCountry": zod.string().nullish(),
   "activationDate": zod.string().nullish(),
-  "earningsNotes": zod.string().nullish()
+  "earningsNotes": zod.string().nullish(),
+  "avgEarningsPer10k": zod.number().nullish()
 })
 export const AdminListAccountsResponse = zod.array(AdminListAccountsResponseItem)
 
@@ -207,7 +212,8 @@ export const CreateAccountBody = zod.object({
   "earningsStatus": zod.string().optional(),
   "eligibleCountry": zod.string().optional(),
   "activationDate": zod.string().optional(),
-  "earningsNotes": zod.string().optional()
+  "earningsNotes": zod.string().optional(),
+  "avgEarningsPer10k": zod.number().optional()
 })
 
 
@@ -231,7 +237,8 @@ export const UpdateAccountBody = zod.object({
   "earningsStatus": zod.string().optional(),
   "eligibleCountry": zod.string().optional(),
   "activationDate": zod.string().optional(),
-  "earningsNotes": zod.string().optional()
+  "earningsNotes": zod.string().optional(),
+  "avgEarningsPer10k": zod.number().optional()
 })
 
 export const UpdateAccountResponse = zod.object({
@@ -251,7 +258,8 @@ export const UpdateAccountResponse = zod.object({
   "earningsStatus": zod.string().nullish(),
   "eligibleCountry": zod.string().nullish(),
   "activationDate": zod.string().nullish(),
-  "earningsNotes": zod.string().nullish()
+  "earningsNotes": zod.string().nullish(),
+  "avgEarningsPer10k": zod.number().nullish()
 })
 
 
@@ -318,6 +326,7 @@ export const GetDashboardStatsResponse = zod.object({
   "totalAccounts": zod.number(),
   "soldAccounts": zod.number(),
   "availableAccounts": zod.number(),
+  "monetizedAccounts": zod.number(),
   "totalClicks": zod.number(),
   "whatsappClicks": zod.number(),
   "topAccounts": zod.array(zod.object({
@@ -337,7 +346,8 @@ export const GetDashboardStatsResponse = zod.object({
   "earningsStatus": zod.string().nullish(),
   "eligibleCountry": zod.string().nullish(),
   "activationDate": zod.string().nullish(),
-  "earningsNotes": zod.string().nullish()
+  "earningsNotes": zod.string().nullish(),
+  "avgEarningsPer10k": zod.number().nullish()
 }))
 })
 

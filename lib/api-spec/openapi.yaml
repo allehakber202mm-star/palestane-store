@@ -425,6 +425,8 @@ components:
           type: ["string", "null"]
         earningsNotes:
           type: ["string", "null"]
+        avgEarningsPer10k:
+          type: ["number", "null"]
 
     AccountInput:
       type: object
@@ -458,6 +460,8 @@ components:
           type: string
         earningsNotes:
           type: string
+        avgEarningsPer10k:
+          type: number
 
     AccountUpdate:
       type: object
@@ -490,6 +494,8 @@ components:
           type: string
         earningsNotes:
           type: string
+        avgEarningsPer10k:
+          type: number
 
     LoginInput:
       type: object
@@ -566,13 +572,15 @@ components:
 
     DashboardStats:
       type: object
-      required: [totalAccounts, soldAccounts, availableAccounts, totalClicks, whatsappClicks, topAccounts]
+      required: [totalAccounts, soldAccounts, availableAccounts, totalClicks, whatsappClicks, topAccounts, monetizedAccounts]
       properties:
         totalAccounts:
           type: integer
         soldAccounts:
           type: integer
         availableAccounts:
+          type: integer
+        monetizedAccounts:
           type: integer
         totalClicks:
           type: integer

@@ -195,30 +195,6 @@ export default function Home() {
       {/* ── Main content ── */}
       <div className="container mx-auto px-4 py-6 sm:py-8 space-y-5 sm:space-y-6">
 
-        {/* ── لماذا متجر فلسطين؟ — Features (أعلى الصفحة لتظهر على الهاتف) ── */}
-        <section>
-          <div className="text-center mb-5">
-            <h2 className="text-xl sm:text-3xl font-black mb-1">لماذا متجر فلسطين؟</h2>
-            <p className="text-muted-foreground text-sm">نضمن لك تجربة شراء آمنة وموثوقة</p>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-            {features.map((f, i) => (
-              <div
-                key={i}
-                className={`flex items-start gap-3 p-4 rounded-2xl border shadow-sm ${f.color}`}
-              >
-                <div className="shrink-0 mt-0.5">{f.icon}</div>
-                <div>
-                  <h3 className="font-bold text-sm sm:text-base mb-0.5">{f.title}</h3>
-                  <p className="text-muted-foreground text-xs sm:text-sm leading-relaxed hidden sm:block">
-                    {f.desc}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
         {/* ── TikTok ── */}
         <Section>
           <SectionHeader
@@ -295,6 +271,30 @@ export default function Home() {
             <p className="text-muted-foreground text-sm">{settings.paymentNote}</p>
           )}
         </Section>
+
+        {/* ── لماذا متجر فلسطين؟ — Features (أسفل الصفحة قبل الفوتر) ── */}
+        <section>
+          <div className="text-center mb-5">
+            <h2 className="text-xl sm:text-3xl font-black mb-1">لماذا متجر فلسطين؟</h2>
+            <p className="text-muted-foreground text-sm">نضمن لك تجربة شراء آمنة وموثوقة</p>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+            {features.map((f, i) => (
+              <div
+                key={i}
+                className={`flex items-start gap-3 p-4 rounded-2xl border shadow-sm ${f.color}`}
+              >
+                <div className="shrink-0 mt-0.5">{f.icon}</div>
+                <div>
+                  <h3 className="font-bold text-sm sm:text-base mb-0.5">{f.title}</h3>
+                  <p className="text-muted-foreground text-xs sm:text-sm leading-relaxed hidden sm:block">
+                    {f.desc}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
 
         {/* ── Contact ── */}
         <Section className="text-center bg-primary/5 border-primary/20">

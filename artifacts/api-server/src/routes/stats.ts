@@ -10,6 +10,7 @@ router.get("/dashboard", async (_req, res) => {
       total: sql<number>`count(*)`,
       sold: sql<number>`count(*) filter (where ${accountsTable.status} = 'sold')`,
       available: sql<number>`count(*) filter (where ${accountsTable.status} = 'available')`,
+      monetized: sql<number>`count(*) filter (where ${accountsTable.platform} = 'tiktok_monetized')`,
       clicks: sql<number>`coalesce(sum(${accountsTable.clickCount}), 0)`,
     })
     .from(accountsTable);
@@ -46,6 +47,7 @@ router.get("/dashboard", async (_req, res) => {
     totalAccounts: Number(totals.total),
     soldAccounts: Number(totals.sold),
     availableAccounts: Number(totals.available),
+    monetizedAccounts: Number(totals.monetized),
     totalClicks: Number(totals.clicks),
     whatsappClicks: Number(waClicks.count),
     topAccounts: topAccounts.map(a => formatAccount(a as Record<string, unknown>)),

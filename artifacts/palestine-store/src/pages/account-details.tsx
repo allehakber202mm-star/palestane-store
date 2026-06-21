@@ -248,6 +248,14 @@ export default function AccountDetails() {
             {isMonetized && account.activationDate && (
               <InfoRow label="تاريخ التفعيل" icon={<Calendar className="w-3 h-3" />} value={account.activationDate} />
             )}
+            {isMonetized && account.avgEarningsPer10k != null && (
+              <InfoRow
+                label="متوسط الربح / 10,000 مشاهدة"
+                icon={<DollarSign className="w-3 h-3" />}
+                value={`${account.avgEarningsPer10k}₪`}
+                valueClass="text-green-600 font-bold"
+              />
+            )}
           </div>
         </div>
 

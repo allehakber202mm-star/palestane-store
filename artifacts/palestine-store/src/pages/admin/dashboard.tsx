@@ -323,13 +323,14 @@ export default function AdminDashboard() {
         </div>
 
         {/* ── Stats ──────────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           {[
-            { icon: <Package className="w-4 h-4" />,            label: "إجمالي الحسابات",  val: stats?.totalAccounts,     color: "text-foreground" },
-            { icon: <CheckCircle className="w-4 h-4" />,        label: "متاح",              val: stats?.availableAccounts, color: "text-green-500" },
-            { icon: <ShoppingBag className="w-4 h-4" />,        label: "مباع",              val: stats?.soldAccounts,      color: "text-destructive" },
-            { icon: <MousePointerClick className="w-4 h-4" />,  label: "إجمالي النقرات",   val: stats?.totalClicks,       color: "text-blue-500" },
-            { icon: <MessageCircle className="w-4 h-4" />,      label: "نقرات واتساب",     val: stats?.whatsappClicks,    color: "text-[#25D366]" },
+            { icon: <Package className="w-4 h-4" />,            label: "إجمالي الحسابات",       val: stats?.totalAccounts,      color: "text-foreground" },
+            { icon: <CheckCircle className="w-4 h-4" />,        label: "متاح",                   val: stats?.availableAccounts,  color: "text-green-500" },
+            { icon: <ShoppingBag className="w-4 h-4" />,        label: "مباع",                   val: stats?.soldAccounts,       color: "text-destructive" },
+            { icon: <DollarSign className="w-4 h-4" />,         label: "تيك توك أرباح",          val: stats?.monetizedAccounts,  color: "text-yellow-500" },
+            { icon: <MousePointerClick className="w-4 h-4" />,  label: "إجمالي النقرات",         val: stats?.totalClicks,        color: "text-blue-500" },
+            { icon: <MessageCircle className="w-4 h-4" />,      label: "نقرات واتساب",           val: stats?.whatsappClicks,     color: "text-[#25D366]" },
           ].map((s, i) => (
             <div key={i} className="bg-card border rounded-xl p-3 sm:p-4 flex flex-col gap-1 shadow-sm">
               <div className={`${s.color} flex items-center gap-1.5 text-xs font-medium text-muted-foreground`}>

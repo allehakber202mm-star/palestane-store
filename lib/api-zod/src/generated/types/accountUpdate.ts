@@ -22,4 +22,5 @@ export interface AccountUpdate {
   eligibleCountry?: string;
   activationDate?: string;
   earningsNotes?: string;
+  avgEarningsPer10k?: number;
 }

@@ -52,6 +52,8 @@ export interface Account {
   activationDate?: string | null;
   /** @nullable */
   earningsNotes?: string | null;
+  /** @nullable */
+  avgEarningsPer10k?: number | null;
 }
 
 export type AccountInputPlatform = typeof AccountInputPlatform[keyof typeof AccountInputPlatform];
@@ -86,6 +88,7 @@ export interface AccountInput {
   eligibleCountry?: string;
   activationDate?: string;
   earningsNotes?: string;
+  avgEarningsPer10k?: number;
 }
 
 export type AccountUpdatePlatform = typeof AccountUpdatePlatform[keyof typeof AccountUpdatePlatform];
@@ -120,6 +123,7 @@ export interface AccountUpdate {
   eligibleCountry?: string;
   activationDate?: string;
   earningsNotes?: string;
+  avgEarningsPer10k?: number;
 }
 
 export interface LoginInput {
@@ -167,6 +171,7 @@ export interface DashboardStats {
   totalAccounts: number;
   soldAccounts: number;
   availableAccounts: number;
+  monetizedAccounts: number;
   totalClicks: number;
   whatsappClicks: number;
   topAccounts: Account[];

@@ -72,6 +72,7 @@ router.post("/accounts", async (req, res) => {
       eligibleCountry: data.eligibleCountry ?? null,
       activationDate: data.activationDate ?? null,
       earningsNotes: data.earningsNotes ?? null,
+      avgEarningsPer10k: data.avgEarningsPer10k != null ? String(data.avgEarningsPer10k) : null,
     })
     .returning();
   res.status(201).json(formatAccount(row as Record<string, unknown>));
@@ -102,6 +103,7 @@ router.patch("/accounts/:id", async (req, res) => {
   if (data.eligibleCountry !== undefined) updateData.eligibleCountry = data.eligibleCountry ?? null;
   if (data.activationDate !== undefined) updateData.activationDate = data.activationDate ?? null;
   if (data.earningsNotes !== undefined) updateData.earningsNotes = data.earningsNotes ?? null;
+  if (data.avgEarningsPer10k !== undefined) updateData.avgEarningsPer10k = data.avgEarningsPer10k != null ? String(data.avgEarningsPer10k) : null;
 
   const [row] = await db
     .update(accountsTable)

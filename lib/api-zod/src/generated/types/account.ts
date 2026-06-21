@@ -33,4 +33,6 @@ export interface Account {
   activationDate?: string | null;
   /** @nullable */
   earningsNotes?: string | null;
+  /** @nullable */
+  avgEarningsPer10k?: number | null;
 }
