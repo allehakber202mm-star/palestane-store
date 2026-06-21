@@ -1,5 +1,5 @@
 import { db, accountsTable, settingsTable } from "@workspace/db";
-import { eq, inArray, or } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { objectStorageClient } from "./objectStorage";
 import { randomUUID } from "crypto";
 import { logger } from "./logger";
@@ -106,8 +106,8 @@ export function parsePostText(rawText: string, messageId: number): ParsedAccount
     let atM: RegExpExecArray | null;
     while ((atM = atRx.exec(text)) !== null) {
       const handle = atM[1];
-      // Skip generic words that are clearly not handles
-      if (!/^(Palestine_storeL|admin|bot)$/i.test(handle)) {
+      // Skip the store's own handles and generic bot words
+      if (!/^(Palestine_storeL|Palestine_sstore|PalestineStore|admin|bot)$/i.test(handle)) {
         username = handle;
         usernameLog = `استُخرج من النص: @${username}`;
         break;
@@ -302,45 +302,32 @@ export async function runTelegramSync(): Promise<SyncResult> {
     .filter(u => u.channel_post?.chat.username?.toLowerCase() === channel.toLowerCase())
     .map(u => ({ update_id: u.update_id, post: u.channel_post! }));
 
-  // ── Deduplication: by telegramMessageId OR username ──────────────────────
+  // ── Deduplication: by telegramMessageId only ─────────────────────────────
+  // Username-based dedup was removed because the store's own @handle appears
+  // in every post and was blocking all new imports.
   const messageIds = posts.map(p => p.post.message_id);
   const parsed     = posts.map(p => ({
     ...p,
     parsed: parsePostText(p.post.caption ?? p.post.text ?? "", p.post.message_id),
   }));
-  const usernames  = parsed.map(p => p.parsed.username).filter((u): u is string => !!u);
 
   const existingByMsgId = messageIds.length
     ? await db.select({ tgId: accountsTable.telegramMessageId })
         .from(accountsTable)
         .where(inArray(accountsTable.telegramMessageId, messageIds))
     : [];
-  const existingByUsername = usernames.length
-    ? await db.select({ username: accountsTable.username })
-        .from(accountsTable)
-        .where(inArray(accountsTable.username, usernames))
-    : [];
 
-  const existingMsgIds  = new Set(existingByMsgId.map(r => r.tgId));
-  const existingUsernames = new Set(existingByUsername.map(r => r.username).filter(Boolean));
+  const existingMsgIds = new Set(existingByMsgId.map(r => r.tgId));
 
   let imported = 0;
   let skipped  = 0;
 
   for (const { post, parsed: p } of parsed) {
-    // Skip if already imported (by message ID or username)
+    // Skip if already imported by message ID
     if (existingMsgIds.has(post.message_id)) {
       logger.info(
         { telegramMessageId: post.message_id, reason: "telegram_message_id موجود مسبقاً" },
         "Telegram sync: منشور مكرر — تم التخطي",
-      );
-      skipped++;
-      continue;
-    }
-    if (p.username && existingUsernames.has(p.username)) {
-      logger.info(
-        { username: p.username, telegramMessageId: post.message_id, reason: "username موجود مسبقاً" },
-        "Telegram sync: حساب مكرر — تم التخطي",
       );
       skipped++;
       continue;
