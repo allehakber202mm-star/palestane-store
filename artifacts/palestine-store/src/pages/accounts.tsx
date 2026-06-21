@@ -57,25 +57,25 @@ export default function Accounts() {
       </div>
 
       <div className="container mx-auto px-3 sm:px-4 py-5 sm:py-8">
-        {/* Platform Tabs */}
-        <div className="flex gap-2 overflow-x-auto pb-1 mb-6 scrollbar-hide">
+        {/* Platform Tabs — grid, no horizontal scroll */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-6">
           {filters.map((f) => (
             <button
               key={f.value}
               onClick={() => setActive(f.value)}
-              className={`flex items-center gap-1.5 px-4 py-2.5 rounded-full font-bold text-sm whitespace-nowrap transition-all border ${
+              className={`flex items-center justify-center gap-2 px-3 py-3 rounded-2xl font-bold text-sm transition-all border ${
                 active === f.value
                   ? f.value === "tiktok_monetized"
-                    ? "bg-green-600 text-white border-green-600 shadow-sm"
-                    : "bg-primary text-primary-foreground border-primary shadow-sm"
-                  : "bg-background text-foreground border-border hover:border-primary/50 hover:bg-muted"
+                    ? "bg-green-600 text-white border-green-600 shadow-md shadow-green-200 dark:shadow-none"
+                    : "bg-primary text-primary-foreground border-primary shadow-md"
+                  : "bg-background text-foreground border-border hover:border-primary/40 hover:bg-muted/60"
               }`}
             >
               {f.icon}
               {f.label}
               {f.value === "tiktok_monetized" && active !== f.value && (
                 <span className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-[9px] font-black px-1.5 py-0.5 rounded-full leading-none">
-                  جديد
+                  💰
                 </span>
               )}
             </button>

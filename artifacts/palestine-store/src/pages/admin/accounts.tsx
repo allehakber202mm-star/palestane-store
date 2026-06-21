@@ -5,6 +5,7 @@ import {
   useCreateAccount,
   useUpdateAccount,
   useDeleteAccount,
+  useGetDashboardStats,
   getAdminListAccountsQueryKey,
   getGetDashboardStatsQueryKey,
   AccountInput,
@@ -105,6 +106,8 @@ export default function AdminAccounts() {
 
   const qc = useQueryClient();
   const { toast } = useToast();
+
+  const { data: stats } = useGetDashboardStats();
 
   const { data: accounts, isLoading } = useAdminListAccounts({
     platform: tab,
@@ -312,40 +315,62 @@ export default function AdminAccounts() {
           </Button>
         </div>
 
-        {/* ── Platform Tabs ──────────────────────────────────────────────── */}
-        <div className="flex items-center gap-1.5 bg-muted/50 p-1 rounded-xl border overflow-x-auto scrollbar-hide">
-          {TABS.map((t) => (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap flex-shrink-0 ${
-                tab === t.key
-                  ? "bg-background shadow-sm text-foreground border"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {t.icon}
-              {t.label}
-              {tab === t.key && !isLoading && (
-                <span className="bg-primary/10 text-primary text-[10px] px-1.5 py-0 rounded-full font-bold">
-                  {totalCount}
-                </span>
-              )}
-            </button>
+        {/* ── Stats Cards ─────────────────────────────────────────────────── */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+          {[
+            { label: "الإجمالي",       val: stats?.totalAccounts,     color: "text-foreground",    bg: "bg-muted/40" },
+            { label: "تيك توك",        val: stats?.tiktokAccounts,    color: "text-foreground",    bg: "bg-muted/40" },
+            { label: "أرباح المشاهدات", val: stats?.monetizedAccounts, color: "text-green-600",     bg: "bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800" },
+            { label: "انستغرام",        val: stats?.instagramAccounts, color: "text-pink-500",      bg: "bg-pink-50 dark:bg-pink-950/30 border-pink-200 dark:border-pink-900" },
+            { label: "فيسبوك",         val: stats?.facebookAccounts,  color: "text-blue-500",      bg: "bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-900" },
+            { label: "متاح",           val: stats?.availableAccounts, color: "text-green-500",     bg: "bg-muted/40" },
+            { label: "مباع",           val: stats?.soldAccounts,      color: "text-destructive",   bg: "bg-muted/40" },
+          ].map((s, i) => (
+            <div key={i} className={`rounded-xl border p-3 flex flex-col gap-0.5 ${s.bg}`}>
+              <p className="text-[10px] text-muted-foreground leading-none">{s.label}</p>
+              <p className={`text-xl font-black leading-tight ${s.color}`}>{s.val ?? "—"}</p>
+            </div>
           ))}
-          {/* Status quick filter */}
-          <div className="mr-auto flex-shrink-0">
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="h-9 w-32 text-xs border-0 bg-transparent focus:ring-0">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">كل الحالات</SelectItem>
-                <SelectItem value="available">✅ متاح</SelectItem>
-                <SelectItem value="sold">❌ مباع</SelectItem>
-              </SelectContent>
-            </Select>
+        </div>
+
+        {/* ── Platform Tabs — grid, no horizontal scroll ──────────────────── */}
+        <div className="flex flex-col sm:flex-row gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 flex-1">
+            {TABS.map((t) => (
+              <button
+                key={t.key}
+                onClick={() => setTab(t.key)}
+                className={`flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-bold transition-all border ${
+                  tab === t.key
+                    ? t.key === "tiktok_monetized"
+                      ? "bg-green-600 text-white border-green-600 shadow-sm"
+                      : "bg-primary text-primary-foreground border-primary shadow-sm"
+                    : "bg-background text-muted-foreground border-border hover:text-foreground hover:border-primary/40 hover:bg-muted/60"
+                }`}
+              >
+                {t.icon}
+                {t.label}
+                {!isLoading && tab === t.key && (
+                  <span className={`text-[10px] px-1.5 py-0 rounded-full font-bold ${
+                    tab === t.key ? "bg-white/20 text-white" : "bg-primary/10 text-primary"
+                  }`}>
+                    {totalCount}
+                  </span>
+                )}
+              </button>
+            ))}
           </div>
+          {/* Status filter */}
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="h-10 w-full sm:w-36 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">كل الحالات</SelectItem>
+              <SelectItem value="available">✅ متاح</SelectItem>
+              <SelectItem value="sold">❌ مباع</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {/* ── Cards Grid ─────────────────────────────────────────────────── */}

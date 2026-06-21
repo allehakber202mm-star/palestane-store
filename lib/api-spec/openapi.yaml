@@ -572,7 +572,7 @@ components:
 
     DashboardStats:
       type: object
-      required: [totalAccounts, soldAccounts, availableAccounts, totalClicks, whatsappClicks, topAccounts, monetizedAccounts]
+      required: [totalAccounts, soldAccounts, availableAccounts, totalClicks, whatsappClicks, topAccounts, monetizedAccounts, tiktokAccounts, instagramAccounts, facebookAccounts]
       properties:
         totalAccounts:
           type: integer
@@ -581,6 +581,12 @@ components:
         availableAccounts:
           type: integer
         monetizedAccounts:
+          type: integer
+        tiktokAccounts:
+          type: integer
+        instagramAccounts:
+          type: integer
+        facebookAccounts:
           type: integer
         totalClicks:
           type: integer

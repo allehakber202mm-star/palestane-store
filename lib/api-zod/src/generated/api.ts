@@ -327,6 +327,9 @@ export const GetDashboardStatsResponse = zod.object({
   "soldAccounts": zod.number(),
   "availableAccounts": zod.number(),
   "monetizedAccounts": zod.number(),
+  "tiktokAccounts": zod.number(),
+  "instagramAccounts": zod.number(),
+  "facebookAccounts": zod.number(),
   "totalClicks": zod.number(),
   "whatsappClicks": zod.number(),
   "topAccounts": zod.array(zod.object({

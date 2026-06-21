@@ -38,7 +38,7 @@ function ProtectedRoute({ component: Component }: { component: any }) {
 function AdminRedirect() {
   const { isAuthenticated, isLoading } = useAuth();
   if (isLoading) return null;
-  return <Redirect to={isAuthenticated ? "/admin/dashboard" : "/admin/login"} />;
+  return <Redirect to={isAuthenticated ? "/admin/accounts" : "/admin/login"} />;
 }
 
 function Router() {
