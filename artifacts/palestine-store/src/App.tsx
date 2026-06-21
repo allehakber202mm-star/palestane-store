@@ -10,6 +10,9 @@ import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
 import Accounts from "@/pages/accounts";
 import AccountDetails from "@/pages/account-details";
+import About from "@/pages/about";
+import Feedback from "@/pages/feedback";
+import Contact from "@/pages/contact";
 
 // Admin Pages
 import AdminLogin from "@/pages/admin/login";
@@ -48,6 +51,9 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/accounts" component={Accounts} />
       <Route path="/account/:id" component={AccountDetails} />
+      <Route path="/about" component={About} />
+      <Route path="/feedback" component={Feedback} />
+      <Route path="/contact" component={Contact} />
 
       {/* Admin Routes */}
       <Route path="/admin" component={AdminRedirect} />

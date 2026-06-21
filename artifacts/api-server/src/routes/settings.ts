@@ -11,6 +11,7 @@ const DEFAULT_SETTINGS = {
   storeNameAr: "متجر فلسطين",
   logoUrl: null,
   whatsapp: "+972566112031",
+  telegram: null as null,
   email: "palsetanestora@gmail.com",
   bannerTitle: "متجر فلسطين للحسابات",
   bannerSubtitle: "منصة فلسطينية متخصصة في بيع حسابات السوشيال ميديا الجاهزة بشكل آمن وسريع",
@@ -32,6 +33,7 @@ function buildSettings(map: Record<string, string>) {
     storeNameAr: map.storeNameAr ?? DEFAULT_SETTINGS.storeNameAr,
     logoUrl: map.logoUrl ?? null,
     whatsapp: map.whatsapp ?? DEFAULT_SETTINGS.whatsapp,
+    telegram: map.telegram ?? null,
     email: map.email ?? DEFAULT_SETTINGS.email,
     bannerTitle: map.bannerTitle ?? DEFAULT_SETTINGS.bannerTitle,
     bannerSubtitle: map.bannerSubtitle ?? DEFAULT_SETTINGS.bannerSubtitle,
@@ -58,6 +60,7 @@ router.patch("/", requireAuth, async (req, res) => {
   if (data.storeNameAr !== undefined) updates.push({ key: "storeNameAr", value: data.storeNameAr });
   if (data.logoUrl !== undefined) updates.push({ key: "logoUrl", value: data.logoUrl });
   if (data.whatsapp !== undefined) updates.push({ key: "whatsapp", value: data.whatsapp });
+  if (data.telegram !== undefined) updates.push({ key: "telegram", value: data.telegram });
   if (data.email !== undefined) updates.push({ key: "email", value: data.email });
   if (data.bannerTitle !== undefined) updates.push({ key: "bannerTitle", value: data.bannerTitle });
   if (data.bannerSubtitle !== undefined) updates.push({ key: "bannerSubtitle", value: data.bannerSubtitle });

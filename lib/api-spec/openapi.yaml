@@ -21,6 +21,8 @@ tags:
     description: Dashboard statistics
   - name: Storage
     description: Object storage upload and serving endpoints.
+  - name: reviews
+    description: Customer review images
 paths:
   /healthz:
     get:
@@ -325,6 +327,59 @@ paths:
               schema:
                 $ref: "#/components/schemas/ClickResult"
 
+  /reviews:
+    get:
+      operationId: listReviews
+      tags: [reviews]
+      summary: List customer review images
+      responses:
+        "200":
+          description: List of review images
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ReviewImage"
+
+  /admin/reviews:
+    post:
+      operationId: createReview
+      tags: [admin]
+      summary: Add a review image
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewImageInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReviewImage"
+
+  /admin/reviews/{id}:
+    delete:
+      operationId: deleteReview
+      tags: [admin]
+      summary: Delete a review image
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResult"
+
   /storage/uploads/request-url:
     post:
       tags: [Storage]
@@ -539,6 +594,8 @@ components:
           type: ["string", "null"]
         whatsapp:
           type: string
+        telegram:
+          type: ["string", "null"]
         email:
           type: string
         bannerTitle:
@@ -563,6 +620,8 @@ components:
           type: string
         whatsapp:
           type: string
+        telegram:
+          type: string
         email:
           type: string
         bannerTitle:
@@ -574,6 +633,28 @@ components:
           items:
             type: string
         paymentNote:
+          type: string
+
+    ReviewImage:
+      type: object
+      required: [id, imageUrl, createdAt]
+      properties:
+        id:
+          type: integer
+        imageUrl:
+          type: string
+        caption:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    ReviewImageInput:
+      type: object
+      required: [imageUrl]
+      properties:
+        imageUrl:
+          type: string
+        caption:
           type: string
 
     DashboardStats:

@@ -291,6 +291,7 @@ export const GetSettingsResponse = zod.object({
   "storeNameAr": zod.string().optional(),
   "logoUrl": zod.string().nullish(),
   "whatsapp": zod.string(),
+  "telegram": zod.string().nullish(),
   "email": zod.string(),
   "bannerTitle": zod.string().nullish(),
   "bannerSubtitle": zod.string().nullish(),
@@ -307,6 +308,7 @@ export const UpdateSettingsBody = zod.object({
   "storeNameAr": zod.string().optional(),
   "logoUrl": zod.string().optional(),
   "whatsapp": zod.string().optional(),
+  "telegram": zod.string().optional(),
   "email": zod.string().optional(),
   "bannerTitle": zod.string().optional(),
   "bannerSubtitle": zod.string().optional(),
@@ -319,6 +321,7 @@ export const UpdateSettingsResponse = zod.object({
   "storeNameAr": zod.string().optional(),
   "logoUrl": zod.string().nullish(),
   "whatsapp": zod.string(),
+  "telegram": zod.string().nullish(),
   "email": zod.string(),
   "bannerTitle": zod.string().nullish(),
   "bannerSubtitle": zod.string().nullish(),
@@ -368,6 +371,39 @@ export const GetDashboardStatsResponse = zod.object({
  * @summary Track a WhatsApp button click (floating button)
  */
 export const TrackWhatsappClickResponse = zod.object({
+  "success": zod.boolean()
+})
+
+
+/**
+ * @summary List customer review images
+ */
+export const ListReviewsResponseItem = zod.object({
+  "id": zod.number(),
+  "imageUrl": zod.string(),
+  "caption": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+export const ListReviewsResponse = zod.array(ListReviewsResponseItem)
+
+
+/**
+ * @summary Add a review image
+ */
+export const CreateReviewBody = zod.object({
+  "imageUrl": zod.string(),
+  "caption": zod.string().optional()
+})
+
+
+/**
+ * @summary Delete a review image
+ */
+export const DeleteReviewParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteReviewResponse = zod.object({
   "success": zod.boolean()
 })
 

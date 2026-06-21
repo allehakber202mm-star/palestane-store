@@ -149,6 +149,8 @@ export interface SiteSettings {
   /** @nullable */
   logoUrl?: string | null;
   whatsapp: string;
+  /** @nullable */
+  telegram?: string | null;
   email: string;
   /** @nullable */
   bannerTitle?: string | null;
@@ -164,11 +166,25 @@ export interface SiteSettingsUpdate {
   storeNameAr?: string;
   logoUrl?: string;
   whatsapp?: string;
+  telegram?: string;
   email?: string;
   bannerTitle?: string;
   bannerSubtitle?: string;
   paymentMethods?: string[];
   paymentNote?: string;
+}
+
+export interface ReviewImage {
+  id: number;
+  imageUrl: string;
+  /** @nullable */
+  caption?: string | null;
+  createdAt: string;
+}
+
+export interface ReviewImageInput {
+  imageUrl: string;
+  caption?: string;
 }
 
 export interface DashboardStats {

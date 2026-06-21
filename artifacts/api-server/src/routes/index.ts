@@ -7,6 +7,7 @@ import settingsRouter from "./settings";
 import statsRouter from "./stats";
 import storageRouter from "./storage";
 import telegramRouter from "./telegram";
+import reviewsRouter from "./reviews";
 
 const router: IRouter = Router();
 
@@ -19,5 +20,7 @@ router.use("/admin/settings", settingsRouter);
 router.use("/stats", statsRouter);
 router.use("/storage", storageRouter);
 router.use("/telegram", telegramRouter);
+router.use("/reviews", reviewsRouter);
+router.use("/", reviewsRouter);
 
 export default router;

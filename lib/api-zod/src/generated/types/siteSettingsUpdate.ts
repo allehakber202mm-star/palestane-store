@@ -11,6 +11,7 @@ export interface SiteSettingsUpdate {
   storeNameAr?: string;
   logoUrl?: string;
   whatsapp?: string;
+  telegram?: string;
   email?: string;
   bannerTitle?: string;
   bannerSubtitle?: string;

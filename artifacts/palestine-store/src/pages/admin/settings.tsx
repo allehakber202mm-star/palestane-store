@@ -1,5 +1,12 @@
 import { AdminLayout } from "@/components/layout/AdminLayout";
-import { useGetSettings, useUpdateSettings, SiteSettingsUpdate } from "@workspace/api-client-react";
+import {
+  useGetSettings,
+  useUpdateSettings,
+  useListReviews,
+  useCreateReview,
+  useDeleteReview,
+  SiteSettingsUpdate,
+} from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,14 +16,16 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { useEffect } from "react";
-import { Plus, Trash2, Save } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Plus, Trash2, Save, Upload, X, Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useRequestUploadUrl } from "@workspace/api-client-react";
 
 const settingsSchema = z.object({
   storeName: z.string().min(1, "الاسم مطلوب"),
   storeNameAr: z.string().optional().nullable(),
   whatsapp: z.string().min(1, "رقم الواتساب مطلوب"),
+  telegram: z.string().optional().nullable(),
   email: z.string().email("البريد غير صحيح"),
   logoUrl: z.string().optional().nullable(),
   bannerTitle: z.string().optional().nullable(),
@@ -28,6 +37,101 @@ const settingsSchema = z.object({
 });
 
 type SettingsFormValues = z.infer<typeof settingsSchema>;
+
+function ReviewsManager() {
+  const { data: reviews, isLoading } = useListReviews();
+  const createReview = useCreateReview();
+  const deleteReview = useDeleteReview();
+  const requestUpload = useRequestUploadUrl();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [caption, setCaption] = useState("");
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const { uploadURL, objectPath } = await requestUpload.mutateAsync({
+        data: { name: file.name, size: file.size, contentType: file.type },
+      });
+      await fetch(uploadURL, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
+      const imageUrl = `/api/storage/objects/${objectPath}`;
+      await createReview.mutateAsync({ data: { imageUrl, caption: caption || undefined } });
+      queryClient.invalidateQueries({ queryKey: ["/api/reviews"] });
+      toast({ title: "تم رفع التقييم بنجاح" });
+      setCaption("");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    } catch {
+      toast({ title: "فشل رفع الصورة", variant: "destructive" });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    await deleteReview.mutateAsync({ id });
+    queryClient.invalidateQueries({ queryKey: ["/api/reviews"] });
+    toast({ title: "تم حذف التقييم" });
+  };
+
+  return (
+    <div className="space-y-6 bg-card p-6 border rounded-xl shadow-sm lg:col-span-2">
+      <h2 className="text-xl font-bold border-b pb-2 mb-4">تقييمات العملاء (فيدباك)</h2>
+
+      <div className="flex flex-col sm:flex-row gap-3 items-start">
+        <Input
+          placeholder="وصف اختياري للصورة..."
+          value={caption}
+          onChange={(e) => setCaption(e.target.value)}
+          className="flex-1"
+        />
+        <Button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          className="gap-2 shrink-0"
+        >
+          {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+          {uploading ? "جاري الرفع..." : "رفع صورة تقييم"}
+        </Button>
+        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+      </div>
+
+      {isLoading && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+          {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-36 rounded-xl" />)}
+        </div>
+      )}
+
+      {!isLoading && reviews && reviews.length === 0 && (
+        <p className="text-muted-foreground text-sm text-center py-6">لا يوجد تقييمات مرفوعة حتى الآن.</p>
+      )}
+
+      {!isLoading && reviews && reviews.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+          {reviews.map((review) => (
+            <div key={review.id} className="relative group rounded-xl overflow-hidden border shadow-sm">
+              <img src={review.imageUrl} alt={review.caption || ""} className="w-full h-36 object-cover" />
+              {review.caption && (
+                <p className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs p-2 truncate">{review.caption}</p>
+              )}
+              <button
+                type="button"
+                onClick={() => handleDelete(review.id)}
+                className="absolute top-2 left-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function AdminSettings() {
   const { data: settings, isLoading } = useGetSettings();
@@ -41,6 +145,7 @@ export default function AdminSettings() {
       storeName: "",
       storeNameAr: "",
       whatsapp: "",
+      telegram: "",
       email: "",
       logoUrl: "",
       bannerTitle: "",
@@ -61,6 +166,7 @@ export default function AdminSettings() {
         storeName: settings.storeName,
         storeNameAr: settings.storeNameAr || "",
         whatsapp: settings.whatsapp,
+        telegram: settings.telegram || "",
         email: settings.email,
         logoUrl: settings.logoUrl || "",
         bannerTitle: settings.bannerTitle || "",
@@ -75,6 +181,7 @@ export default function AdminSettings() {
     const payload: SiteSettingsUpdate = {
       ...data,
       storeNameAr: data.storeNameAr || undefined,
+      telegram: data.telegram || undefined,
       logoUrl: data.logoUrl || undefined,
       bannerTitle: data.bannerTitle || undefined,
       bannerSubtitle: data.bannerSubtitle || undefined,
@@ -118,7 +225,7 @@ export default function AdminSettings() {
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              
+
               {/* General Settings */}
               <div className="space-y-6 bg-card p-6 border rounded-xl shadow-sm">
                 <h2 className="text-xl font-bold border-b pb-2 mb-4">المعلومات الأساسية</h2>
@@ -181,6 +288,19 @@ export default function AdminSettings() {
                 />
                 <FormField
                   control={form.control}
+                  name="telegram"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>تيليجرام (مثال: @Palestine_store)</FormLabel>
+                      <FormControl>
+                        <Input dir="ltr" className="text-left" placeholder="@username" {...field} value={field.value || ""} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
                   name="email"
                   render={({ field }) => (
                     <FormItem>
@@ -230,7 +350,6 @@ export default function AdminSettings() {
               {/* Payment Methods */}
               <div className="space-y-6 bg-card p-6 border rounded-xl shadow-sm lg:col-span-2">
                 <h2 className="text-xl font-bold border-b pb-2 mb-4">طرق الدفع</h2>
-                
                 <FormField
                   control={form.control}
                   name="paymentNote"
@@ -244,7 +363,6 @@ export default function AdminSettings() {
                     </FormItem>
                   )}
                 />
-
                 <div className="space-y-4">
                   <p className="text-sm font-medium leading-none">خيارات الدفع المتاحة</p>
                   {fields.map((field, index) => (
@@ -271,6 +389,10 @@ export default function AdminSettings() {
                   </Button>
                 </div>
               </div>
+
+              {/* Reviews */}
+              <ReviewsManager />
+
             </div>
 
             <div className="flex justify-end sticky bottom-6 z-10">

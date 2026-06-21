@@ -12,6 +12,8 @@ export interface SiteSettings {
   /** @nullable */
   logoUrl?: string | null;
   whatsapp: string;
+  /** @nullable */
+  telegram?: string | null;
   email: string;
   /** @nullable */
   bannerTitle?: string | null;

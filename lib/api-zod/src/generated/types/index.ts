@@ -28,6 +28,8 @@ export * from './listAccountsPlatform';
 export * from './listAccountsStatus';
 export * from './loginInput';
 export * from './loginResult';
+export * from './reviewImage';
+export * from './reviewImageInput';
 export * from './siteSettings';
 export * from './siteSettingsUpdate';
 export * from './uploadUrlRequest';
