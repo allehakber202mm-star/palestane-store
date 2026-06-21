@@ -305,52 +305,43 @@ export default function AccountDetails() {
           </div>
         )}
 
-        {/* ── Image — contain, no crop, click to lightbox ── */}
-        <div className="relative w-full rounded-2xl overflow-hidden bg-muted mb-5 group">
+        {/* ── Image — full natural size, zero crop ── */}
+        <div className="relative w-full rounded-2xl bg-muted mb-5 group">
           {account.imageUrl ? (
             <>
-              {/* contain wrapper — height adapts to image */}
-              <div
-                className="w-full flex items-center justify-center bg-muted/80 dark:bg-muted/60 cursor-zoom-in"
-                style={{ minHeight: "200px", maxHeight: "70vh" }}
+              {/* Image: natural width/height, no clipping */}
+              <img
+                src={account.imageUrl}
+                alt={account.name}
                 onClick={() => setLightboxOpen(true)}
-              >
-                <img
-                  src={account.imageUrl}
-                  alt={account.name}
-                  className="w-full h-auto block"
-                  style={{
-                    objectFit: "contain",
-                    maxHeight: "70vh",
-                  } as React.CSSProperties}
-                  loading="eager"
-                  decoding="sync"
-                />
-              </div>
+                className="w-full h-auto block rounded-2xl cursor-zoom-in"
+                loading="eager"
+                decoding="sync"
+              />
 
-              {/* zoom hint overlay */}
-              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+              {/* Zoom hint — appears on hover, centered */}
+              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none rounded-2xl">
                 <div className="bg-black/50 backdrop-blur-sm rounded-full px-3 py-1.5 flex items-center gap-1.5">
                   <Maximize2 className="w-3.5 h-3.5 text-white" />
                   <span className="text-white text-xs font-medium">عرض كامل</span>
                 </div>
               </div>
 
-              {/* status badge */}
-              <span className={`absolute top-3 right-3 text-white text-xs font-bold px-3 py-1 rounded-full shadow ${
+              {/* Badges — top corners, outside image flow */}
+              <span className={`absolute top-3 right-3 text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm ${
                 isSold ? "bg-destructive" : "bg-green-500"
               }`}>
                 {isSold ? "مباع" : "متاح للبيع"}
               </span>
-
               {account.featured && (
-                <span className="absolute top-3 left-3 text-white text-xs font-bold px-3 py-1 rounded-full shadow bg-yellow-500">
+                <span className="absolute top-3 left-3 text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm bg-yellow-500">
                   مميز ★
                 </span>
               )}
             </>
           ) : (
-            <div className="w-full flex items-center justify-center" style={{ height: "280px" }}>
+            /* Placeholder when no image */
+            <div className="w-full flex items-center justify-center rounded-2xl border border-border" style={{ minHeight: "200px" }}>
               <PlatformIcon className="w-20 h-20 opacity-10" />
               <span className={`absolute top-3 right-3 text-white text-xs font-bold px-3 py-1 rounded-full ${
                 isSold ? "bg-destructive" : "bg-green-500"

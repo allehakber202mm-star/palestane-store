@@ -46,67 +46,67 @@ export function AccountCard({ account }: AccountCardProps) {
       className="group overflow-hidden rounded-xl border bg-card shadow-sm transition-all hover:shadow-md hover:border-primary/40 flex flex-col h-full cursor-pointer"
     >
       {/* ── Image ── */}
-      <div
-        className="relative w-full shrink-0 bg-muted overflow-hidden flex items-center justify-center"
-        style={{ height: "clamp(110px, 28vw, 200px)" }}
-      >
+      <div className="relative w-full shrink-0 bg-muted overflow-hidden" style={{ aspectRatio: "4/3" }}>
         {account.imageUrl ? (
           <img
             src={account.imageUrl}
             alt={account.name}
-            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+            className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-105"
             loading="lazy"
           />
         ) : (
-          <PlatformIcon className="w-10 h-10 sm:w-14 sm:h-14 opacity-10" />
+          <div className="w-full h-full flex items-center justify-center">
+            <PlatformIcon className="w-10 h-10 sm:w-14 sm:h-14 opacity-10" />
+          </div>
         )}
 
         {/* Hover hint */}
-        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/15 transition-colors flex items-center justify-center">
           <span className="opacity-0 group-hover:opacity-100 transition-opacity text-white text-[10px] font-bold bg-black/50 px-2 py-0.5 rounded-full">
             عرض التفاصيل
           </span>
         </div>
 
-        {/* Followers + featured + monetized badge */}
-        <div className="absolute top-1.5 left-1.5 flex flex-col gap-1">
-          <span className="bg-black/65 text-white text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded-full leading-none">
-            {followersLabel} متابع
-          </span>
-          {account.featured && (
-            <span className="bg-yellow-500/90 text-white text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded-full leading-none">
-              مميز ★
-            </span>
-          )}
-          {isMonetized && (
-            <span className="bg-green-600/90 text-white text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded-full leading-none flex items-center gap-0.5">
-              <DollarSign className="w-2 h-2" />مفعّل الأرباح
-            </span>
-          )}
-        </div>
-
-        {/* Status */}
-        <div className="absolute top-1.5 right-1.5">
-          <span className={`text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded-full leading-none font-semibold ${
-            isSold ? "bg-destructive/90 text-white" : "bg-green-500/90 text-white"
+        {/* Top-right: Status badge */}
+        <div className="absolute top-2 right-2">
+          <span className={`text-[11px] sm:text-xs px-2 py-0.5 rounded-full font-bold shadow-sm leading-none ${
+            isSold ? "bg-destructive text-white" : "bg-green-500 text-white"
           }`}>
             {isSold ? "مباع" : "متاح"}
           </span>
         </div>
+
+        {/* Top-left: Followers + featured + monetized stacked */}
+        <div className="absolute top-2 left-2 flex flex-col gap-1 items-start">
+          <span className="bg-black/70 text-white text-xs sm:text-[13px] font-bold px-2 py-1 rounded-full leading-none shadow-sm">
+            {followersLabel} متابع
+          </span>
+          {account.featured && (
+            <span className="bg-yellow-500 text-white text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full leading-none shadow-sm">
+              مميز ★
+            </span>
+          )}
+          {isMonetized && account.earningsStatus === "active" && (
+            <span className="bg-green-600 text-white text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full leading-none flex items-center gap-0.5 shadow-sm">
+              <DollarSign className="w-2.5 h-2.5" />مفعّل الأرباح
+            </span>
+          )}
+        </div>
       </div>
 
       {/* ── Body ── */}
-      <div className="p-2 sm:p-3 flex flex-col gap-2 flex-1">
+      <div className="p-2.5 sm:p-3 flex flex-col gap-2 flex-1">
 
-        {/* Name + Price */}
-        <div className="flex items-start justify-between gap-1">
+        {/* Price — most prominent element */}
+        <div className="flex items-center justify-between gap-1">
           <div className="flex items-center gap-1 min-w-0">
-            <PlatformIcon className={`w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0 ${platformColor}`} />
-            <span className="font-bold text-[11px] sm:text-sm leading-tight truncate" dir="ltr">
+            <PlatformIcon className={`w-3 h-3 sm:w-4 sm:h-4 shrink-0 ${platformColor}`} />
+            <span className="font-bold text-[11px] sm:text-xs leading-tight truncate text-muted-foreground" dir="ltr">
               {account.name}
             </span>
           </div>
-          <span className="font-black text-[11px] sm:text-sm text-primary shrink-0 whitespace-nowrap">
+          {/* Price: bigger, bolder, primary color */}
+          <span className="font-black text-base sm:text-lg text-primary shrink-0 whitespace-nowrap leading-none">
             {account.price}₪
           </span>
         </div>
@@ -130,7 +130,7 @@ export function AccountCard({ account }: AccountCardProps) {
 
         <div className="flex-1" />
 
-        {/* Visit account link — stop propagation so card click doesn't fire */}
+        {/* Visit link */}
         {account.accountUrl && (
           <a
             href={account.accountUrl}
@@ -145,10 +145,10 @@ export function AccountCard({ account }: AccountCardProps) {
           </a>
         )}
 
-        {/* Details button */}
+        {/* CTA button */}
         <button
           onClick={goToDetails}
-          className={`w-full rounded-lg py-2 sm:py-2.5 text-[10px] sm:text-xs font-bold transition-colors ${
+          className={`w-full rounded-lg py-2 sm:py-2.5 text-[11px] sm:text-xs font-bold transition-colors ${
             isSold
               ? "bg-muted text-muted-foreground cursor-not-allowed"
               : "bg-primary hover:bg-primary/90 text-primary-foreground"
