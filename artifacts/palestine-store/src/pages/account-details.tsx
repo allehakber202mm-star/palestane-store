@@ -1,4 +1,5 @@
 import { useParams } from "wouter";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   useGetAccount,
   useGetSettings,
@@ -8,6 +9,7 @@ import { PublicLayout } from "@/components/layout/PublicLayout";
 import {
   CheckCircle2, ExternalLink, Users, ArrowRight,
   DollarSign, Globe, Calendar, Tag, Info,
+  ZoomIn, ZoomOut, X, Maximize2,
 } from "lucide-react";
 import { SiTiktok, SiInstagram, SiFacebook } from "react-icons/si";
 
@@ -28,20 +30,183 @@ function formatDate(dateStr: string) {
   }
 }
 
+/* ════════════════════════════════════════════════════════
+   Lightbox — full-screen image viewer with pinch/zoom
+   ════════════════════════════════════════════════════════ */
+function Lightbox({ src, alt, onClose }: { src: string; alt: string; onClose: () => void }) {
+  const [scale, setScale] = useState(1);
+  const [origin, setOrigin] = useState({ x: 50, y: 50 }); // transform-origin in %
+  const [translate, setTranslate] = useState({ x: 0, y: 0 });
+  const isDragging = useRef(false);
+  const dragStart = useRef({ x: 0, y: 0, tx: 0, ty: 0 });
+  const lastTouchDist = useRef<number | null>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
+
+  const MIN = 1;
+  const MAX = 5;
+  const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
+
+  const zoomIn  = () => setScale(s => clamp(s + 0.5, MIN, MAX));
+  const zoomOut = () => { setScale(s => { const ns = clamp(s - 0.5, MIN, MAX); if (ns === 1) setTranslate({ x: 0, y: 0 }); return ns; }); };
+  const reset   = () => { setScale(1); setTranslate({ x: 0, y: 0 }); setOrigin({ x: 50, y: 50 }); };
+
+  /* close on Escape */
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", handler);
+    document.body.style.overflow = "hidden";
+    return () => { window.removeEventListener("keydown", handler); document.body.style.overflow = ""; };
+  }, [onClose]);
+
+  /* double-click to zoom to clicked point */
+  const handleDoubleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (scale > 1) { reset(); return; }
+    const rect = e.currentTarget.getBoundingClientRect();
+    const ox = ((e.clientX - rect.left) / rect.width) * 100;
+    const oy = ((e.clientY - rect.top) / rect.height) * 100;
+    setOrigin({ x: ox, y: oy });
+    setScale(2.5);
+  };
+
+  /* mouse drag */
+  const onMouseDown = (e: React.MouseEvent) => {
+    if (scale <= 1) return;
+    isDragging.current = true;
+    dragStart.current = { x: e.clientX, y: e.clientY, tx: translate.x, ty: translate.y };
+  };
+  const onMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging.current) return;
+    setTranslate({
+      x: dragStart.current.tx + (e.clientX - dragStart.current.x),
+      y: dragStart.current.ty + (e.clientY - dragStart.current.y),
+    });
+  };
+  const onMouseUp = () => { isDragging.current = false; };
+
+  /* touch pinch-to-zoom & drag */
+  const onTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      const d = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY,
+      );
+      lastTouchDist.current = d;
+    } else if (e.touches.length === 1 && scale > 1) {
+      isDragging.current = true;
+      dragStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, tx: translate.x, ty: translate.y };
+    }
+  };
+  const onTouchMove = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2 && lastTouchDist.current !== null) {
+      e.preventDefault();
+      const d = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY,
+      );
+      const ratio = d / lastTouchDist.current;
+      lastTouchDist.current = d;
+      setScale(s => clamp(s * ratio, MIN, MAX));
+    } else if (e.touches.length === 1 && isDragging.current) {
+      setTranslate({
+        x: dragStart.current.tx + (e.touches[0].clientX - dragStart.current.x),
+        y: dragStart.current.ty + (e.touches[0].clientY - dragStart.current.y),
+      });
+    }
+  }, []);
+  const onTouchEnd = () => { isDragging.current = false; lastTouchDist.current = null; };
+
+  /* wheel zoom */
+  const onWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    const delta = e.deltaY < 0 ? 0.2 : -0.2;
+    setScale(s => { const ns = clamp(s + delta, MIN, MAX); if (ns === 1) setTranslate({ x: 0, y: 0 }); return ns; });
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] bg-black/95 flex flex-col"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      {/* toolbar */}
+      <div className="flex items-center justify-between px-4 py-3 gap-3 bg-black/60 shrink-0">
+        <div className="flex items-center gap-2">
+          <button onClick={zoomOut} disabled={scale <= MIN}
+            className="p-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10 disabled:opacity-30 transition-colors">
+            <ZoomOut className="w-5 h-5" />
+          </button>
+          <span className="text-white/70 text-xs min-w-[3.5rem] text-center font-mono">{Math.round(scale * 100)}%</span>
+          <button onClick={zoomIn} disabled={scale >= MAX}
+            className="p-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10 disabled:opacity-30 transition-colors">
+            <ZoomIn className="w-5 h-5" />
+          </button>
+          <button onClick={reset} className="p-2 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors text-xs">
+            إعادة
+          </button>
+        </div>
+        <p className="text-white/50 text-xs hidden sm:block">انقر مزدوجاً للتكبير • اسحب للتحريك</p>
+        <button onClick={onClose}
+          className="p-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors">
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+
+      {/* image area */}
+      <div
+        className="flex-1 overflow-hidden flex items-center justify-center"
+        style={{ cursor: scale > 1 ? "grab" : "zoom-in" }}
+        onDoubleClick={handleDoubleClick}
+        onMouseDown={onMouseDown}
+        onMouseMove={onMouseMove}
+        onMouseUp={onMouseUp}
+        onMouseLeave={onMouseUp}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        onWheel={onWheel}
+      >
+        <img
+          ref={imgRef}
+          src={src}
+          alt={alt}
+          draggable={false}
+          style={{
+            transform: `scale(${scale}) translate(${translate.x / scale}px, ${translate.y / scale}px)`,
+            transformOrigin: scale === 1 ? "center center" : `${origin.x}% ${origin.y}%`,
+            transition: isDragging.current ? "none" : "transform 0.15s ease",
+            maxWidth: "100%",
+            maxHeight: "100%",
+            width: "auto",
+            height: "auto",
+            objectFit: "contain",
+            userSelect: "none",
+          } as React.CSSProperties}
+          className="select-none"
+        />
+      </div>
+
+      {/* hint */}
+      <p className="text-center text-white/30 text-xs py-2 shrink-0 sm:hidden">
+        انقر مزدوجاً للتكبير
+      </p>
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════
+   Main page
+   ════════════════════════════════════════════════════════ */
 export default function AccountDetails() {
   const params = useParams<{ id: string }>();
   const id = parseInt(params.id ?? "", 10);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   const { data: account, isLoading, isError } = useGetAccount(id);
   const { data: settings } = useGetSettings();
   const trackClick = useTrackAccountClick();
 
   const handleBack = () => {
-    if (window.history.length > 1) {
-      window.history.back();
-    } else {
-      window.location.href = "/accounts";
-    }
+    if (window.history.length > 1) window.history.back();
+    else window.location.href = "/accounts";
   };
 
   const handleBuy = () => {
@@ -57,7 +222,6 @@ export default function AccountDetails() {
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, "_blank");
   };
 
-  /* ── Loading ── */
   if (isLoading) {
     return (
       <PublicLayout>
@@ -68,24 +232,20 @@ export default function AccountDetails() {
     );
   }
 
-  /* ── Error ── */
   if (isError || !account) {
     return (
       <PublicLayout>
         <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4 text-center px-4">
           <p className="text-xl font-bold">الحساب غير موجود</p>
-          <button onClick={handleBack} className="text-primary underline text-sm">
-            العودة للمتجر
-          </button>
+          <button onClick={handleBack} className="text-primary underline text-sm">العودة للمتجر</button>
         </div>
       </PublicLayout>
     );
   }
 
-  /* ── Derived values ── */
-  const isMonetized = account.platform === "tiktok_monetized";
+  const isMonetized       = account.platform === "tiktok_monetized";
   const hasActiveEarnings = isMonetized && account.earningsStatus === "active";
-  const isSold = account.status === "sold";
+  const isSold            = account.status === "sold";
 
   const PlatformIcon =
     (account.platform === "tiktok" || isMonetized) ? SiTiktok
@@ -104,15 +264,17 @@ export default function AccountDetails() {
     : "فيسبوك";
 
   const followersLabel =
-    account.followers >= 1_000_000
-      ? `${(account.followers / 1_000_000).toFixed(1)}M`
-      : account.followers >= 1000
-      ? `${Math.round(account.followers / 1000)}K`
-      : `${account.followers}`;
+    account.followers >= 1_000_000 ? `${(account.followers / 1_000_000).toFixed(1)}M`
+    : account.followers >= 1000    ? `${Math.round(account.followers / 1000)}K`
+    : `${account.followers}`;
 
-  /* ── Render ── */
   return (
     <PublicLayout>
+      {/* Lightbox */}
+      {lightboxOpen && account.imageUrl && (
+        <Lightbox src={account.imageUrl} alt={account.name} onClose={() => setLightboxOpen(false)} />
+      )}
+
       <div className="max-w-2xl mx-auto px-4 py-5 pb-32 sm:pb-24">
 
         {/* Back */}
@@ -124,7 +286,7 @@ export default function AccountDetails() {
           العودة للمتجر
         </button>
 
-        {/* ── Earnings banner (monetized only) ── */}
+        {/* Earnings banner */}
         {isMonetized && (
           <div className={`flex items-center gap-2 rounded-xl px-4 py-3 mb-4 ${
             hasActiveEarnings
@@ -137,41 +299,65 @@ export default function AccountDetails() {
                 {hasActiveEarnings ? "💰 مفعّل أرباح المشاهدات" : "قسم تيك توك أرباح المشاهدات"}
               </p>
               {hasActiveEarnings && account.eligibleCountry && (
-                <p className="text-xs text-green-600 dark:text-green-500 mt-0.5">
-                  مؤهل في: {account.eligibleCountry}
-                </p>
+                <p className="text-xs text-green-600 dark:text-green-500 mt-0.5">مؤهل في: {account.eligibleCountry}</p>
               )}
             </div>
           </div>
         )}
 
-        {/* ── Image ── */}
-        <div className="relative w-full rounded-2xl overflow-hidden bg-muted aspect-[16/9] sm:aspect-[4/3] mb-5">
+        {/* ── Image — contain, no crop, click to lightbox ── */}
+        <div className="relative w-full rounded-2xl overflow-hidden bg-muted mb-5 group">
           {account.imageUrl ? (
-            <img
-              src={account.imageUrl}
-              alt={account.name}
-              className="w-full h-full object-cover"
-            />
+            <>
+              {/* contain wrapper — height adapts to image */}
+              <div
+                className="w-full flex items-center justify-center bg-muted/80 dark:bg-muted/60 cursor-zoom-in"
+                style={{ minHeight: "200px", maxHeight: "70vh" }}
+                onClick={() => setLightboxOpen(true)}
+              >
+                <img
+                  src={account.imageUrl}
+                  alt={account.name}
+                  className="w-full h-auto block"
+                  style={{
+                    objectFit: "contain",
+                    maxHeight: "70vh",
+                  } as React.CSSProperties}
+                  loading="eager"
+                  decoding="sync"
+                />
+              </div>
+
+              {/* zoom hint overlay */}
+              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                <div className="bg-black/50 backdrop-blur-sm rounded-full px-3 py-1.5 flex items-center gap-1.5">
+                  <Maximize2 className="w-3.5 h-3.5 text-white" />
+                  <span className="text-white text-xs font-medium">عرض كامل</span>
+                </div>
+              </div>
+
+              {/* status badge */}
+              <span className={`absolute top-3 right-3 text-white text-xs font-bold px-3 py-1 rounded-full shadow ${
+                isSold ? "bg-destructive" : "bg-green-500"
+              }`}>
+                {isSold ? "مباع" : "متاح للبيع"}
+              </span>
+
+              {account.featured && (
+                <span className="absolute top-3 left-3 text-white text-xs font-bold px-3 py-1 rounded-full shadow bg-yellow-500">
+                  مميز ★
+                </span>
+              )}
+            </>
           ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <PlatformIcon className="w-16 h-16 sm:w-24 sm:h-24 opacity-10" />
+            <div className="w-full flex items-center justify-center" style={{ height: "280px" }}>
+              <PlatformIcon className="w-20 h-20 opacity-10" />
+              <span className={`absolute top-3 right-3 text-white text-xs font-bold px-3 py-1 rounded-full ${
+                isSold ? "bg-destructive" : "bg-green-500"
+              }`}>
+                {isSold ? "مباع" : "متاح للبيع"}
+              </span>
             </div>
-          )}
-          <div className="absolute bottom-0 inset-x-0 h-20 bg-gradient-to-t from-black/60 to-transparent" />
-
-          {/* Status */}
-          <span className={`absolute bottom-3 right-3 text-white text-xs font-bold px-3 py-1 rounded-full ${
-            isSold ? "bg-destructive" : "bg-green-500"
-          }`}>
-            {isSold ? "مباع" : "متاح للبيع"}
-          </span>
-
-          {/* Featured */}
-          {account.featured && (
-            <span className="absolute bottom-3 left-3 text-white text-xs font-bold px-3 py-1 rounded-full bg-yellow-500">
-              مميز ★
-            </span>
           )}
         </div>
 
@@ -180,9 +366,7 @@ export default function AccountDetails() {
           <div className="flex items-center gap-2 min-w-0">
             <PlatformIcon className={`w-5 h-5 shrink-0 ${platformColor}`} />
             <div className="min-w-0">
-              <h1 className="font-black text-xl sm:text-2xl leading-tight" dir="ltr">
-                {account.name}
-              </h1>
+              <h1 className="font-black text-xl sm:text-2xl leading-tight" dir="ltr">{account.name}</h1>
               <p className="text-xs text-muted-foreground mt-0.5">{platformAr}</p>
             </div>
           </div>
@@ -297,7 +481,7 @@ export default function AccountDetails() {
           </ul>
         </div>
 
-        {/* ── Share URL hint ── */}
+        {/* ── Share URL ── */}
         <div className="mb-6 bg-muted/30 rounded-xl px-4 py-3 border border-dashed border-border">
           <p className="text-[10px] text-muted-foreground mb-1">رابط الحساب القابل للمشاركة</p>
           <p className="font-mono text-xs text-foreground break-all" dir="ltr">
@@ -306,7 +490,7 @@ export default function AccountDetails() {
         </div>
 
         {/* ── Sticky action buttons ── */}
-        <div className="fixed bottom-0 inset-x-0 z-50 bg-background/95 backdrop-blur-sm border-t px-4 py-3 safe-area-inset-bottom">
+        <div className="fixed bottom-0 inset-x-0 z-50 bg-background/95 backdrop-blur-sm border-t px-4 py-3">
           <div className="max-w-2xl mx-auto flex flex-col gap-2">
             {account.accountUrl && (
               <a
@@ -339,7 +523,7 @@ export default function AccountDetails() {
   );
 }
 
-/* ── Helper component ── */
+/* ── InfoRow helper ── */
 function InfoRow({
   label, value, icon, ltr, valueClass,
 }: {
@@ -352,8 +536,7 @@ function InfoRow({
   return (
     <div className="flex items-center justify-between gap-2 px-4 py-2.5">
       <span className="text-xs text-muted-foreground flex items-center gap-1 shrink-0">
-        {icon}
-        {label}
+        {icon}{label}
       </span>
       <span
         className={`text-xs font-medium truncate max-w-[55%] text-right ${valueClass ?? ""}`}
