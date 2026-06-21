@@ -397,13 +397,13 @@ export default function AdminAccounts() {
                   key={acc.id}
                   className="group relative bg-card border rounded-xl overflow-hidden shadow-sm hover:shadow-md hover:border-primary/30 transition-all flex flex-col"
                 >
-                  {/* ── Image area ── */}
-                  <div className="relative h-36 sm:h-44 bg-muted flex items-center justify-center overflow-hidden shrink-0">
+                  {/* ── Image area — full image, no crop ── */}
+                  <div className="relative bg-muted flex items-center justify-center shrink-0" style={{ aspectRatio: "4/3" }}>
                     {acc.imageUrl ? (
                       <img
                         src={acc.imageUrl}
                         alt={acc.name}
-                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        className="w-full h-full object-contain"
                         loading="lazy"
                       />
                     ) : (
@@ -646,7 +646,7 @@ export default function AdminAccounts() {
                   <div className="flex items-center gap-3">
                     <div className="w-16 h-16 rounded-lg border overflow-hidden bg-muted flex items-center justify-center shrink-0">
                       {form.imageUrl
-                        ? <img src={form.imageUrl} alt="" className="w-full h-full object-cover" />
+                        ? <img src={form.imageUrl} alt="" className="w-full h-full object-contain" />
                         : <ImageIcon className="w-5 h-5 text-muted-foreground/40" />}
                     </div>
                     <div className="flex flex-col gap-1.5">
@@ -703,7 +703,7 @@ export default function AdminAccounts() {
                 <div className="flex items-center gap-3 bg-muted/30 rounded-xl p-4 border">
                   <div className="w-14 h-14 rounded-lg overflow-hidden border bg-muted shrink-0">
                     {activeAcc.imageUrl
-                      ? <img src={activeAcc.imageUrl} alt="" className="w-full h-full object-cover" />
+                      ? <img src={activeAcc.imageUrl} alt="" className="w-full h-full object-contain" />
                       : <div className={`w-full h-full flex items-center justify-center ${PLT[activeAcc.platform]?.color}`}>
                           {PLT[activeAcc.platform]?.icon}
                         </div>}
@@ -770,12 +770,34 @@ export default function AdminAccounts() {
 
             {/* ── Quick: Image ─────────────────────────────────────────── */}
             {sheetMode === "image" && activeAcc && (
-              <div className="p-5 flex flex-col gap-5 items-center">
-                <div className="w-40 h-40 rounded-xl border overflow-hidden bg-muted flex items-center justify-center">
-                  {activeAcc.imageUrl
-                    ? <img src={activeAcc.imageUrl} alt="" className="w-full h-full object-cover" />
-                    : <ImageIcon className="w-10 h-10 text-muted-foreground/30" />}
-                </div>
+              <div className="p-5 flex flex-col gap-5">
+                {/* Full image preview — natural size, no crop */}
+                {activeAcc.imageUrl ? (
+                  <a
+                    href={activeAcc.imageUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block w-full rounded-xl border overflow-hidden bg-muted cursor-zoom-in group relative"
+                    title="فتح بالحجم الكامل"
+                  >
+                    <img
+                      src={activeAcc.imageUrl}
+                      alt=""
+                      className="w-full h-auto block"
+                      loading="eager"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                      <div className="bg-black/60 backdrop-blur-sm rounded-full px-3 py-1.5 flex items-center gap-1.5">
+                        <ExternalLink className="w-3.5 h-3.5 text-white" />
+                        <span className="text-white text-xs font-medium">فتح بالحجم الكامل</span>
+                      </div>
+                    </div>
+                  </a>
+                ) : (
+                  <div className="w-full rounded-xl border bg-muted flex items-center justify-center" style={{ minHeight: "160px" }}>
+                    <ImageIcon className="w-10 h-10 text-muted-foreground/30" />
+                  </div>
+                )}
 
                 <div className="text-center space-y-1">
                   <p className="font-bold" dir="ltr">{activeAcc.name}</p>
