@@ -76,16 +76,11 @@ export function AccountCard({ account }: AccountCardProps) {
           </span>
         </div>
 
-        {/* Top-left: Followers + featured + monetized stacked */}
+        {/* Top-left: Followers + monetized stacked */}
         <div className="absolute top-2 left-2 flex flex-col gap-1 items-start">
           <span className="bg-black/70 text-white text-xs sm:text-[13px] font-bold px-2 py-1 rounded-full leading-none shadow-sm">
             {followersLabel} متابع
           </span>
-          {account.featured && (
-            <span className="bg-yellow-500 text-white text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full leading-none shadow-sm">
-              مميز ★
-            </span>
-          )}
           {isMonetized && account.earningsStatus === "active" && (
             <span className="bg-green-600 text-white text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full leading-none flex items-center gap-0.5 shadow-sm">
               <DollarSign className="w-2.5 h-2.5" />مفعّل الأرباح
