@@ -1,6 +1,16 @@
 @import url("https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap");
 
 @import "tailwindcss";
+
+/* ── Hide all Replit dev-tool widgets from visitors ── */
+[id*="replit"],
+[class*="replit"],
+[data-replit-widget],
+iframe[src*="replit"] {
+  display: none !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
 @import "tw-animate-css";
 @plugin "@tailwindcss/typography";
 

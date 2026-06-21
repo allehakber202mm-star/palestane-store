@@ -26,12 +26,14 @@ if (!basePath) {
   );
 }
 
+const isDev = process.env.NODE_ENV !== "production";
+
 export default defineConfig({
   base: basePath,
   plugins: [
     react(),
     tailwindcss(),
-    runtimeErrorOverlay(),
+    ...(isDev ? [runtimeErrorOverlay()] : []),
   ],
   resolve: {
     alias: {
