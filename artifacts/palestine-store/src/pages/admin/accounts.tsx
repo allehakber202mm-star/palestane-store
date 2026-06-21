@@ -12,7 +12,7 @@ import {
   AccountUpdate,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -106,6 +106,15 @@ export default function AdminAccounts() {
     platform: tab,
     status:   statusFilter !== "all" ? statusFilter : undefined,
   });
+
+  // Auto-refresh every 30 s to pick up Telegram-synced accounts
+  useEffect(() => {
+    const id = setInterval(() => {
+      qc.invalidateQueries({ queryKey: getAdminListAccountsQueryKey() });
+      qc.invalidateQueries({ queryKey: getGetDashboardStatsQueryKey() });
+    }, 30_000);
+    return () => clearInterval(id);
+  }, [qc]);
 
   const createMut = useCreateAccount();
   const updateMut = useUpdateAccount();
