@@ -19,7 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Plus, Edit2, Trash2, Image as ImageIcon, DollarSign, Users,
-  Link2, Check, X, Loader2, UploadCloud, ExternalLink, TrendingUp,
+  Link2, Check, X, Loader2, UploadCloud, ExternalLink, TrendingUp, Send,
 } from "lucide-react";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
@@ -89,6 +89,7 @@ export default function AdminAccounts() {
   const [errors, setErrors]   = useState<Partial<Record<keyof FormState, string>>>({});
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [tgImporting, setTgImporting] = useState(false);
   const [quickVal, setQuickVal] = useState("");
   const [quickSaving, setQuickSaving] = useState(false);
   const [urlVal, setUrlVal]   = useState("");
@@ -113,6 +114,31 @@ export default function AdminAccounts() {
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: getAdminListAccountsQueryKey() });
     qc.invalidateQueries({ queryKey: getGetDashboardStatsQueryKey() });
+  };
+
+  const handleTelegramImport = async () => {
+    setTgImporting(true);
+    try {
+      const token = localStorage.getItem("admin_token");
+      const res = await fetch("/api/telegram/import", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json() as { imported?: number; skipped?: number; message?: string; error?: string };
+      if (!res.ok) {
+        toast({ title: "خطأ", description: data.error ?? "فشل الاستيراد", variant: "destructive" });
+        return;
+      }
+      toast({
+        title: data.imported ? "تم الاستيراد ✓" : "لا جديد",
+        description: data.message ?? `تم استيراد ${data.imported} منشور`,
+      });
+      if (data.imported) invalidate();
+    } catch {
+      toast({ title: "خطأ في الاتصال", description: "تعذّر الوصول إلى السيرفر", variant: "destructive" });
+    } finally {
+      setTgImporting(false);
+    }
   };
 
   const setF = <K extends keyof FormState>(k: K, v: FormState[K]) => {
@@ -291,6 +317,17 @@ export default function AdminAccounts() {
               {isLoading ? "..." : totalCount} حساب في {PLT[tab]?.label}
             </p>
           </div>
+          <Button
+            variant="outline"
+            onClick={handleTelegramImport}
+            disabled={tgImporting}
+            className="gap-1.5 font-bold border-sky-400 text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950"
+          >
+            {tgImporting
+              ? <Loader2 className="h-4 w-4 animate-spin" />
+              : <Send className="h-4 w-4" />}
+            استيراد من تيليجرام
+          </Button>
           <Button onClick={openAdd} className="gap-1.5 font-bold">
             <Plus className="h-4 w-4" /> إضافة
           </Button>
