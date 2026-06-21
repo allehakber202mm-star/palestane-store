@@ -14,6 +14,7 @@ export interface AccountInput {
   followers: number;
   price: number;
   description?: string;
+  username?: string;
   imageUrl?: string;
   accountUrl?: string;
   status?: AccountInputStatus;

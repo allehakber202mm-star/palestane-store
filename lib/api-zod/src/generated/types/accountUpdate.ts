@@ -14,6 +14,7 @@ export interface AccountUpdate {
   followers?: number;
   price?: number;
   description?: string;
+  username?: string;
   imageUrl?: string;
   accountUrl?: string;
   status?: AccountUpdateStatus;

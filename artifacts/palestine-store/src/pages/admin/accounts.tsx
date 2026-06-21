@@ -65,17 +65,18 @@ type SheetMode = "form" | "price" | "followers" | "image" | "link" | null;
 type FormState = {
   name: string; platform: string; followers: string; price: string;
   description: string; status: string; featured: boolean;
-  imageUrl: string; accountUrl: string;
+  username: string; imageUrl: string; accountUrl: string;
 };
 const EMPTY: FormState = {
   name: "", platform: "tiktok", followers: "", price: "",
   description: "", status: "available", featured: false,
-  imageUrl: "", accountUrl: "",
+  username: "", imageUrl: "", accountUrl: "",
 };
 
 type AccRow = { id: number; name: string; platform: string; followers: number;
   price: number; description: string | null; status: string; featured: boolean;
-  imageUrl: string | null; accountUrl?: string | null; clickCount: number; createdAt: string; updatedAt?: string;
+  username?: string | null; imageUrl: string | null; accountUrl?: string | null;
+  clickCount: number; createdAt: string; updatedAt?: string;
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -171,8 +172,8 @@ export default function AdminAccounts() {
       name: acc.name, platform: acc.platform,
       followers: String(acc.followers), price: String(acc.price),
       description: acc.description || "", status: acc.status,
-      featured: acc.featured, imageUrl: acc.imageUrl || "",
-      accountUrl: acc.accountUrl || "",
+      featured: acc.featured, username: acc.username || "",
+      imageUrl: acc.imageUrl || "", accountUrl: acc.accountUrl || "",
     });
     setErrors({});
     setSheetMode("form");
@@ -218,6 +219,7 @@ export default function AdminAccounts() {
       description: form.description || null,
       status: form.status as "available" | "sold",
       featured: form.featured,
+      username: form.username.trim() || null,
       imageUrl: form.imageUrl || null,
       accountUrl: form.accountUrl.trim() || null,
     };
@@ -483,6 +485,13 @@ export default function AdminAccounts() {
                       <span className="font-bold text-xs line-clamp-1 min-w-0" dir="ltr">{acc.name}</span>
                     </div>
 
+                    {/* Username */}
+                    {(acc as AccRow).username && (
+                      <div className="text-[10px] text-muted-foreground truncate" dir="ltr">
+                        @{(acc as AccRow).username}
+                      </div>
+                    )}
+
                     {/* Price */}
                     <div className="flex items-center justify-between">
                       <span className="font-black text-sm text-primary">{acc.price}₪</span>
@@ -542,10 +551,21 @@ export default function AdminAccounts() {
               <form onSubmit={handleSubmit} className="flex flex-col gap-5 p-5 pb-8">
                 {/* Name */}
                 <div className="space-y-1.5">
-                  <Label>اسم الحساب (يوزر)</Label>
+                  <Label>اسم الحساب / عنوان المنشور</Label>
                   <Input dir="ltr" className="text-left" value={form.name}
                     onChange={(e) => setF("name", e.target.value)} placeholder="@username" />
                   {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
+                </div>
+
+                {/* Username */}
+                <div className="space-y-1.5">
+                  <Label>اسم المستخدم (Username)</Label>
+                  <div className="relative">
+                    <span className="absolute top-1/2 -translate-y-1/2 right-3 text-muted-foreground text-sm select-none">@</span>
+                    <Input dir="ltr" className="text-left pr-7" value={form.username}
+                      onChange={(e) => setF("username", e.target.value.replace(/^@/, ""))}
+                      placeholder="username" />
+                  </div>
                 </div>
 
                 {/* Platform */}

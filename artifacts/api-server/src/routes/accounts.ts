@@ -13,6 +13,7 @@ export function formatAccount(a: Record<string, unknown>) {
     followers: a.followers,
     price: parseFloat(String(a.price)),
     description: a.description ?? null,
+    username: a.username ?? null,
     imageUrl: a.imageUrl ?? null,
     accountUrl: a.accountUrl ?? null,
     status: a.status,

@@ -402,6 +402,8 @@ components:
           type: number
         description:
           type: ["string", "null"]
+        username:
+          type: ["string", "null"]
         imageUrl:
           type: ["string", "null"]
         accountUrl:
@@ -443,6 +445,8 @@ components:
           type: number
         description:
           type: string
+        username:
+          type: string
         imageUrl:
           type: string
         accountUrl:
@@ -476,6 +480,8 @@ components:
         price:
           type: number
         description:
+          type: string
+        username:
           type: string
         imageUrl:
           type: string

@@ -36,6 +36,8 @@ export interface Account {
   /** @nullable */
   description?: string | null;
   /** @nullable */
+  username?: string | null;
+  /** @nullable */
   imageUrl?: string | null;
   /** @nullable */
   accountUrl?: string | null;
@@ -80,6 +82,7 @@ export interface AccountInput {
   followers: number;
   price: number;
   description?: string;
+  username?: string;
   imageUrl?: string;
   accountUrl?: string;
   status?: AccountInputStatus;
@@ -115,6 +118,7 @@ export interface AccountUpdate {
   followers?: number;
   price?: number;
   description?: string;
+  username?: string;
   imageUrl?: string;
   accountUrl?: string;
   status?: AccountUpdateStatus;

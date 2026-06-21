@@ -17,6 +17,8 @@ export interface Account {
   /** @nullable */
   description?: string | null;
   /** @nullable */
+  username?: string | null;
+  /** @nullable */
   imageUrl?: string | null;
   /** @nullable */
   accountUrl?: string | null;
