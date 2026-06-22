@@ -325,6 +325,13 @@ async function importVideo(fileId: string, token: string): Promise<string | null
   }
 }
 
+// ── Sold keyword detection ─────────────────────────────────────────────────
+const SOLD_PATTERN = /مباع|تم\s+البيع|SOLD|❌/i;
+
+export function isSoldPost(text: string): boolean {
+  return SOLD_PATTERN.test(text);
+}
+
 // ── Core sync (used by route + background job) ─────────────────────────────
 export async function runTelegramSync(): Promise<SyncResult> {
   const token   = BOT_TOKEN();
@@ -386,6 +393,10 @@ export async function runTelegramSync(): Promise<SyncResult> {
     .filter(u => u.channel_post?.chat.username?.toLowerCase() === channel.toLowerCase())
     .map(u => ({ update_id: u.update_id, post: u.channel_post! }));
 
+  const accountEditedPosts = updates
+    .filter(u => u.edited_channel_post?.chat.username?.toLowerCase() === channel.toLowerCase())
+    .map(u => ({ update_id: u.update_id, post: u.edited_channel_post! }));
+
   const feedbackNewPosts = updates
     .filter(u => u.channel_post?.chat.username?.toLowerCase() === feedbackChannel.toLowerCase())
     .map(u => ({ update_id: u.update_id, post: u.channel_post! }));
@@ -397,6 +408,7 @@ export async function runTelegramSync(): Promise<SyncResult> {
   logger.info(
     {
       accountPosts: accountPosts.length,
+      accountEditedPosts: accountEditedPosts.length,
       feedbackNewPosts: feedbackNewPosts.length,
       feedbackEditedPosts: feedbackEditedPosts.length,
     },
@@ -472,7 +484,59 @@ export async function runTelegramSync(): Promise<SyncResult> {
     logger.info({ telegramMessageId: post.message_id }, "Feedback sync: ✏️ منشور محدّث");
   }
 
-  // ── Process account posts ─────────────────────────────────────────────────
+  // ── Process account edited posts (sold / available detection) ────────────
+  if (accountEditedPosts.length > 0) {
+    const editedMsgIds = accountEditedPosts.map(p => p.post.message_id);
+    const editedAccounts = await db
+      .select({ id: accountsTable.id, telegramMessageId: accountsTable.telegramMessageId, status: accountsTable.status })
+      .from(accountsTable)
+      .where(inArray(accountsTable.telegramMessageId, editedMsgIds));
+    const accountByMsgId = new Map(editedAccounts.map(a => [a.telegramMessageId, a]));
+
+    for (const { post } of accountEditedPosts) {
+      const account = accountByMsgId.get(post.message_id);
+      if (!account) {
+        logger.info(
+          { telegramMessageId: post.message_id },
+          "Account edit sync: لم يُعثر على حساب بهذا message_id — تم التخطي",
+        );
+        continue;
+      }
+
+      const rawText = (post.caption ?? post.text ?? "").trim();
+      const sold = isSoldPost(rawText);
+      const newStatus = sold ? "sold" : "available";
+
+      if (account.status === newStatus) {
+        logger.info(
+          { telegramMessageId: post.message_id, accountId: account.id, status: newStatus },
+          "Account edit sync: الحالة لم تتغير — تم التخطي",
+        );
+        continue;
+      }
+
+      await db
+        .update(accountsTable)
+        .set({ status: newStatus, updatedAt: new Date() })
+        .where(eq(accountsTable.id, account.id));
+
+      logger.info(
+        {
+          telegramMessageId: post.message_id,
+          accountId: account.id,
+          oldStatus: account.status,
+          newStatus,
+          sold,
+          textPreview: rawText.slice(0, 80),
+        },
+        sold
+          ? "Account edit sync: 🔴 حساب تم تحديثه → مباع"
+          : "Account edit sync: 🟢 حساب تم تحديثه → متاح",
+      );
+    }
+  }
+
+  // ── Process account posts (new) ───────────────────────────────────────────
   const messageIds = accountPosts.map(p => p.post.message_id);
   const parsed     = accountPosts.map(p => ({
     ...p,

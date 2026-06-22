@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, accountsTable, statsTable } from "@workspace/db";
-import { eq, desc, and, sql } from "drizzle-orm";
+import { eq, desc, and, sql, asc } from "drizzle-orm";
 import { ListAccountsQueryParams } from "@workspace/api-zod";
 
 const router = Router();
@@ -38,20 +38,23 @@ router.get("/", async (req, res) => {
   if (params.status) conditions.push(eq(accountsTable.status, params.status));
   if (params.featured !== undefined) conditions.push(eq(accountsTable.featured, params.featured));
 
+  // available first, sold last — then by followers desc
+  const statusOrder = sql`CASE WHEN ${accountsTable.status} = 'sold' THEN 1 ELSE 0 END`;
+
   let rows;
   if (conditions.length > 0) {
     rows = await db
       .select()
       .from(accountsTable)
       .where(and(...conditions))
-      .orderBy(desc(accountsTable.followers))
+      .orderBy(asc(statusOrder), desc(accountsTable.followers))
       .limit(params.limit ?? 50)
       .offset(params.offset ?? 0);
   } else {
     rows = await db
       .select()
       .from(accountsTable)
-      .orderBy(desc(accountsTable.followers))
+      .orderBy(asc(statusOrder), desc(accountsTable.followers))
       .limit(params.limit ?? 50)
       .offset(params.offset ?? 0);
   }
