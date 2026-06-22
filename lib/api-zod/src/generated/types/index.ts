@@ -21,6 +21,7 @@ export * from './clickResult';
 export * from './dashboardStats';
 export * from './deleteResult';
 export * from './errorEnvelope';
+export * from './feedbackPost';
 export * from './healthStatus';
 export * from './imageUploadResult';
 export * from './listAccountsParams';

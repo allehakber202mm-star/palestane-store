@@ -227,6 +227,16 @@ export interface UploadUrlResponse {
   metadata?: UploadUrlRequest;
 }
 
+export interface FeedbackPost {
+  id: number;
+  telegramMessageId: number;
+  text?: string | null;
+  imageUrl?: string | null;
+  postedAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ErrorEnvelope {
   error: string;
 }

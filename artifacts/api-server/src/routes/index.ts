@@ -8,6 +8,7 @@ import statsRouter from "./stats";
 import storageRouter from "./storage";
 import telegramRouter from "./telegram";
 import reviewsRouter from "./reviews";
+import feedbackRouter from "./feedback";
 
 const router: IRouter = Router();
 
@@ -22,6 +23,7 @@ router.use("/storage", storageRouter);
 router.use("/telegram", telegramRouter);
 router.use("/admin/telegram", telegramRouter);
 router.use("/reviews", reviewsRouter);
+router.use("/feedback", feedbackRouter);
 router.use("/", reviewsRouter);
 
 export default router;

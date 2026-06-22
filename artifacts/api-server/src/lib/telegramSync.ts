@@ -1,13 +1,15 @@
-import { db, accountsTable, settingsTable } from "@workspace/db";
+import { db, accountsTable, settingsTable, feedbackPostsTable } from "@workspace/db";
 import { eq, inArray } from "drizzle-orm";
 import { objectStorageClient } from "./objectStorage";
 import { randomUUID } from "crypto";
 import { logger } from "./logger";
 
-const BOT_TOKEN = () => process.env.TELEGRAM_BOT_TOKEN ?? "";
-const CHANNEL   = () =>
+const BOT_TOKEN        = () => process.env.TELEGRAM_BOT_TOKEN ?? "";
+const CHANNEL          = () =>
   (process.env.TELEGRAM_CHANNEL_USERNAME ?? "Palestine_storeL").replace(/^@/, "");
-const TG_API = (method: string, token: string) =>
+const FEEDBACK_CHANNEL = () =>
+  (process.env.TELEGRAM_FEEDBACK_CHANNEL ?? "palestinestore01").replace(/^@/, "");
+const TG_API  = (method: string, token: string) =>
   `https://api.telegram.org/bot${token}/${method}`;
 const TG_FILE = (token: string, filePath: string) =>
   `https://api.telegram.org/file/bot${token}/${filePath}`;
@@ -16,12 +18,13 @@ const TG_FILE = (token: string, filePath: string) =>
 export type TgPhoto  = { file_id: string; width: number; height: number };
 export type TgPost   = {
   message_id: number;
+  date: number;
   chat: { username?: string };
   text?: string;
   caption?: string;
   photo?: TgPhoto[];
 };
-export type TgUpdate = { update_id: number; channel_post?: TgPost };
+export type TgUpdate = { update_id: number; channel_post?: TgPost; edited_channel_post?: TgPost };
 
 export interface SyncResult {
   imported: number;
@@ -279,10 +282,12 @@ export async function runTelegramSync(): Promise<SyncResult> {
     .limit(1);
   const storedOffset = offsetRow ? parseInt(offsetRow.value, 10) : 0;
 
-  // Fetch updates
+  const feedbackChannel = FEEDBACK_CHANNEL();
+
+  // Fetch updates (accounts + feedback channels)
   const params = new URLSearchParams({
     limit: "100",
-    allowed_updates: JSON.stringify(["channel_post"]),
+    allowed_updates: JSON.stringify(["channel_post", "edited_channel_post"]),
   });
   if (storedOffset > 0) params.set("offset", String(storedOffset + 1));
 
@@ -297,16 +302,74 @@ export async function runTelegramSync(): Promise<SyncResult> {
   const updates = updatesData.result;
   if (!updates.length) return { imported: 0, skipped: 0, total: 0 };
 
-  // Filter to our channel
-  const posts = updates
+  // ── Separate by channel ───────────────────────────────────────────────────
+  const accountPosts = updates
     .filter(u => u.channel_post?.chat.username?.toLowerCase() === channel.toLowerCase())
     .map(u => ({ update_id: u.update_id, post: u.channel_post! }));
 
-  // ── Deduplication: by telegramMessageId only ─────────────────────────────
-  // Username-based dedup was removed because the store's own @handle appears
-  // in every post and was blocking all new imports.
-  const messageIds = posts.map(p => p.post.message_id);
-  const parsed     = posts.map(p => ({
+  const feedbackNewPosts = updates
+    .filter(u => u.channel_post?.chat.username?.toLowerCase() === feedbackChannel.toLowerCase())
+    .map(u => ({ update_id: u.update_id, post: u.channel_post! }));
+
+  const feedbackEditedPosts = updates
+    .filter(u => u.edited_channel_post?.chat.username?.toLowerCase() === feedbackChannel.toLowerCase())
+    .map(u => ({ update_id: u.update_id, post: u.edited_channel_post! }));
+
+  // ── Process feedback new posts ────────────────────────────────────────────
+  if (feedbackNewPosts.length > 0) {
+    const fbMsgIds = feedbackNewPosts.map(p => p.post.message_id);
+    const existing = await db
+      .select({ tgId: feedbackPostsTable.telegramMessageId })
+      .from(feedbackPostsTable)
+      .where(inArray(feedbackPostsTable.telegramMessageId, fbMsgIds));
+    const existingFbIds = new Set(existing.map(r => r.tgId));
+
+    for (const { post } of feedbackNewPosts) {
+      if (existingFbIds.has(post.message_id)) continue;
+
+      let imageUrl: string | null = null;
+      if (post.photo?.length) {
+        const largest = post.photo.reduce((a, b) =>
+          a.width * a.height >= b.width * b.height ? a : b,
+        );
+        imageUrl = await importPhoto(largest.file_id, token);
+      }
+
+      const rawText = (post.caption ?? post.text ?? "").trim() || null;
+      const postedAt = new Date((post as unknown as { date?: number }).date
+        ? (post as unknown as { date: number }).date * 1000
+        : Date.now());
+
+      await db.insert(feedbackPostsTable).values({
+        telegramMessageId: post.message_id,
+        text:    rawText,
+        imageUrl,
+        postedAt,
+      });
+      logger.info({ telegramMessageId: post.message_id, hasImage: !!imageUrl }, "Feedback sync: ✅ منشور جديد أُضيف");
+    }
+  }
+
+  // ── Process feedback edited posts ─────────────────────────────────────────
+  for (const { post } of feedbackEditedPosts) {
+    let imageUrl: string | null = null;
+    if (post.photo?.length) {
+      const largest = post.photo.reduce((a, b) =>
+        a.width * a.height >= b.width * b.height ? a : b,
+      );
+      imageUrl = await importPhoto(largest.file_id, token);
+    }
+    const rawText = (post.caption ?? post.text ?? "").trim() || null;
+    await db
+      .update(feedbackPostsTable)
+      .set({ text: rawText, imageUrl, updatedAt: new Date() })
+      .where(eq(feedbackPostsTable.telegramMessageId, post.message_id));
+    logger.info({ telegramMessageId: post.message_id }, "Feedback sync: ✏️ منشور محدّث");
+  }
+
+  // ── Process account posts ─────────────────────────────────────────────────
+  const messageIds = accountPosts.map(p => p.post.message_id);
+  const parsed     = accountPosts.map(p => ({
     ...p,
     parsed: parsePostText(p.post.caption ?? p.post.text ?? "", p.post.message_id),
   }));
@@ -400,7 +463,7 @@ export async function runTelegramSync(): Promise<SyncResult> {
       set:    { value: String(maxUpdateId) },
     });
 
-  return { imported, skipped, total: posts.length };
+  return { imported, skipped, total: accountPosts.length };
 }
 
 // ── Background auto-sync ───────────────────────────────────────────────────

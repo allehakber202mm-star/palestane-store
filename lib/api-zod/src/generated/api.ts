@@ -376,6 +376,21 @@ export const TrackWhatsappClickResponse = zod.object({
 
 
 /**
+ * @summary List feedback posts from Telegram channel
+ */
+export const ListFeedbackResponseItem = zod.object({
+  "id": zod.number(),
+  "telegramMessageId": zod.number(),
+  "text": zod.string().nullish(),
+  "imageUrl": zod.string().nullish(),
+  "postedAt": zod.coerce.date(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListFeedbackResponse = zod.array(ListFeedbackResponseItem)
+
+
+/**
  * @summary List customer review images
  */
 export const ListReviewsResponseItem = zod.object({

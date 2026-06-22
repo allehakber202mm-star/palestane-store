@@ -111,7 +111,7 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
             }
 
             // External link
-            const href = buildExternalHref(item, settings as Record<string, string | null | undefined>);
+            const href = buildExternalHref(item, settings as unknown as Record<string, string | null | undefined>);
             return (
               <a
                 key={item.hrefKey}

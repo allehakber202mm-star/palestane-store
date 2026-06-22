@@ -1,10 +1,18 @@
 import { PublicLayout } from "@/components/layout/PublicLayout";
-import { useListReviews } from "@workspace/api-client-react";
+import { useListFeedback } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Star } from "lucide-react";
+import { Star, MessageCircle } from "lucide-react";
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString("ar-EG", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
 
 export default function Feedback() {
-  const { data: reviews, isLoading } = useListReviews();
+  const { data: posts, isLoading } = useListFeedback();
 
   return (
     <PublicLayout>
@@ -29,26 +37,36 @@ export default function Feedback() {
           </div>
         )}
 
-        {!isLoading && (!reviews || reviews.length === 0) && (
+        {!isLoading && (!posts || posts.length === 0) && (
           <div className="text-center py-20 text-muted-foreground">
-            <Star className="w-12 h-12 mx-auto mb-3 opacity-30" />
+            <MessageCircle className="w-12 h-12 mx-auto mb-3 opacity-30" />
             <p>لا يوجد تقييمات حتى الآن.</p>
           </div>
         )}
 
-        {!isLoading && reviews && reviews.length > 0 && (
+        {!isLoading && posts && posts.length > 0 && (
           <div className="columns-1 sm:columns-2 md:columns-3 gap-4 space-y-4">
-            {reviews.map((review) => (
-              <div key={review.id} className="break-inside-avoid rounded-2xl border overflow-hidden shadow-sm bg-card">
-                <img
-                  src={review.imageUrl}
-                  alt={review.caption || "تقييم عميل"}
-                  className="w-full object-cover"
-                  loading="lazy"
-                />
-                {review.caption && (
-                  <p className="px-4 py-3 text-sm text-muted-foreground">{review.caption}</p>
+            {posts.map((post) => (
+              <div
+                key={post.id}
+                className="break-inside-avoid rounded-2xl border overflow-hidden shadow-sm bg-card"
+              >
+                {post.imageUrl && (
+                  <img
+                    src={post.imageUrl}
+                    alt="تقييم عميل"
+                    className="w-full object-cover"
+                    loading="lazy"
+                  />
                 )}
+                {post.text && (
+                  <p className="px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap">
+                    {post.text}
+                  </p>
+                )}
+                <p className="px-4 pb-3 text-xs text-muted-foreground">
+                  {formatDate(post.postedAt)}
+                </p>
               </div>
             ))}
           </div>

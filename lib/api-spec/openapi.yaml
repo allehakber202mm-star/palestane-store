@@ -23,6 +23,8 @@ tags:
     description: Object storage upload and serving endpoints.
   - name: reviews
     description: Customer review images
+  - name: feedback
+    description: Telegram channel feedback posts
 paths:
   /healthz:
     get:
@@ -326,6 +328,21 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ClickResult"
+
+  /feedback:
+    get:
+      operationId: listFeedback
+      tags: [feedback]
+      summary: List feedback posts from Telegram channel
+      responses:
+        "200":
+          description: List of feedback posts ordered newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FeedbackPost"
 
   /reviews:
     get:
@@ -729,6 +746,30 @@ components:
           type: string
         metadata:
           $ref: '#/components/schemas/UploadUrlRequest'
+    FeedbackPost:
+      type: object
+      required: [id, telegramMessageId, postedAt, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        telegramMessageId:
+          type: integer
+        text:
+          type: string
+          nullable: true
+        imageUrl:
+          type: string
+          nullable: true
+        postedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
     ErrorEnvelope:
       type: object
       required: [error]
