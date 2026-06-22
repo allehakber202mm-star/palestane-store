@@ -99,6 +99,98 @@ function cleanUrl(raw: string): string {
   return raw.replace(/[),.\]>]+$/, "").trim();
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Known placeholder strings that sometimes appear when someone types a test
+// post using template text. These must NOT be saved as real data.
+// ─────────────────────────────────────────────────────────────────────────────
+const PLACEHOLDER_USERNAMES = new Set([
+  "username", "page", "profile", "user", "handle",
+  "mypage", "myaccount", "myusername", "yourname", "name",
+]);
+const PLACEHOLDER_URLS = new Set([
+  "https://www.facebook.com/page",
+  "https://www.instagram.com/username",
+  "https://www.tiktok.com/@username",
+  "https://www.facebook.com/username",
+  "https://www.instagram.com/page",
+]);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// validatePostData
+//
+// Called for every Telegram post BEFORE saving to DB.
+//
+// STEP 1 — Placeholder cleansing:
+//   • If username matches a known placeholder word  → set username = null
+//   • If accountUrl matches a known placeholder URL → set accountUrl = null
+//
+// STEP 2 — Data sufficiency check (the ONLY rejection condition):
+//   An account is REJECTED **only** when ALL THREE of the following are missing:
+//     price     = 0    (no price found in text)
+//     followers = 0    (no follower count found in text)
+//     accountUrl = null (no URL and no real @handle)
+//
+//   If ANY ONE of the three is present (price > 0 OR followers > 0 OR accountUrl
+//   is a real URL) → the account IS saved, even with the other fields missing.
+//
+// Returns an object so the caller can log exactly what happened.
+// ─────────────────────────────────────────────────────────────────────────────
+interface ValidationResult {
+  /** true → save the account;  false → reject (skip) */
+  shouldSave: boolean;
+
+  /** Present only when shouldSave = false. Human-readable rejection reason. */
+  rejectionReason?: string;
+
+  /** Which individual conditions failed (for diagnostics) */
+  checks: {
+    hasRealPrice:     boolean;   // price > 0
+    hasRealFollowers: boolean;   // followers > 0
+    hasRealUrl:       boolean;   // accountUrl !== null  (after placeholder strip)
+  };
+
+  /** Fields that were stripped because they matched a known placeholder */
+  strippedPlaceholders: Array<{ field: "username" | "accountUrl"; value: string }>;
+}
+
+function validatePostData(p: ParsedAccount): ValidationResult {
+  const stripped: ValidationResult["strippedPlaceholders"] = [];
+
+  // ── Step 1: strip known placeholder values ────────────────────────────────
+  if (p.username && PLACEHOLDER_USERNAMES.has(p.username.toLowerCase())) {
+    stripped.push({ field: "username", value: p.username });
+    p.username = null;
+  }
+  if (p.accountUrl && PLACEHOLDER_URLS.has(p.accountUrl.toLowerCase())) {
+    stripped.push({ field: "accountUrl", value: p.accountUrl });
+    p.accountUrl = null;
+  }
+
+  // ── Step 2: data sufficiency check ───────────────────────────────────────
+  const checks = {
+    hasRealPrice:     p.price > 0,
+    hasRealFollowers: p.followers > 0,
+    hasRealUrl:       p.accountUrl !== null,
+  };
+
+  // REJECT condition: ALL three must be missing simultaneously.
+  // Having price > 0 alone is enough to pass. Having followers > 0 alone is
+  // enough to pass. Having a real URL alone is enough to pass.
+  const shouldSave = checks.hasRealPrice || checks.hasRealFollowers || checks.hasRealUrl;
+
+  const rejectionReason = shouldSave
+    ? undefined
+    : [
+        !checks.hasRealPrice     ? "price=0 (لم يُعثر على سعر)"           : null,
+        !checks.hasRealFollowers ? "followers=0 (لم يُعثر على متابعين)"    : null,
+        !checks.hasRealUrl       ? "accountUrl=null (لا رابط ولا @username حقيقي)" : null,
+      ]
+        .filter(Boolean)
+        .join(" | ");
+
+  return { shouldSave, rejectionReason, checks, strippedPlaceholders: stripped };
+}
+
 export function parsePostText(rawText: string, messageId: number): ParsedAccount {
   const text = rawText.trim();
 
@@ -653,85 +745,77 @@ export async function runTelegramSync(): Promise<SyncResult> {
     );
 
     // ══════════════════════════════════════════════════════════════════════
-    // [DIAG] PLACEHOLDER CLEANSING — إزالة القيم الوهمية المعروفة
+    // [DIAG] VALIDATION — validatePostData()
+    // دالة مسماة تُنفّذ خطوتين:
+    //   1. إزالة القيم الوهمية (placeholder cleansing)
+    //   2. فحص كفاية البيانات (data sufficiency)
     // ══════════════════════════════════════════════════════════════════════
-    // These are known placeholder strings that sometimes appear in test posts
-    // or posts that literally say "@username" / "https://www.facebook.com/page".
-    // We must NOT save them as real data.
-    const PLACEHOLDER_USERNAMES = new Set([
-      "username", "page", "profile", "user", "handle",
-      "mypage", "myaccount", "myusername", "yourname", "name",
-    ]);
-    const PLACEHOLDER_URLS = new Set([
-      "https://www.facebook.com/page",
-      "https://www.instagram.com/username",
-      "https://www.tiktok.com/@username",
-      "https://www.facebook.com/username",
-      "https://www.instagram.com/page",
-    ]);
+    const validation = validatePostData(p);
+    // NOTE: validatePostData mutates p.username and p.accountUrl in-place
+    // when it detects placeholders, so p is already cleaned after this call.
 
-    // Strip placeholder username
-    if (p.username && PLACEHOLDER_USERNAMES.has(p.username.toLowerCase())) {
+    // ── Log stripped placeholders ─────────────────────────────────────────
+    if (validation.strippedPlaceholders.length > 0) {
       logger.warn(
-        { telegramMessageId: post.message_id, username: p.username },
-        "[DIAG] 🚫 PLACEHOLDER_USERNAME — تم تجاهل username وهمي",
-      );
-      p.username = null;
-    }
-
-    // Strip placeholder accountUrl
-    if (p.accountUrl && PLACEHOLDER_URLS.has(p.accountUrl.toLowerCase())) {
-      logger.warn(
-        { telegramMessageId: post.message_id, accountUrl: p.accountUrl },
-        "[DIAG] 🚫 PLACEHOLDER_URL — تم تجاهل رابط وهمي",
-      );
-      p.accountUrl = null;
-    }
-
-    // ══════════════════════════════════════════════════════════════════════
-    // [DIAG] DATA SUFFICIENCY CHECK — لا حفظ بدون بيانات حقيقية
-    // ══════════════════════════════════════════════════════════════════════
-    // Require at least ONE meaningful field to save the account.
-    // If price=0 AND followers=0 AND no real accountUrl → the post has no
-    // structured data (or all data is placeholder) → REJECT, do NOT save.
-    const hasRealPrice      = p.price > 0;
-    const hasRealFollowers  = p.followers > 0;
-    const hasRealUrl        = !!p.accountUrl;
-
-    if (!hasRealPrice && !hasRealFollowers && !hasRealUrl) {
-      logger.error(
         {
           telegramMessageId: post.message_id,
-          platform:    p.platform,
-          rawText_preview: rawText.slice(0, 200),
-          reason: "price=0 AND followers=0 AND accountUrl=null",
-          fix_hint: "أضف إلى المنشور: السعر + عدد المتابعين + رابط الحساب أو @username",
-          example: "السعر : 450 شيكل\nعدد المتابعين 43 ألف\nhttps://www.facebook.com/yourpage",
+          function: "validatePostData → Step 1: placeholder cleansing",
+          strippedPlaceholders: validation.strippedPlaceholders,
+          placeholderUsernamesList: [...PLACEHOLDER_USERNAMES],
+          placeholderUrlsList:      [...PLACEHOLDER_URLS],
         },
-        "[DIAG] ❌ REJECTED — لم يتم حفظ الحساب: لا توجد بيانات حقيقية (سعر=0, متابعين=0, رابط=null)",
+        "[DIAG] 🚫 PLACEHOLDER_STRIPPED — قيم وهمية تم تجاهلها",
+      );
+    }
+
+    // ── Rejection: only when ALL THREE fields are missing ─────────────────
+    if (!validation.shouldSave) {
+      logger.error(
+        {
+          telegramMessageId:  post.message_id,
+          function:           "validatePostData → Step 2: data sufficiency check",
+          rejectionReason:    validation.rejectionReason,
+          checks: {
+            "price > 0":       validation.checks.hasRealPrice,     // false → rejected
+            "followers > 0":   validation.checks.hasRealFollowers, // false → rejected
+            "accountUrl ≠ null": validation.checks.hasRealUrl,     // false → rejected
+          },
+          rule: "الرفض يحدث فقط إذا كانت price=0 AND followers=0 AND accountUrl=null في نفس الوقت",
+          strippedPlaceholders: validation.strippedPlaceholders,
+          rawText_preview:    rawText.slice(0, 200),
+          fix_hint:           "أضف إلى المنشور: السعر + عدد المتابعين + رابط الحساب أو @username",
+          example:            "السعر : 450 شيكل\nعدد المتابعين 43 ألف\nhttps://www.facebook.com/yourpage",
+        },
+        "[DIAG] ❌ REJECTED — validatePostData() قررت الرفض",
       );
       skipped++;
       continue;
     }
 
-    // ══════════════════════════════════════════════════════════════════════
-    // [DIAG] WARNINGS — تحذيرات الحقول الفارغة (للحسابات التي ستُحفظ)
-    // ══════════════════════════════════════════════════════════════════════
+    // ── Partial data warnings (account WILL be saved) ─────────────────────
     const warnings: string[] = [];
-    if (!hasRealPrice)      warnings.push("⚠️ السعر = 0 (لم يُعثر على سعر في النص)");
-    if (!hasRealFollowers)  warnings.push("⚠️ المتابعون = 0 (لم يُعثر على عدد متابعين)");
-    if (!hasRealUrl)        warnings.push("⚠️ accountUrl = null (لم يُعثر على رابط أو @username)");
-    if (!p.description)     warnings.push("⚠️ description = null (النص فارغ)");
+    if (!validation.checks.hasRealPrice)
+      warnings.push("⚠️ price=0 — الحساب سيُحفظ لأن متابعين أو رابط موجود");
+    if (!validation.checks.hasRealFollowers)
+      warnings.push("⚠️ followers=0 — الحساب سيُحفظ لأن سعر أو رابط موجود");
+    if (!validation.checks.hasRealUrl)
+      warnings.push("⚠️ accountUrl=null — الحساب سيُحفظ لأن سعر أو متابعين موجود");
+    if (!p.description)
+      warnings.push("⚠️ description=null");
 
     if (warnings.length > 0) {
       logger.warn(
         {
           telegramMessageId: post.message_id,
-          platform: p.platform,
+          function: "validatePostData → Step 2: passed (partial data)",
+          checks: {
+            "price > 0":       validation.checks.hasRealPrice,
+            "followers > 0":   validation.checks.hasRealFollowers,
+            "accountUrl ≠ null": validation.checks.hasRealUrl,
+          },
           warnings,
-          hint: "الحساب سيُحفظ لأنه يحتوي على بعض البيانات الحقيقية، لكن بعض الحقول ناقصة",
         },
-        "[DIAG] ⚠️ PARTIAL_DATA",
+        "[DIAG] ⚠️ PARTIAL_DATA — الحساب سيُحفظ رغم نقص بعض الحقول",
       );
     }
 
