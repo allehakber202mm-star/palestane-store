@@ -1,7 +1,10 @@
+import { useEffect } from "react";
 import { PublicLayout } from "@/components/layout/PublicLayout";
 import { useListFeedback } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { getListFeedbackQueryKey } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Star, MessageCircle } from "lucide-react";
+import { Star, MessageCircle, Play } from "lucide-react";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("ar-EG", {
@@ -13,6 +16,14 @@ function formatDate(iso: string) {
 
 export default function Feedback() {
   const { data: posts, isLoading } = useListFeedback();
+  const qc = useQueryClient();
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      qc.invalidateQueries({ queryKey: getListFeedbackQueryKey() });
+    }, 30_000);
+    return () => clearInterval(id);
+  }, [qc]);
 
   return (
     <PublicLayout>
@@ -46,29 +57,42 @@ export default function Feedback() {
 
         {!isLoading && posts && posts.length > 0 && (
           <div className="columns-1 sm:columns-2 md:columns-3 gap-4 space-y-4">
-            {posts.map((post) => (
-              <div
-                key={post.id}
-                className="break-inside-avoid rounded-2xl border overflow-hidden shadow-sm bg-card"
-              >
-                {post.imageUrl && (
-                  <img
-                    src={post.imageUrl}
-                    alt="تقييم عميل"
-                    className="w-full object-cover"
-                    loading="lazy"
-                  />
-                )}
-                {post.text && (
-                  <p className="px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap">
-                    {post.text}
+            {posts.map((post) => {
+              const p = post as typeof post & { videoUrl?: string | null };
+              return (
+                <div
+                  key={post.id}
+                  className="break-inside-avoid rounded-2xl border overflow-hidden shadow-sm bg-card"
+                >
+                  {p.videoUrl && (
+                    <div className="relative w-full bg-black">
+                      <video
+                        src={p.videoUrl}
+                        controls
+                        className="w-full max-h-64 object-contain"
+                        preload="metadata"
+                      />
+                    </div>
+                  )}
+                  {!p.videoUrl && post.imageUrl && (
+                    <img
+                      src={post.imageUrl}
+                      alt="تقييم عميل"
+                      className="w-full object-cover"
+                      loading="lazy"
+                    />
+                  )}
+                  {post.text && (
+                    <p className="px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap">
+                      {post.text}
+                    </p>
+                  )}
+                  <p className="px-4 pb-3 text-xs text-muted-foreground">
+                    {formatDate(post.postedAt)}
                   </p>
-                )}
-                <p className="px-4 pb-3 text-xs text-muted-foreground">
-                  {formatDate(post.postedAt)}
-                </p>
-              </div>
-            ))}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

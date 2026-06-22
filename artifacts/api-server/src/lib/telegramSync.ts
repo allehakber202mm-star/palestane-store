@@ -16,13 +16,15 @@ const TG_FILE = (token: string, filePath: string) =>
 
 // ── Types ──────────────────────────────────────────────────────────────────
 export type TgPhoto  = { file_id: string; width: number; height: number };
+export type TgVideo  = { file_id: string; width: number; height: number; duration: number; mime_type?: string; file_size?: number };
 export type TgPost   = {
   message_id: number;
   date: number;
-  chat: { username?: string };
+  chat: { id?: number; username?: string; title?: string };
   text?: string;
   caption?: string;
   photo?: TgPhoto[];
+  video?: TgVideo;
 };
 export type TgUpdate = { update_id: number; channel_post?: TgPost; edited_channel_post?: TgPost };
 
@@ -249,21 +251,76 @@ async function uploadBufferToGCS(buffer: Buffer, contentType: string): Promise<s
 // ── Download photo from Telegram → upload to GCS ──────────────────────────
 async function importPhoto(fileId: string, token: string): Promise<string | null> {
   try {
+    logger.info({ fileId }, "importPhoto: بدء تحميل الصورة");
     const fileRes = await fetch(
       TG_API(`getFile?file_id=${encodeURIComponent(fileId)}`, token),
       { signal: AbortSignal.timeout(10_000) },
     );
-    if (!fileRes.ok) return null;
+    if (!fileRes.ok) {
+      logger.warn({ status: fileRes.status, fileId }, "importPhoto: getFile فشل");
+      return null;
+    }
     const fileData = await fileRes.json() as { ok: boolean; result?: { file_path: string } };
-    if (!fileData.ok || !fileData.result?.file_path) return null;
-
+    if (!fileData.ok || !fileData.result?.file_path) {
+      logger.warn({ fileData, fileId }, "importPhoto: file_path غير موجود في الرد");
+      return null;
+    }
+    logger.info({ filePath: fileData.result.file_path }, "importPhoto: جاري تحميل الملف");
     const imgRes = await fetch(TG_FILE(token, fileData.result.file_path), {
       signal: AbortSignal.timeout(30_000),
     });
-    if (!imgRes.ok) return null;
+    if (!imgRes.ok) {
+      logger.warn({ status: imgRes.status }, "importPhoto: تحميل الملف فشل");
+      return null;
+    }
     const buffer = Buffer.from(await imgRes.arrayBuffer());
-    return await uploadBufferToGCS(buffer, "image/jpeg");
-  } catch {
+    logger.info({ bytes: buffer.byteLength }, "importPhoto: جاري الرفع إلى GCS");
+    const url = await uploadBufferToGCS(buffer, "image/jpeg");
+    logger.info({ url }, "importPhoto: ✅ تم رفع الصورة");
+    return url;
+  } catch (err) {
+    logger.error({ err, fileId }, "importPhoto: خطأ غير متوقع");
+    return null;
+  }
+}
+
+// ── Download video from Telegram → upload to GCS ──────────────────────────
+async function importVideo(fileId: string, token: string): Promise<string | null> {
+  try {
+    logger.info({ fileId }, "importVideo: بدء تحميل الفيديو");
+    const fileRes = await fetch(
+      TG_API(`getFile?file_id=${encodeURIComponent(fileId)}`, token),
+      { signal: AbortSignal.timeout(10_000) },
+    );
+    if (!fileRes.ok) {
+      logger.warn({ status: fileRes.status, fileId }, "importVideo: getFile فشل");
+      return null;
+    }
+    const fileData = await fileRes.json() as { ok: boolean; result?: { file_path: string; file_size?: number } };
+    if (!fileData.ok || !fileData.result?.file_path) {
+      logger.warn({ fileData }, "importVideo: file_path غير موجود");
+      return null;
+    }
+    const fileSize = fileData.result.file_size ?? 0;
+    if (fileSize > 50 * 1024 * 1024) {
+      logger.warn({ fileSize }, "importVideo: الفيديو أكبر من 50MB — تم التخطي");
+      return null;
+    }
+    logger.info({ filePath: fileData.result.file_path, fileSize }, "importVideo: جاري تحميل الملف");
+    const vidRes = await fetch(TG_FILE(token, fileData.result.file_path), {
+      signal: AbortSignal.timeout(60_000),
+    });
+    if (!vidRes.ok) {
+      logger.warn({ status: vidRes.status }, "importVideo: تحميل الملف فشل");
+      return null;
+    }
+    const buffer = Buffer.from(await vidRes.arrayBuffer());
+    logger.info({ bytes: buffer.byteLength }, "importVideo: جاري الرفع إلى GCS");
+    const url = await uploadBufferToGCS(buffer, "video/mp4");
+    logger.info({ url }, "importVideo: ✅ تم رفع الفيديو");
+    return url;
+  } catch (err) {
+    logger.error({ err, fileId }, "importVideo: خطأ غير متوقع");
     return null;
   }
 }
@@ -300,6 +357,28 @@ export async function runTelegramSync(): Promise<SyncResult> {
   if (!updatesData.ok) throw new Error("Telegram API returned ok:false");
 
   const updates = updatesData.result;
+
+  // ── Log ALL raw updates before any filtering ───────────────────────────────
+  logger.info(
+    {
+      totalUpdates: updates.length,
+      storedOffset,
+      expectedAccountChannel: channel,
+      expectedFeedbackChannel: feedbackChannel,
+      updateSummary: updates.map(u => ({
+        update_id: u.update_id,
+        type: u.channel_post ? "channel_post" : u.edited_channel_post ? "edited_channel_post" : "other",
+        chat_username: u.channel_post?.chat?.username ?? u.edited_channel_post?.chat?.username ?? "N/A",
+        chat_id: u.channel_post?.chat?.id ?? u.edited_channel_post?.chat?.id ?? "N/A",
+        message_id: u.channel_post?.message_id ?? u.edited_channel_post?.message_id,
+        has_photo: !!(u.channel_post?.photo?.length ?? u.edited_channel_post?.photo?.length),
+        has_video: !!(u.channel_post?.video ?? u.edited_channel_post?.video),
+        text_preview: (u.channel_post?.text ?? u.channel_post?.caption ?? u.edited_channel_post?.text ?? u.edited_channel_post?.caption ?? "").slice(0, 60),
+      })),
+    },
+    "Telegram sync: RAW updates من Telegram",
+  );
+
   if (!updates.length) return { imported: 0, skipped: 0, total: 0 };
 
   // ── Separate by channel ───────────────────────────────────────────────────
@@ -315,6 +394,15 @@ export async function runTelegramSync(): Promise<SyncResult> {
     .filter(u => u.edited_channel_post?.chat.username?.toLowerCase() === feedbackChannel.toLowerCase())
     .map(u => ({ update_id: u.update_id, post: u.edited_channel_post! }));
 
+  logger.info(
+    {
+      accountPosts: accountPosts.length,
+      feedbackNewPosts: feedbackNewPosts.length,
+      feedbackEditedPosts: feedbackEditedPosts.length,
+    },
+    "Telegram sync: نتيجة التصفية حسب القناة",
+  );
+
   // ── Process feedback new posts ────────────────────────────────────────────
   if (feedbackNewPosts.length > 0) {
     const fbMsgIds = feedbackNewPosts.map(p => p.post.message_id);
@@ -327,7 +415,14 @@ export async function runTelegramSync(): Promise<SyncResult> {
     for (const { post } of feedbackNewPosts) {
       if (existingFbIds.has(post.message_id)) continue;
 
+      logger.info(
+        { telegramMessageId: post.message_id, hasPhoto: !!post.photo?.length, hasVideo: !!post.video, hasText: !!(post.text ?? post.caption) },
+        "Feedback sync: معالجة منشور جديد",
+      );
+
       let imageUrl: string | null = null;
+      let videoUrl: string | null = null;
+
       if (post.photo?.length) {
         const largest = post.photo.reduce((a, b) =>
           a.width * a.height >= b.width * b.height ? a : b,
@@ -335,34 +430,44 @@ export async function runTelegramSync(): Promise<SyncResult> {
         imageUrl = await importPhoto(largest.file_id, token);
       }
 
+      if (post.video) {
+        videoUrl = await importVideo(post.video.file_id, token);
+      }
+
       const rawText = (post.caption ?? post.text ?? "").trim() || null;
-      const postedAt = new Date((post as unknown as { date?: number }).date
-        ? (post as unknown as { date: number }).date * 1000
-        : Date.now());
+      const postedAt = new Date(post.date ? post.date * 1000 : Date.now());
 
       await db.insert(feedbackPostsTable).values({
         telegramMessageId: post.message_id,
         text:    rawText,
         imageUrl,
+        videoUrl,
         postedAt,
       });
-      logger.info({ telegramMessageId: post.message_id, hasImage: !!imageUrl }, "Feedback sync: ✅ منشور جديد أُضيف");
+      logger.info(
+        { telegramMessageId: post.message_id, hasImage: !!imageUrl, hasVideo: !!videoUrl, hasText: !!rawText },
+        "Feedback sync: ✅ منشور جديد أُضيف",
+      );
     }
   }
 
   // ── Process feedback edited posts ─────────────────────────────────────────
   for (const { post } of feedbackEditedPosts) {
     let imageUrl: string | null = null;
+    let videoUrl: string | null = null;
     if (post.photo?.length) {
       const largest = post.photo.reduce((a, b) =>
         a.width * a.height >= b.width * b.height ? a : b,
       );
       imageUrl = await importPhoto(largest.file_id, token);
     }
+    if (post.video) {
+      videoUrl = await importVideo(post.video.file_id, token);
+    }
     const rawText = (post.caption ?? post.text ?? "").trim() || null;
     await db
       .update(feedbackPostsTable)
-      .set({ text: rawText, imageUrl, updatedAt: new Date() })
+      .set({ text: rawText, imageUrl, videoUrl, updatedAt: new Date() } as Record<string, unknown>)
       .where(eq(feedbackPostsTable.telegramMessageId, post.message_id));
     logger.info({ telegramMessageId: post.message_id }, "Feedback sync: ✏️ منشور محدّث");
   }
@@ -467,7 +572,7 @@ export async function runTelegramSync(): Promise<SyncResult> {
 }
 
 // ── Background auto-sync ───────────────────────────────────────────────────
-const POLL_INTERVAL_MS = 60_000;
+const POLL_INTERVAL_MS = 30_000;
 let syncTimer: ReturnType<typeof setInterval> | null = null;
 let running = false;
 

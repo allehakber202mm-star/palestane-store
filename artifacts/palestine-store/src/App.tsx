@@ -21,6 +21,7 @@ import AdminAccounts from "@/pages/admin/accounts";
 import AdminStats from "@/pages/admin/stats";
 import AdminSettings from "@/pages/admin/settings";
 import AdminCelebrityAds from "@/pages/admin/celebrity-ads";
+import AdminFeedback from "@/pages/admin/feedback";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -71,6 +72,9 @@ function Router() {
       </Route>
       <Route path="/admin/celebrity-ads">
         <ProtectedRoute component={AdminCelebrityAds} />
+      </Route>
+      <Route path="/admin/feedback">
+        <ProtectedRoute component={AdminFeedback} />
       </Route>
 
       <Route component={NotFound} />

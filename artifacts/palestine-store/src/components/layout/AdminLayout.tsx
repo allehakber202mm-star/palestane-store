@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
-import { Users, Settings, LogOut, Menu, Sun, Moon, Video, BarChart2 } from "lucide-react";
+import { Users, Settings, LogOut, Menu, Sun, Moon, Video, BarChart2, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useTheme } from "next-themes";
@@ -29,6 +29,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
     { href: "/admin/accounts",      label: "الحسابات",           icon: Users },
     { href: "/admin/stats",         label: "الإحصائيات",         icon: BarChart2 },
     { href: "/admin/celebrity-ads", label: "إعلانات المشاهير",   icon: Video },
+    { href: "/admin/feedback",      label: "آراء العملاء",       icon: MessageSquare },
     { href: "/admin/settings",      label: "الإعدادات",          icon: Settings },
   ];
 
