@@ -13,6 +13,7 @@ import AccountDetails from "@/pages/account-details";
 import About from "@/pages/about";
 import Feedback from "@/pages/feedback";
 import Contact from "@/pages/contact";
+import Guarantee from "@/pages/guarantee";
 
 // Admin Pages
 import AdminLogin from "@/pages/admin/login";
@@ -54,6 +55,7 @@ function Router() {
       <Route path="/about" component={About} />
       <Route path="/feedback" component={Feedback} />
       <Route path="/contact" component={Contact} />
+      <Route path="/guarantee" component={Guarantee} />
 
       {/* Admin Routes */}
       <Route path="/admin" component={AdminRedirect} />
