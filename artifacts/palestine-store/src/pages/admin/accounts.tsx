@@ -5,9 +5,7 @@ import {
   useCreateAccount,
   useUpdateAccount,
   useDeleteAccount,
-  useGetDashboardStats,
   getAdminListAccountsQueryKey,
-  getGetDashboardStatsQueryKey,
   AccountInput,
   AccountUpdate,
 } from "@workspace/api-client-react";
@@ -19,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Plus, Edit2, Trash2, Image as ImageIcon, DollarSign, Users,
-  Link2, Check, X, Loader2, UploadCloud, ExternalLink, TrendingUp, Send,
+  Link2, Check, X, Loader2, UploadCloud, ExternalLink, TrendingUp, Send, Star,
 } from "lucide-react";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
@@ -101,8 +99,6 @@ export default function AdminAccounts() {
   const qc = useQueryClient();
   const { toast } = useToast();
 
-  const { data: stats } = useGetDashboardStats();
-
   const { data: accounts, isLoading } = useAdminListAccounts({
     platform: tab,
     status:   statusFilter !== "all" ? statusFilter : undefined,
@@ -112,7 +108,6 @@ export default function AdminAccounts() {
   useEffect(() => {
     const id = setInterval(() => {
       qc.invalidateQueries({ queryKey: getAdminListAccountsQueryKey() });
-      qc.invalidateQueries({ queryKey: getGetDashboardStatsQueryKey() });
     }, 30_000);
     return () => clearInterval(id);
   }, [qc]);
@@ -123,7 +118,13 @@ export default function AdminAccounts() {
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: getAdminListAccountsQueryKey() });
-    qc.invalidateQueries({ queryKey: getGetDashboardStatsQueryKey() });
+  };
+
+  const toggleFeatured = (acc: AccRow) => {
+    updateMut.mutate({ id: acc.id, data: { featured: !acc.featured } as AccountUpdate }, {
+      onSuccess: () => toast({ title: acc.featured ? "تم إلغاء التثبيت" : "⭐ تم التثبيت" }),
+      onSettled: invalidate,
+    });
   };
 
   const handleTelegramImport = async () => {
@@ -344,24 +345,6 @@ export default function AdminAccounts() {
           </Button>
         </div>
 
-        {/* ── Stats Cards ─────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
-          {[
-            { label: "الإجمالي",       val: stats?.totalAccounts,     color: "text-foreground",    bg: "bg-muted/40" },
-            { label: "تيك توك",        val: stats?.tiktokAccounts,    color: "text-foreground",    bg: "bg-muted/40" },
-            { label: "أرباح المشاهدات", val: stats?.monetizedAccounts, color: "text-green-600",     bg: "bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800" },
-            { label: "انستغرام",        val: stats?.instagramAccounts, color: "text-pink-500",      bg: "bg-pink-50 dark:bg-pink-950/30 border-pink-200 dark:border-pink-900" },
-            { label: "فيسبوك",         val: stats?.facebookAccounts,  color: "text-blue-500",      bg: "bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-900" },
-            { label: "متاح",           val: stats?.availableAccounts, color: "text-green-500",     bg: "bg-muted/40" },
-            { label: "مباع",           val: stats?.soldAccounts,      color: "text-destructive",   bg: "bg-muted/40" },
-          ].map((s, i) => (
-            <div key={i} className={`rounded-xl border p-3 flex flex-col gap-0.5 ${s.bg}`}>
-              <p className="text-[10px] text-muted-foreground leading-none">{s.label}</p>
-              <p className={`text-xl font-black leading-tight ${s.color}`}>{s.val ?? "—"}</p>
-            </div>
-          ))}
-        </div>
-
         {/* ── Platform Tabs — grid, no horizontal scroll ──────────────────── */}
         <div className="flex flex-col sm:flex-row gap-2">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 flex-1">
@@ -455,14 +438,15 @@ export default function AdminAccounts() {
 
                     {/* Hover overlay — desktop */}
                     <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity hidden sm:flex items-center justify-center">
-                      <div className="grid grid-cols-3 gap-1.5 px-3">
+                      <div className="grid grid-cols-4 gap-1.5 px-2">
                         {[
-                          { icon: <Edit2 className="w-3.5 h-3.5" />,    label: "تعديل",    action: () => openEdit(acc as AccRow),                    cls: "hover:bg-primary hover:text-white" },
-                          { icon: <DollarSign className="w-3.5 h-3.5" />, label: "السعر",   action: () => openQuick(acc as AccRow, "price"),           cls: "hover:bg-yellow-500 hover:text-white" },
-                          { icon: <TrendingUp className="w-3.5 h-3.5" />, label: "متابعين", action: () => openQuick(acc as AccRow, "followers"),       cls: "hover:bg-purple-500 hover:text-white" },
-                          { icon: <ImageIcon className="w-3.5 h-3.5" />, label: "صورة",     action: () => openImage(acc as AccRow),                    cls: "hover:bg-pink-500 hover:text-white" },
-                          { icon: <Link2 className="w-3.5 h-3.5" />,    label: "رابط",     action: () => openLink(acc as AccRow),                     cls: "hover:bg-blue-500 hover:text-white" },
-                          { icon: <Trash2 className="w-3.5 h-3.5" />,   label: "حذف",      action: () => setDeleteId(acc.id),                         cls: "hover:bg-destructive hover:text-white" },
+                          { icon: <Edit2 className="w-3.5 h-3.5" />,    label: "تعديل",    action: () => openEdit(acc as AccRow),              cls: "hover:bg-primary hover:text-white" },
+                          { icon: <DollarSign className="w-3.5 h-3.5" />, label: "السعر",  action: () => openQuick(acc as AccRow, "price"),    cls: "hover:bg-yellow-500 hover:text-white" },
+                          { icon: <TrendingUp className="w-3.5 h-3.5" />, label: "متابعين",action: () => openQuick(acc as AccRow, "followers"), cls: "hover:bg-purple-500 hover:text-white" },
+                          { icon: <ImageIcon className="w-3.5 h-3.5" />, label: "صورة",    action: () => openImage(acc as AccRow),             cls: "hover:bg-pink-500 hover:text-white" },
+                          { icon: <Link2 className="w-3.5 h-3.5" />,    label: "رابط",    action: () => openLink(acc as AccRow),              cls: "hover:bg-blue-500 hover:text-white" },
+                          { icon: <Star className="w-3.5 h-3.5" />,     label: (acc as AccRow).featured ? "إلغاء تثبيت" : "تثبيت", action: () => toggleFeatured(acc as AccRow), cls: "hover:bg-yellow-400 hover:text-white" },
+                          { icon: <Trash2 className="w-3.5 h-3.5" />,   label: "حذف",     action: () => setDeleteId(acc.id),                  cls: "hover:bg-destructive hover:text-white" },
                         ].map((btn, i) => (
                           <button
                             key={i}
@@ -498,7 +482,7 @@ export default function AdminAccounts() {
                     </div>
 
                     {/* Mobile action buttons (always visible on mobile) */}
-                    <div className="grid grid-cols-3 gap-1 sm:hidden">
+                    <div className="grid grid-cols-4 gap-1 sm:hidden">
                       <button onClick={() => openEdit(acc as AccRow)}
                         className="flex flex-col items-center gap-0.5 border rounded-lg py-1.5 text-[10px] font-bold hover:bg-primary/10 hover:border-primary hover:text-primary transition-colors">
                         <Edit2 className="w-3 h-3" /> تعديل
@@ -518,6 +502,15 @@ export default function AdminAccounts() {
                       <button onClick={() => openLink(acc as AccRow)}
                         className="flex flex-col items-center gap-0.5 border rounded-lg py-1.5 text-[10px] font-bold hover:bg-blue-500/10 hover:border-blue-500 hover:text-blue-600 transition-colors">
                         <Link2 className="w-3 h-3" /> رابط
+                      </button>
+                      <button onClick={() => toggleFeatured(acc as AccRow)}
+                        className={`flex flex-col items-center gap-0.5 border rounded-lg py-1.5 text-[10px] font-bold transition-colors ${
+                          (acc as AccRow).featured
+                            ? "bg-yellow-50 border-yellow-400 text-yellow-600 dark:bg-yellow-900/20"
+                            : "hover:bg-yellow-500/10 hover:border-yellow-500 hover:text-yellow-600"
+                        }`}>
+                        <Star className={`w-3 h-3 ${(acc as AccRow).featured ? "fill-yellow-500 text-yellow-500" : ""}`} />
+                        {(acc as AccRow).featured ? "مثبّت" : "تثبيت"}
                       </button>
                       <button onClick={() => setDeleteId(acc.id)}
                         className="flex flex-col items-center gap-0.5 border rounded-lg py-1.5 text-[10px] font-bold text-destructive hover:bg-destructive/10 hover:border-destructive transition-colors">

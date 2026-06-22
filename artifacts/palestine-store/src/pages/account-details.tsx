@@ -202,6 +202,16 @@ function Lightbox({ src, alt, onClose }: { src: string; alt: string; onClose: ()
 /* ════════════════════════════════════════════════════════
    Main page
    ════════════════════════════════════════════════════════ */
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+function trackEvent(eventType: "page_view" | "whatsapp_click" | "account_url_click", accountId: number) {
+  fetch(`${BASE}/api/stats/track`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ eventType, accountId }),
+  }).catch(() => {});
+}
+
 export default function AccountDetails() {
   const params = useParams<{ id: string }>();
   const id = parseInt(params.id ?? "", 10);
@@ -211,6 +221,11 @@ export default function AccountDetails() {
   const { data: settings } = useGetSettings();
   const trackClick = useTrackAccountClick();
 
+  // Track page view on load (fire-and-forget)
+  useEffect(() => {
+    if (!isNaN(id) && id > 0) trackEvent("page_view", id);
+  }, [id]);
+
   const handleBack = () => {
     if (window.history.length > 1) window.history.back();
     else window.location.href = "/accounts";
@@ -219,6 +234,7 @@ export default function AccountDetails() {
   const handleBuy = () => {
     if (!account) return;
     trackClick.mutate({ id: account.id });
+    trackEvent("whatsapp_click", account.id);
     const phone = settings?.whatsapp?.replace(/\D/g, "") || "972566112031";
     const platformAr =
       account.platform === "tiktok_monetized" ? "تيك توك أرباح المشاهدات"
@@ -503,6 +519,7 @@ export default function AccountDetails() {
                 href={account.accountUrl}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => trackEvent("account_url_click", account.id)}
                 className="w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold border border-border hover:border-primary/50 hover:bg-primary/5 transition-colors text-muted-foreground hover:text-primary"
               >
                 <PlatformIcon className={`w-4 h-4 ${platformColor}`} />

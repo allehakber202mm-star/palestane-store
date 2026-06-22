@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
-import { LayoutDashboard, Users, Settings, LogOut, Menu, Sun, Moon, Video } from "lucide-react";
+import { Users, Settings, LogOut, Menu, Sun, Moon, Video, BarChart2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useTheme } from "next-themes";
@@ -18,7 +18,7 @@ function ThemeToggle() {
 }
 
 export function AdminLayout({ children }: { children: ReactNode }) {
-  const { logout, isAuthenticated, isLoading } = useAuth();
+  const { logout, isLoading } = useAuth();
   const [location] = useLocation();
 
   if (isLoading) {
@@ -26,10 +26,10 @@ export function AdminLayout({ children }: { children: ReactNode }) {
   }
 
   const navItems = [
-    { href: "/admin/dashboard", label: "الرئيسية", icon: LayoutDashboard },
-    { href: "/admin/accounts", label: "الحسابات", icon: Users },
-    { href: "/admin/celebrity-ads", label: "إعلانات المشاهير", icon: Video },
-    { href: "/admin/settings", label: "الإعدادات", icon: Settings },
+    { href: "/admin/accounts",      label: "الحسابات",           icon: Users },
+    { href: "/admin/stats",         label: "الإحصائيات",         icon: BarChart2 },
+    { href: "/admin/celebrity-ads", label: "إعلانات المشاهير",   icon: Video },
+    { href: "/admin/settings",      label: "الإعدادات",          icon: Settings },
   ];
 
   const SidebarContent = () => (

@@ -17,8 +17,8 @@ import CelebrityAds from "@/pages/celebrity-ads";
 
 // Admin Pages
 import AdminLogin from "@/pages/admin/login";
-import AdminDashboard from "@/pages/admin/dashboard";
 import AdminAccounts from "@/pages/admin/accounts";
+import AdminStats from "@/pages/admin/stats";
 import AdminSettings from "@/pages/admin/settings";
 import AdminCelebrityAds from "@/pages/admin/celebrity-ads";
 
@@ -31,12 +31,10 @@ const queryClient = new QueryClient({
   },
 });
 
-function ProtectedRoute({ component: Component }: { component: any }) {
+function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
   const { isAuthenticated, isLoading } = useAuth();
-  
   if (isLoading) return <div className="min-h-screen flex items-center justify-center">جاري التحميل...</div>;
   if (!isAuthenticated) return <Redirect to="/admin/login" />;
-  
   return <Component />;
 }
 
@@ -61,11 +59,12 @@ function Router() {
       {/* Admin Routes */}
       <Route path="/admin" component={AdminRedirect} />
       <Route path="/admin/login" component={AdminLogin} />
-      <Route path="/admin/dashboard">
-        <ProtectedRoute component={AdminDashboard} />
-      </Route>
+      <Route path="/admin/dashboard" component={AdminRedirect} />
       <Route path="/admin/accounts">
         <ProtectedRoute component={AdminAccounts} />
+      </Route>
+      <Route path="/admin/stats">
+        <ProtectedRoute component={AdminStats} />
       </Route>
       <Route path="/admin/settings">
         <ProtectedRoute component={AdminSettings} />
