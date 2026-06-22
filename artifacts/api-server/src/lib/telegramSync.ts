@@ -653,12 +653,74 @@ export async function runTelegramSync(): Promise<SyncResult> {
     );
 
     // ══════════════════════════════════════════════════════════════════════
-    // [DIAG] WARNINGS — تحذيرات الحقول الفارغة
+    // [DIAG] PLACEHOLDER CLEANSING — إزالة القيم الوهمية المعروفة
+    // ══════════════════════════════════════════════════════════════════════
+    // These are known placeholder strings that sometimes appear in test posts
+    // or posts that literally say "@username" / "https://www.facebook.com/page".
+    // We must NOT save them as real data.
+    const PLACEHOLDER_USERNAMES = new Set([
+      "username", "page", "profile", "user", "handle",
+      "mypage", "myaccount", "myusername", "yourname", "name",
+    ]);
+    const PLACEHOLDER_URLS = new Set([
+      "https://www.facebook.com/page",
+      "https://www.instagram.com/username",
+      "https://www.tiktok.com/@username",
+      "https://www.facebook.com/username",
+      "https://www.instagram.com/page",
+    ]);
+
+    // Strip placeholder username
+    if (p.username && PLACEHOLDER_USERNAMES.has(p.username.toLowerCase())) {
+      logger.warn(
+        { telegramMessageId: post.message_id, username: p.username },
+        "[DIAG] 🚫 PLACEHOLDER_USERNAME — تم تجاهل username وهمي",
+      );
+      p.username = null;
+    }
+
+    // Strip placeholder accountUrl
+    if (p.accountUrl && PLACEHOLDER_URLS.has(p.accountUrl.toLowerCase())) {
+      logger.warn(
+        { telegramMessageId: post.message_id, accountUrl: p.accountUrl },
+        "[DIAG] 🚫 PLACEHOLDER_URL — تم تجاهل رابط وهمي",
+      );
+      p.accountUrl = null;
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // [DIAG] DATA SUFFICIENCY CHECK — لا حفظ بدون بيانات حقيقية
+    // ══════════════════════════════════════════════════════════════════════
+    // Require at least ONE meaningful field to save the account.
+    // If price=0 AND followers=0 AND no real accountUrl → the post has no
+    // structured data (or all data is placeholder) → REJECT, do NOT save.
+    const hasRealPrice      = p.price > 0;
+    const hasRealFollowers  = p.followers > 0;
+    const hasRealUrl        = !!p.accountUrl;
+
+    if (!hasRealPrice && !hasRealFollowers && !hasRealUrl) {
+      logger.error(
+        {
+          telegramMessageId: post.message_id,
+          platform:    p.platform,
+          rawText_preview: rawText.slice(0, 200),
+          reason: "price=0 AND followers=0 AND accountUrl=null",
+          fix_hint: "أضف إلى المنشور: السعر + عدد المتابعين + رابط الحساب أو @username",
+          example: "السعر : 450 شيكل\nعدد المتابعين 43 ألف\nhttps://www.facebook.com/yourpage",
+        },
+        "[DIAG] ❌ REJECTED — لم يتم حفظ الحساب: لا توجد بيانات حقيقية (سعر=0, متابعين=0, رابط=null)",
+      );
+      skipped++;
+      continue;
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // [DIAG] WARNINGS — تحذيرات الحقول الفارغة (للحسابات التي ستُحفظ)
     // ══════════════════════════════════════════════════════════════════════
     const warnings: string[] = [];
-    if (p.price === 0)      warnings.push("⚠️ السعر = 0 (لم يُعثر على سعر في النص)");
-    if (p.followers === 0)  warnings.push("⚠️ المتابعون = 0 (لم يُعثر على عدد متابعين)");
-    if (!p.accountUrl)      warnings.push("⚠️ accountUrl = null (لم يُعثر على رابط أو @username)");
+    if (!hasRealPrice)      warnings.push("⚠️ السعر = 0 (لم يُعثر على سعر في النص)");
+    if (!hasRealFollowers)  warnings.push("⚠️ المتابعون = 0 (لم يُعثر على عدد متابعين)");
+    if (!hasRealUrl)        warnings.push("⚠️ accountUrl = null (لم يُعثر على رابط أو @username)");
     if (!p.description)     warnings.push("⚠️ description = null (النص فارغ)");
 
     if (warnings.length > 0) {
@@ -667,9 +729,9 @@ export async function runTelegramSync(): Promise<SyncResult> {
           telegramMessageId: post.message_id,
           platform: p.platform,
           warnings,
-          hint: "تحقق من صيغة المنشور — قد لا يحتوي على السعر/المتابعين/الرابط بصيغة مقروءة",
+          hint: "الحساب سيُحفظ لأنه يحتوي على بعض البيانات الحقيقية، لكن بعض الحقول ناقصة",
         },
-        "[DIAG] ⚠️ MISSING_FIELDS",
+        "[DIAG] ⚠️ PARTIAL_DATA",
       );
     }
 
