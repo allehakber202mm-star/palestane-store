@@ -39,7 +39,8 @@ import {
   Plus, Edit2, Trash2, DollarSign, Users, Image as ImageIcon,
   CheckCircle, XCircle, Settings, Package, MousePointerClick,
   MessageCircle, Loader2, UploadCloud, X, Check,
-  ShoppingBag, TrendingUp, ExternalLink,
+  ShoppingBag, TrendingUp, ExternalLink, FileText, Clock,
+  BarChart3, EyeOff,
 } from "lucide-react";
 import { SiTiktok, SiInstagram, SiFacebook } from "react-icons/si";
 
@@ -322,27 +323,71 @@ export default function AdminDashboard() {
           <p className="text-sm text-muted-foreground mt-0.5">أدر متجرك بالكامل من هنا</p>
         </div>
 
-        {/* ── Stats ──────────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          {[
-            { icon: <Package className="w-4 h-4" />,            label: "إجمالي الحسابات",       val: stats?.totalAccounts,      color: "text-foreground" },
-            { icon: <CheckCircle className="w-4 h-4" />,        label: "متاح",                   val: stats?.availableAccounts,  color: "text-green-500" },
-            { icon: <ShoppingBag className="w-4 h-4" />,        label: "مباع",                   val: stats?.soldAccounts,       color: "text-destructive" },
-            { icon: <DollarSign className="w-4 h-4" />,         label: "تيك توك أرباح",          val: stats?.monetizedAccounts,  color: "text-yellow-500" },
-            { icon: <MousePointerClick className="w-4 h-4" />,  label: "إجمالي النقرات",         val: stats?.totalClicks,        color: "text-blue-500" },
-            { icon: <MessageCircle className="w-4 h-4" />,      label: "نقرات واتساب",           val: stats?.whatsappClicks,     color: "text-[#25D366]" },
-          ].map((s, i) => (
-            <div key={i} className="bg-card border rounded-xl p-3 sm:p-4 flex flex-col gap-1 shadow-sm">
-              <div className={`${s.color} flex items-center gap-1.5 text-xs font-medium text-muted-foreground`}>
-                {s.icon} {s.label}
+        {/* ── Stats — 4 main cards ───────────────────────────────────────── */}
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <BarChart3 className="w-4 h-4 text-muted-foreground" />
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">الإحصائيات</h2>
+          </div>
+
+          {/* Primary 4 stat cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {[
+              { icon: <Package className="w-5 h-5" />,     label: "إجمالي الحسابات",  val: stats?.totalAccounts,     color: "text-foreground",   bg: "bg-muted/40",            border: "border-border" },
+              { icon: <CheckCircle className="w-5 h-5" />, label: "الحسابات المتاحة", val: stats?.availableAccounts, color: "text-green-600",     bg: "bg-green-500/8",         border: "border-green-500/20" },
+              { icon: <ShoppingBag className="w-5 h-5" />, label: "الحسابات المباعة", val: stats?.soldAccounts,      color: "text-destructive",   bg: "bg-destructive/8",       border: "border-destructive/20" },
+              { icon: <FileText className="w-5 h-5" />,    label: "إجمالي المنشورات", val: stats?.feedbackPosts,     color: "text-purple-600",    bg: "bg-purple-500/8",        border: "border-purple-500/20" },
+            ].map((s, i) => (
+              <div key={i} className={`${s.bg} border ${s.border} rounded-xl p-4 flex flex-col gap-2 shadow-sm`}>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-muted-foreground">{s.label}</span>
+                  <span className={`${s.color} opacity-70`}>{s.icon}</span>
+                </div>
+                {statsLoading ? (
+                  <Skeleton className="h-9 w-16" />
+                ) : (
+                  <div className={`text-3xl font-black ${s.color}`}>{(s.val ?? 0).toLocaleString("ar-EG")}</div>
+                )}
               </div>
-              {statsLoading ? (
-                <Skeleton className="h-7 w-12 mt-1" />
-              ) : (
-                <div className={`text-2xl font-black ${s.color}`}>{s.val ?? 0}</div>
-              )}
-            </div>
-          ))}
+            ))}
+          </div>
+
+          {/* Counter strip — real-time from accounts list */}
+          <div className="mt-3 grid grid-cols-4 divide-x divide-x-reverse divide-border bg-card border rounded-xl overflow-hidden shadow-sm">
+            {[
+              { label: "معروضة الآن",   val: accounts?.filter(a => a.status === "available").length, color: "text-green-600" },
+              { label: "تم بيعها",      val: accounts?.filter(a => a.status === "sold").length,      color: "text-destructive" },
+              { label: "مخفية",         val: 0,                                                      color: "text-muted-foreground" },
+              { label: "الإجمالي",      val: accounts?.length,                                       color: "text-foreground font-black" },
+            ].map((c, i) => (
+              <div key={i} className="flex flex-col items-center justify-center py-3 px-2 text-center">
+                {accsLoading ? (
+                  <Skeleton className="h-5 w-8 mb-1" />
+                ) : (
+                  <div className={`text-lg font-bold ${c.color}`}>{c.val ?? 0}</div>
+                )}
+                <div className="text-[10px] text-muted-foreground mt-0.5 leading-tight">{c.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Secondary: clicks */}
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            {[
+              { icon: <MousePointerClick className="w-4 h-4" />, label: "إجمالي النقرات",  val: stats?.totalClicks,    color: "text-blue-500" },
+              { icon: <MessageCircle className="w-4 h-4" />,     label: "نقرات واتساب",    val: stats?.whatsappClicks, color: "text-[#25D366]" },
+            ].map((s, i) => (
+              <div key={i} className="bg-card border rounded-xl p-3 flex items-center gap-3 shadow-sm">
+                <span className={`${s.color} opacity-80`}>{s.icon}</span>
+                <div>
+                  <div className="text-xs text-muted-foreground">{s.label}</div>
+                  {statsLoading ? <Skeleton className="h-5 w-10 mt-0.5" /> : (
+                    <div className={`text-lg font-black ${s.color}`}>{(s.val ?? 0).toLocaleString("ar-EG")}</div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* ── Quick Action Cards ─────────────────────────────────────────── */}
@@ -363,6 +408,64 @@ export default function AdminDashboard() {
               </button>
             ))}
           </div>
+        </div>
+
+        {/* ── آخر 10 حسابات ─────────────────────────────────────────────── */}
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <Clock className="w-4 h-4 text-muted-foreground" />
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">آخر 10 حسابات تمت إضافتها</h2>
+          </div>
+
+          {statsLoading ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+              {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
+            </div>
+          ) : !stats?.recentAccounts?.length ? (
+            <div className="bg-card border rounded-xl p-8 text-center text-sm text-muted-foreground">لا توجد حسابات بعد</div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+              {stats.recentAccounts.map((acc) => {
+                const plt = PLT[acc.platform] ?? PLT.tiktok;
+                const addedDate = new Date(acc.createdAt);
+                const dateStr = addedDate.toLocaleDateString("ar-EG", { day: "numeric", month: "short" });
+                return (
+                  <div key={acc.id} className="bg-card border rounded-xl overflow-hidden shadow-sm flex flex-col group hover:shadow-md hover:-translate-y-0.5 transition-all">
+                    {/* Image */}
+                    <div className="relative aspect-square w-full bg-muted">
+                      {acc.imageUrl ? (
+                        <img src={acc.imageUrl} alt={acc.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <ImageIcon className="w-8 h-8 text-muted-foreground/30" />
+                        </div>
+                      )}
+                      {/* Status badge */}
+                      <span className={`absolute top-1.5 right-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
+                        acc.status === "available"
+                          ? "bg-green-500/90 text-white"
+                          : "bg-destructive/90 text-white"
+                      }`}>
+                        {acc.status === "available" ? "متاح" : "مباع"}
+                      </span>
+                      {/* Platform badge */}
+                      <span className={`absolute top-1.5 left-1.5 text-[10px] ${plt.color} bg-background/80 rounded p-0.5`}>
+                        {plt.icon}
+                      </span>
+                    </div>
+                    {/* Info */}
+                    <div className="p-2.5 flex flex-col gap-1 flex-1">
+                      <div className="font-bold text-xs truncate" dir="ltr">{acc.name}</div>
+                      <div className="flex items-center justify-between mt-auto">
+                        <span className="text-xs font-black text-primary">{acc.price}₪</span>
+                        <span className="text-[10px] text-muted-foreground">{dateStr}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* ── Full Accounts Table ────────────────────────────────────────── */}

@@ -774,6 +774,12 @@ components:
           type: integer
         whatsappClicks:
           type: integer
+        feedbackPosts:
+          type: integer
+        recentAccounts:
+          type: array
+          items:
+            $ref: "#/components/schemas/Account"
         topAccounts:
           type: array
           items:

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, accountsTable, statsTable } from "@workspace/db";
+import { db, accountsTable, statsTable, feedbackPostsTable } from "@workspace/db";
 import { eq, desc, sql, and, isNotNull, inArray } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 
@@ -25,11 +25,21 @@ router.get("/dashboard", async (_req, res) => {
     .from(statsTable)
     .where(eq(statsTable.eventType, "whatsapp_click"));
 
+  const [fbCount] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(feedbackPostsTable);
+
   const topAccounts = await db
     .select()
     .from(accountsTable)
     .orderBy(desc(accountsTable.clickCount))
     .limit(5);
+
+  const recentAccounts = await db
+    .select()
+    .from(accountsTable)
+    .orderBy(desc(accountsTable.createdAt))
+    .limit(10);
 
   function formatAccount(a: Record<string, unknown>) {
     return {
@@ -52,6 +62,8 @@ router.get("/dashboard", async (_req, res) => {
     facebookAccounts: Number(totals.facebook),
     totalClicks: Number(totals.clicks),
     whatsappClicks: Number(waClicks.count),
+    feedbackPosts: Number(fbCount.count),
+    recentAccounts: recentAccounts.map(a => formatAccount(a as Record<string, unknown>)),
     topAccounts: topAccounts.map(a => formatAccount(a as Record<string, unknown>)),
   });
 });

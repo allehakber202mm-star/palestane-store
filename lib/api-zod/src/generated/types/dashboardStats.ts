@@ -17,5 +17,7 @@ export interface DashboardStats {
   facebookAccounts: number;
   totalClicks: number;
   whatsappClicks: number;
+  feedbackPosts?: number;
+  recentAccounts?: Account[];
   topAccounts: Account[];
 }
