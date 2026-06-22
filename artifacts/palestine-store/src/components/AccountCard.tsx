@@ -1,6 +1,6 @@
 import { useLocation } from "wouter";
 import { Account } from "@workspace/api-client-react";
-import { CheckCircle2, ExternalLink, DollarSign } from "lucide-react";
+import { CheckCircle2, ExternalLink, DollarSign, Link2 } from "lucide-react";
 import { SiTiktok, SiInstagram, SiFacebook } from "react-icons/si";
 
 interface AccountCardProps {
@@ -122,32 +122,34 @@ export function AccountCard({ account }: AccountCardProps) {
 
         <div className="flex-1" />
 
-        {/* Visit link */}
-        {account.accountUrl && (
-          <a
-            href={account.accountUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="w-full flex items-center justify-center gap-1 rounded-lg py-1.5 text-[10px] sm:text-xs font-bold border border-border hover:border-primary/60 hover:bg-primary/5 transition-colors text-muted-foreground hover:text-primary"
-          >
-            <PlatformIcon className={`w-2.5 h-2.5 sm:w-3 sm:h-3 shrink-0 ${platformColor}`} />
-            زيارة الحساب
-            <ExternalLink className="w-2.5 h-2.5 opacity-60" />
-          </a>
-        )}
+        {/* Buttons row */}
+        <div className="flex gap-1.5 mt-auto">
+          {/* Visit account — prominent, always first if URL exists */}
+          {account.accountUrl && (
+            <a
+              href={account.accountUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="flex-1 flex items-center justify-center gap-1 rounded-lg py-2 sm:py-2.5 text-[11px] sm:text-xs font-bold border-2 border-primary/40 hover:border-primary bg-primary/5 hover:bg-primary/10 transition-colors text-primary"
+            >
+              <Link2 className="w-3 h-3 shrink-0" />
+              زيارة الحساب
+            </a>
+          )}
 
-        {/* CTA button */}
-        <button
-          onClick={goToDetails}
-          className={`w-full rounded-lg py-2 sm:py-2.5 text-[11px] sm:text-xs font-bold transition-colors ${
-            isSold
-              ? "bg-muted text-muted-foreground cursor-not-allowed"
-              : "bg-primary hover:bg-primary/90 text-primary-foreground"
-          }`}
-        >
-          {isSold ? "غير متوفر" : "عرض التفاصيل"}
-        </button>
+          {/* CTA — details */}
+          <button
+            onClick={goToDetails}
+            className={`flex-1 rounded-lg py-2 sm:py-2.5 text-[11px] sm:text-xs font-bold transition-colors ${
+              isSold
+                ? "bg-muted text-muted-foreground cursor-not-allowed"
+                : "bg-primary hover:bg-primary/90 text-primary-foreground"
+            }`}
+          >
+            {isSold ? "غير متوفر" : "عرض التفاصيل"}
+          </button>
+        </div>
       </div>
     </div>
   );
