@@ -7,17 +7,21 @@ interface AccountCardProps {
   account: Account;
 }
 
-const PLATFORM_FEATURES = [
-  "متابعين حقيقيين",
-  "شغال لايف",
-  "نظيف بالكامل",
-  "بدون انتهاكات",
-];
+const TIKTOK_FEATURES = ["متابعين حقيقيين 100%", "جمهور نشط ومتفاعل", "نمو طبيعي وآمن", "جاهز للاستخدام"];
+const TIKTOK_MONETIZED_FEATURES = ["💰 فيه أرباح المشاهدات", "متابعين حقيقيين 100%", "جمهور نشط ومتفاعل", "جاهز للاستخدام"];
+const INSTAGRAM_FEATURES = ["متابعين حقيقيين 100%", "جمهور نشط ومتفاعل", "بدون بوتات", "جاهز للاستخدام"];
+const FACEBOOK_FEATURES = ["متابعين حقيقيين 100%", "جمهور نشط ومتفاعل", "بدون بوتات", "جاهز للاستخدام"];
 
 export function AccountCard({ account }: AccountCardProps) {
   const [, navigate] = useLocation();
 
   const isMonetized = account.platform === "tiktok_monetized";
+
+  const cardFeatures =
+    isMonetized ? TIKTOK_MONETIZED_FEATURES
+    : account.platform === "tiktok" ? TIKTOK_FEATURES
+    : account.platform === "instagram" ? INSTAGRAM_FEATURES
+    : FACEBOOK_FEATURES;
 
   const PlatformIcon =
     (account.platform === "tiktok" || isMonetized) ? SiTiktok
@@ -106,16 +110,9 @@ export function AccountCard({ account }: AccountCardProps) {
           </span>
         </div>
 
-        {/* Description */}
-        {account.description && (
-          <p className="text-[10px] sm:text-xs text-muted-foreground leading-relaxed line-clamp-2">
-            {account.description}
-          </p>
-        )}
-
-        {/* Features */}
+        {/* Features — platform-specific, no raw Telegram description */}
         <ul className="grid grid-cols-2 gap-x-1 gap-y-0.5">
-          {PLATFORM_FEATURES.map((feat) => (
+          {cardFeatures.map((feat) => (
             <li key={feat} className="flex items-center gap-0.5 text-[9px] sm:text-[10px] text-muted-foreground">
               <CheckCircle2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-green-500 shrink-0" />
               <span className="truncate">{feat}</span>

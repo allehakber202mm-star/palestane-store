@@ -176,22 +176,25 @@ export default function Home() {
           <div className="grid grid-cols-2 gap-3 max-w-sm mx-auto mt-2 w-full">
             <Link href="/accounts?platform=tiktok"
               className="flex flex-col items-center gap-2 bg-background/80 hover:bg-background border border-border hover:border-foreground/20 rounded-2xl py-4 px-3 transition-all shadow-sm hover:shadow-md group">
-              <span className="text-2xl">📱</span>
+              <SiTiktok className="w-8 h-8 text-foreground" />
               <span className="font-bold text-sm">تيك توك</span>
             </Link>
             <Link href="/accounts?platform=tiktok_monetized"
               className="flex flex-col items-center gap-2 bg-background/80 hover:bg-background border border-green-200 hover:border-green-400 dark:border-green-800 dark:hover:border-green-600 rounded-2xl py-4 px-3 transition-all shadow-sm hover:shadow-md group">
-              <span className="text-2xl">💰</span>
+              <div className="relative">
+                <SiTiktok className="w-8 h-8 text-green-600 dark:text-green-400" />
+                <span className="absolute -bottom-1 -left-1 bg-green-500 text-white text-[8px] font-black px-1 rounded-full leading-tight">$</span>
+              </div>
               <span className="font-bold text-sm text-green-700 dark:text-green-400">تيك توك أرباح</span>
             </Link>
             <Link href="/accounts?platform=instagram"
               className="flex flex-col items-center gap-2 bg-background/80 hover:bg-background border border-border hover:border-pink-300 dark:hover:border-pink-700 rounded-2xl py-4 px-3 transition-all shadow-sm hover:shadow-md group">
-              <span className="text-2xl">📸</span>
+              <SiInstagram className="w-8 h-8 text-pink-600 dark:text-pink-400" />
               <span className="font-bold text-sm text-pink-600 dark:text-pink-400">إنستغرام</span>
             </Link>
             <Link href="/accounts?platform=facebook"
               className="flex flex-col items-center gap-2 bg-background/80 hover:bg-background border border-border hover:border-blue-300 dark:hover:border-blue-700 rounded-2xl py-4 px-3 transition-all shadow-sm hover:shadow-md group">
-              <span className="text-2xl">📘</span>
+              <SiFacebook className="w-8 h-8 text-blue-600 dark:text-blue-400" />
               <span className="font-bold text-sm text-blue-600 dark:text-blue-400">فيسبوك</span>
             </Link>
           </div>
