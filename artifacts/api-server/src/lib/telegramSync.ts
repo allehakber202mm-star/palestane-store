@@ -54,9 +54,32 @@ export interface ParsedAccount {
   };
 }
 
-/** Convert "1.2M" / "58K" / "58,000" / "58000" → integer */
+/**
+ * Convert a raw number string + optional unit word → integer.
+ * Handles:
+ *   Western/Arabic thousand separators  (,  ،)
+ *   Latin suffixes                       K k M m
+ *   Arabic multiplier words              الف ألف مليون مليار
+ */
+function parseFollowerText(numStr: string, unitStr?: string): number {
+  // Strip Western comma AND Arabic comma (U+060C)
+  const cleaned = numStr.replace(/[,،]/g, "").trim();
+  const n = parseFloat(cleaned);
+  if (isNaN(n) || n <= 0) return 0;
+
+  const unit = (unitStr ?? "").toLowerCase().trim();
+  const mul =
+    unit === "الف"   || unit === "ألف"  || unit === "k" ? 1_000
+  : unit === "مليون" || unit === "m"                    ? 1_000_000
+  : unit === "مليار" || unit === "b"                    ? 1_000_000_000
+  : 1;
+
+  return Math.round(n * mul);
+}
+
+/** Legacy alias kept so existing call-sites still compile */
 function parseFollowerNumber(raw: string): number {
-  const s = raw.replace(/,/g, "").trim();
+  const s = raw.replace(/[,،]/g, "").trim();
   const m = /^(\d+(?:\.\d+)?)([KkMm]?)$/.exec(s);
   if (!m) return 0;
   const n   = parseFloat(m[1]);
@@ -64,6 +87,11 @@ function parseFollowerNumber(raw: string): number {
             : m[2].toLowerCase() === "m" ? 1_000_000
             : 1;
   return Math.round(n * mul);
+}
+
+/** Strip Arabic/Western thousand separators then parseFloat */
+function parsePriceString(raw: string): number {
+  return parseFloat(raw.replace(/[,،]/g, "").trim());
 }
 
 /** Clean a raw URL — strip trailing punctuation / Markdown noise */
@@ -164,22 +192,25 @@ export function parsePostText(rawText: string, messageId: number): ParsedAccount
   let followersLog = "لم يُعثر على عدد المتابعين";
 
   // Ordered patterns — most specific first
+  // Each pattern has TWO capture groups: (number)(unit?)
+  // Unit can be: K k M m الف ألف مليون مليار
+  const UNIT_WORDS = "ألف|الف|مليون|مليار";
   const followerPatterns: RegExp[] = [
-    // "followers: 58K" / "متابعين: 1.2M"
-    /(?:followers?|متابع(?:ين|ون)?|مشترك(?:ين)?)\s*:?\s*(\d[\d,]*(?:\.\d+)?[KkMm]?)/i,
-    // "58K followers" / "1.2M متابع"
-    /(\d[\d,]*(?:\.\d+)?[KkMm]?)\s*(?:followers?|متابع(?:ين|ون)?|مشترك(?:ين)?)/i,
-    // bare "58K" / "1.2M" anywhere in text (last resort)
-    /\b(\d[\d,]*(?:\.\d+)?[KkMm])\b/i,
+    // "متابعين : 315 الف" / "followers: 1.5M"
+    new RegExp(`(?:followers?|متابع(?:ين|ون)?|مشترك(?:ين)?)\\s*:?\\s*([\\d,،]+(?:\\.\\d+)?)\\s*(${UNIT_WORDS}|[KkMm])?`, "i"),
+    // "315 الف متابع" / "1.5M followers"
+    new RegExp(`([\\d,،]+(?:\\.\\d+)?)\\s*(${UNIT_WORDS}|[KkMm])?\\s*(?:followers?|متابع(?:ين|ون)?|مشترك(?:ين)?)`, "i"),
+    // bare "58K" / "1.2M" (last resort, no Arabic unit)
+    /\b(\d[\d,،]*(?:\.\d+)?[KkMm])\b/i,
   ];
 
   for (const rx of followerPatterns) {
     const m = rx.exec(text);
     if (m) {
-      const parsed = parseFollowerNumber(m[1]);
+      const parsed = parseFollowerText(m[1], m[2]);
       if (parsed > 0) {
         followers    = parsed;
-        followersLog = `استُخرج "${m[1]}" → ${followers.toLocaleString()} (النمط: ${rx.source.slice(0, 40)})`;
+        followersLog = `استُخرج "${m[1]}${m[2] ? " " + m[2] : ""}" → ${followers.toLocaleString()} (النمط: ${rx.source.slice(0, 50)})`;
         break;
       }
     }
@@ -189,20 +220,21 @@ export function parsePostText(rawText: string, messageId: number): ParsedAccount
   let price    = 0;
   let priceLog = "لم يُعثر على السعر";
 
+  // Numbers may contain Arabic thousand separator ، (U+060C) — e.g. "1،600"
   const pricePatterns: RegExp[] = [
-    // "السعر: 250" / "Price: 250" / "سعر 250"
-    /(?:السعر|سعر|price)\s*:?\s*(\d+(?:\.\d+)?)/i,
-    // "250 شيكل" / "250 دولار" / "250$" / "250 USD"
-    /(\d+(?:\.\d+)?)\s*(?:شيكل|دولار|دينار|ريال|جنيه|\$|USD|ILS|JOD)/i,
-    // "$250" / "250$"
-    /\$\s*(\d+(?:\.\d+)?)/i,
+    // "السعر: 1،600" / "السعر : 250" / "price: 250"
+    /(?:السعر|سعر|price)\s*:?\s*([\d,،]+(?:\.\d+)?)/i,
+    // "1،600 شيكل" / "250 دولار" / "250$" / "250 USD"
+    /([\d,،]+(?:\.\d+)?)\s*(?:شيكل|دولار|دينار|ريال|جنيه|\$|USD|ILS|JOD)/i,
+    // "$250"
+    /\$\s*([\d,،]+(?:\.\d+)?)/i,
   ];
 
   for (const rx of pricePatterns) {
     const m = rx.exec(text);
     if (m) {
-      price    = parseFloat(m[1]);
-      priceLog = `استُخرج "${m[0]}" → ${price} (النمط: ${rx.source.slice(0, 40)})`;
+      price    = parsePriceString(m[1]);  // strips ، and , before parseFloat
+      priceLog = `استُخرج "${m[0]}" → ${price} (النمط: ${rx.source.slice(0, 50)})`;
       break;
     }
   }
