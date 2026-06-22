@@ -148,25 +148,33 @@ export function parsePostText(rawText: string, messageId: number): ParsedAccount
     }
   }
 
-  // Construct accountUrl from username if URL still missing
-  if (!accountUrl && username) {
-    if      (platform === "instagram") accountUrl = `https://www.instagram.com/${username}`;
-    else if (platform === "facebook")  accountUrl = `https://www.facebook.com/${username}`;
-    else                               accountUrl = `https://www.tiktok.com/@${username}`;
-    urlLog = `بُني من اسم المستخدم: ${accountUrl}`;
-  }
-
-  // ── 3. Platform keyword detection (if still default & no URL clue) ────────
+  // ── 3. Platform keyword detection — MUST run BEFORE URL construction ──────
+  // BUG FIX: previously ran AFTER URL construction, causing Instagram/Facebook
+  // accounts with @handle (no direct URL) to get a TikTok URL by default.
   let platformLog = `المنصة: ${platform} (من الرابط)`;
   if (!urlM) {
     const lower = text.toLowerCase();
-    if (/instagram|انستغرام|انستقرام/.test(lower))         { platform = "instagram"; }
-    else if (/facebook|فيسبوك|فيس بوك/.test(lower))       { platform = "facebook"; }
-    else if (/tiktok|تيك ?توك|tiktok/.test(lower))        { platform = "tiktok"; }
+    // BUG FIX #2: Arabic Instagram has two common spellings:
+    //   إنستغرام (with hamza إ U+0625) — the correct/common spelling
+    //   انستغرام (with alef  ا U+0627) — alternate spelling
+    // The previous regex only had 'انستغرام', missing the hamza variant.
+    // Fix: use character class [اإأ] to match both.
+    if (/instagram|[اإأ]نست[غق]رام/.test(lower))            { platform = "instagram"; }
+    else if (/facebook|فيسبوك|فيس\s*بوك/.test(lower))       { platform = "facebook";  }
+    else if (/tiktok|تيك\s*توك/.test(lower))                 { platform = "tiktok";    }
     platformLog = `المنصة: ${platform} (من الكلمات المفتاحية)`;
   }
 
-  // ── 3b. TikTok Monetized detection ────────────────────────────────────────
+  // ── 3b. Construct accountUrl from username AFTER platform is known ─────────
+  // BUG FIX: URL is now built with the correct platform (after keyword detection)
+  if (!accountUrl && username) {
+    if      (platform === "instagram")         accountUrl = `https://www.instagram.com/${username}`;
+    else if (platform === "facebook")          accountUrl = `https://www.facebook.com/${username}`;
+    else                                       accountUrl = `https://www.tiktok.com/@${username}`;
+    urlLog = `بُني من اسم المستخدم (${platform}): ${accountUrl}`;
+  }
+
+  // ── 3c. TikTok Monetized detection ────────────────────────────────────────
   // Must run AFTER platform is determined and only for TikTok accounts
   if (platform === "tiktok") {
     const monetizedKeywords = [
@@ -197,14 +205,17 @@ export function parsePostText(rawText: string, messageId: number): ParsedAccount
   const UNIT_WORDS = "ألف|الف|مليون|مليار";
   // [KkMmك] — Latin K/M and Arabic kaf (ك = thousands), e.g. "36ك"
   const UNIT_CHARS = "[KkMmك]";
+  // BUG FIX #4: Use [ \\t]* (space/tab only) instead of \\s* between keyword and number
+  // to prevent cross-line matching. Without this, "متابع\n400 شيكل" wrongly reads
+  // the price (400) as followers count.
   const followerPatterns: RegExp[] = [
-    // "متابعين : 315 الف" / "followers: 1.5M" / "متابعين : 36ك"
-    new RegExp(`(?:followers?|متابع(?:ين|ون)?|مشترك(?:ين)?|معجب(?:ون|ين)?)\\s*:?\\s*([\\d,،]+(?:\\.\\d+)?)\\s*(${UNIT_WORDS}|${UNIT_CHARS})?`, "i"),
-    // "315 الف متابع" / "1.5M followers" / "36ك متابع"
-    new RegExp(`([\\d,،]+(?:\\.\\d+)?)\\s*(${UNIT_WORDS}|${UNIT_CHARS})?\\s*(?:followers?|متابع(?:ين|ون)?|مشترك(?:ين)?|معجب(?:ون|ين)?)`, "i"),
+    // "متابعين : 315 الف" / "followers: 1.5M" / "متابعين : 36ك"  (keyword BEFORE number)
+    new RegExp(`(?:followers?|متابع(?:ين|ون)?|مشترك(?:ين)?|معجب(?:ون|ين)?)[ \\t]*:?[ \\t]*([\\d,،]+(?:\\.\\d+)?)[ \\t]*(${UNIT_WORDS}|${UNIT_CHARS})?`, "i"),
+    // "315 الف متابع" / "1.5M followers" / "36ك متابع"  (number BEFORE keyword)
+    new RegExp(`([\\d,،]+(?:\\.\\d+)?)[ \\t]*(${UNIT_WORDS}|${UNIT_CHARS})?[ \\t]*(?:followers?|متابع(?:ين|ون)?|مشترك(?:ين)?|معجب(?:ون|ين)?)`, "i"),
     // "إعجابات : 50 ألف" (Facebook likes as follower proxy)
-    new RegExp(`(?:إعجاب(?:ات)?|likes?)\\s*:?\\s*([\\d,،]+(?:\\.\\d+)?)\\s*(${UNIT_WORDS}|${UNIT_CHARS})?`, "i"),
-    // bare "58K" / "36ك" / "1.2M" (last resort)
+    new RegExp(`(?:إعجاب(?:ات)?|likes?)[ \\t]*:?[ \\t]*([\\d,،]+(?:\\.\\d+)?)[ \\t]*(${UNIT_WORDS}|${UNIT_CHARS})?`, "i"),
+    // bare "58K" / "36ك" / "1.2M" (last resort — only when unit suffix is present)
     new RegExp(`\\b(\\d[\\d,،]*(?:\\.\\d+)?)(${UNIT_CHARS})\\b`, "i"),
   ];
 
@@ -226,8 +237,9 @@ export function parsePostText(rawText: string, messageId: number): ParsedAccount
 
   // Numbers may contain Arabic thousand separator ، (U+060C) — e.g. "1،600"
   const pricePatterns: RegExp[] = [
-    // "السعر: 1،600" / "السعر : 250" / "price: 250"
-    /(?:السعر|سعر|price)\s*:?\s*([\d,،]+(?:\.\d+)?)/i,
+    // "السعر: 1،600" / "الثمن : 250" / "ثمن : 500" / "price: 250"
+    // BUG FIX #3: added ثمن/الثمن/تكلفة as price synonyms
+    /(?:السعر|سعر|الثمن|ثمن|تكلفة|price)\s*:?\s*([\d,،]+(?:\.\d+)?)/i,
     // "1،600 شيكل" / "250 دولار" / "250 USD" / "250₪"
     /([\d,،]+(?:\.\d+)?)\s*(?:شيكل|دولار|دينار|ريال|جنيه|₪|\$|USD|ILS|JOD)/i,
     // "$250" or "₪250"
@@ -603,19 +615,63 @@ export async function runTelegramSync(): Promise<SyncResult> {
       continue;
     }
 
-    // ── Detailed parse log ──────────────────────────────────────────────────
+    const rawText = (post.caption ?? post.text ?? "").trim();
+
+    // ══════════════════════════════════════════════════════════════════════
+    // [DIAG] RAW_USER_INPUT — النص الخام قبل أي معالجة
+    // ══════════════════════════════════════════════════════════════════════
     logger.info(
       {
         telegramMessageId: post.message_id,
-        username:   p.username   ?? "(غير موجود)",
-        accountUrl: p.accountUrl ?? "(غير موجود)",
-        platform:   p.platform,
-        followers:  p.followers,
-        price:      p.price,
-        parseLog:   p.parseLog,
+        RAW_USER_INPUT: rawText,
+        hasPhoto: !!post.photo?.length,
+        hasCaption: !!post.caption,
+        hasText: !!post.text,
+        charCount: rawText.length,
       },
-      "Telegram sync: تحليل المنشور",
+      "[DIAG] RAW_USER_INPUT",
     );
+
+    // ══════════════════════════════════════════════════════════════════════
+    // [DIAG] PARSED_DATA — نتيجة التحليل التفصيلية
+    // ══════════════════════════════════════════════════════════════════════
+    logger.info(
+      {
+        telegramMessageId: post.message_id,
+        PARSED_DATA: {
+          platform:   p.platform,
+          price:      p.price,
+          followers:  p.followers,
+          accountUrl: p.accountUrl ?? null,
+          username:   p.username   ?? null,
+          name:       p.name,
+          description_preview: p.description?.slice(0, 100) ?? null,
+        },
+        parseLog: p.parseLog,
+      },
+      "[DIAG] PARSED_DATA",
+    );
+
+    // ══════════════════════════════════════════════════════════════════════
+    // [DIAG] WARNINGS — تحذيرات الحقول الفارغة
+    // ══════════════════════════════════════════════════════════════════════
+    const warnings: string[] = [];
+    if (p.price === 0)      warnings.push("⚠️ السعر = 0 (لم يُعثر على سعر في النص)");
+    if (p.followers === 0)  warnings.push("⚠️ المتابعون = 0 (لم يُعثر على عدد متابعين)");
+    if (!p.accountUrl)      warnings.push("⚠️ accountUrl = null (لم يُعثر على رابط أو @username)");
+    if (!p.description)     warnings.push("⚠️ description = null (النص فارغ)");
+
+    if (warnings.length > 0) {
+      logger.warn(
+        {
+          telegramMessageId: post.message_id,
+          platform: p.platform,
+          warnings,
+          hint: "تحقق من صيغة المنشور — قد لا يحتوي على السعر/المتابعين/الرابط بصيغة مقروءة",
+        },
+        "[DIAG] ⚠️ MISSING_FIELDS",
+      );
+    }
 
     // ── Download photo ──────────────────────────────────────────────────────
     let imageUrl: string | null = null;
@@ -629,32 +685,57 @@ export async function runTelegramSync(): Promise<SyncResult> {
       }
     }
 
-    // ── Insert account ──────────────────────────────────────────────────────
-    await db.insert(accountsTable).values({
-      name:             p.name,
-      username:         p.username,
-      platform:         p.platform,
-      followers:        p.followers,
-      price:            String(p.price),
-      description:      p.description,
+    // ══════════════════════════════════════════════════════════════════════
+    // [DIAG] DATA_BEFORE_SAVE — البيانات الكاملة قبل الحفظ في DB
+    // ══════════════════════════════════════════════════════════════════════
+    const recordToSave = {
+      name:              p.name,
+      username:          p.username,
+      platform:          p.platform,
+      followers:         p.followers,
+      price:             String(p.price),
+      description:       p.description,
       imageUrl,
-      accountUrl:       p.accountUrl,
-      status:           "available",
-      featured:         false,
+      accountUrl:        p.accountUrl,
+      status:            "available" as const,
+      featured:          false,
       telegramMessageId: post.message_id,
-    });
+    };
 
     logger.info(
       {
         telegramMessageId: post.message_id,
-        username:   p.username,
-        accountUrl: p.accountUrl,
-        followers:  p.followers,
-        price:      p.price,
-        platform:   p.platform,
-        hasImage:   !!imageUrl,
+        DATA_BEFORE_SAVE: {
+          ...recordToSave,
+          description: recordToSave.description?.slice(0, 100) ?? null,
+        },
       },
-      "Telegram sync: ✅ حساب جديد أُضيف",
+      "[DIAG] DATA_BEFORE_SAVE",
+    );
+
+    // ── Insert account ──────────────────────────────────────────────────────
+    const [inserted] = await db.insert(accountsTable).values(recordToSave).returning({
+      id:         accountsTable.id,
+      price:      accountsTable.price,
+      followers:  accountsTable.followers,
+      accountUrl: accountsTable.accountUrl,
+      platform:   accountsTable.platform,
+    });
+
+    // ══════════════════════════════════════════════════════════════════════
+    // [DIAG] DATA_SAVED_IN_DB — ما تم حفظه فعلياً في قاعدة البيانات
+    // ══════════════════════════════════════════════════════════════════════
+    logger.info(
+      {
+        telegramMessageId: post.message_id,
+        DATA_SAVED_IN_DB: inserted,
+        match: {
+          price_match:      String(p.price) === inserted.price,
+          followers_match:  p.followers === inserted.followers,
+          accountUrl_match: p.accountUrl === inserted.accountUrl,
+        },
+      },
+      "[DIAG] ✅ DATA_SAVED_IN_DB",
     );
 
     imported++;
