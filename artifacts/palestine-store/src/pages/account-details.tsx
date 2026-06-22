@@ -403,38 +403,42 @@ export default function AccountDetails() {
           </div>
         </div>
 
-        {/* ── Description / Smart auto block ── */}
-        {(() => {
-          const isTikTok = account.platform === "tiktok" || isMonetized;
-          if (!isTikTok) return null;
-
-          return (
-            <div className="mb-5 rounded-2xl border border-border bg-muted/30 overflow-hidden">
-              {/* Earnings header — only for tiktok_monetized, always hardcoded */}
-              {isMonetized && (
-                <div className="bg-green-50 dark:bg-green-950/40 border-b border-green-200 dark:border-green-800 px-4 py-3">
-                  {MONETIZED_EARNINGS_LINES.map((line, i) => (
-                    <p key={i} className="font-bold text-sm text-green-700 dark:text-green-400 leading-snug">
-                      {line}
-                    </p>
-                  ))}
-                </div>
-              )}
-              {/* Features list — same for all TikTok accounts */}
-              <div className="px-4 py-3">
-                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">مميزات الحساب</p>
-                <ul className="space-y-2">
-                  {TIKTOK_FEATURES.map((feat) => (
-                    <li key={feat} className="flex items-center gap-2 text-sm font-medium">
-                      <span className="text-green-500 text-base leading-none shrink-0">✓</span>
-                      {feat}
-                    </li>
-                  ))}
-                </ul>
-              </div>
+        {/* ── Description block — all platforms ── */}
+        <div className="mb-5 rounded-2xl border border-border bg-muted/30 overflow-hidden">
+          {/* Earnings header — tiktok_monetized only */}
+          {isMonetized && (
+            <div className="bg-green-50 dark:bg-green-950/40 border-b border-green-200 dark:border-green-800 px-4 py-3">
+              {MONETIZED_EARNINGS_LINES.map((line, i) => (
+                <p key={i} className="font-bold text-sm text-green-700 dark:text-green-400 leading-snug">
+                  {line}
+                </p>
+              ))}
             </div>
-          );
-        })()}
+          )}
+
+          {/* Actual description from DB (if present) */}
+          {account.description ? (
+            <div className="px-4 py-3">
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">وصف الحساب</p>
+              <p className="text-sm leading-relaxed whitespace-pre-line text-foreground">
+                {account.description}
+              </p>
+            </div>
+          ) : (
+            /* Fallback: platform feature bullets */
+            <div className="px-4 py-3">
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">مميزات الحساب</p>
+              <ul className="space-y-2">
+                {TIKTOK_FEATURES.map((feat) => (
+                  <li key={feat} className="flex items-center gap-2 text-sm font-medium">
+                    <span className="text-green-500 text-base leading-none shrink-0">✓</span>
+                    {feat}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
 
         {/* ── Additional info ── */}
         <div className="mb-5 bg-muted/40 rounded-xl overflow-hidden border">

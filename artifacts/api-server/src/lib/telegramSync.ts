@@ -69,9 +69,9 @@ function parseFollowerText(numStr: string, unitStr?: string): number {
 
   const unit = (unitStr ?? "").toLowerCase().trim();
   const mul =
-    unit === "الف"   || unit === "ألف"  || unit === "k" ? 1_000
-  : unit === "مليون" || unit === "m"                    ? 1_000_000
-  : unit === "مليار" || unit === "b"                    ? 1_000_000_000
+    unit === "الف"   || unit === "ألف"  || unit === "k" || unit === "ك" ? 1_000
+  : unit === "مليون" || unit === "m"                                     ? 1_000_000
+  : unit === "مليار" || unit === "b"                                     ? 1_000_000_000
   : 1;
 
   return Math.round(n * mul);
@@ -195,13 +195,17 @@ export function parsePostText(rawText: string, messageId: number): ParsedAccount
   // Each pattern has TWO capture groups: (number)(unit?)
   // Unit can be: K k M m الف ألف مليون مليار
   const UNIT_WORDS = "ألف|الف|مليون|مليار";
+  // [KkMmك] — Latin K/M and Arabic kaf (ك = thousands), e.g. "36ك"
+  const UNIT_CHARS = "[KkMmك]";
   const followerPatterns: RegExp[] = [
-    // "متابعين : 315 الف" / "followers: 1.5M"
-    new RegExp(`(?:followers?|متابع(?:ين|ون)?|مشترك(?:ين)?)\\s*:?\\s*([\\d,،]+(?:\\.\\d+)?)\\s*(${UNIT_WORDS}|[KkMm])?`, "i"),
-    // "315 الف متابع" / "1.5M followers"
-    new RegExp(`([\\d,،]+(?:\\.\\d+)?)\\s*(${UNIT_WORDS}|[KkMm])?\\s*(?:followers?|متابع(?:ين|ون)?|مشترك(?:ين)?)`, "i"),
-    // bare "58K" / "1.2M" (last resort, no Arabic unit)
-    /\b(\d[\d,،]*(?:\.\d+)?[KkMm])\b/i,
+    // "متابعين : 315 الف" / "followers: 1.5M" / "متابعين : 36ك"
+    new RegExp(`(?:followers?|متابع(?:ين|ون)?|مشترك(?:ين)?|معجب(?:ون|ين)?)\\s*:?\\s*([\\d,،]+(?:\\.\\d+)?)\\s*(${UNIT_WORDS}|${UNIT_CHARS})?`, "i"),
+    // "315 الف متابع" / "1.5M followers" / "36ك متابع"
+    new RegExp(`([\\d,،]+(?:\\.\\d+)?)\\s*(${UNIT_WORDS}|${UNIT_CHARS})?\\s*(?:followers?|متابع(?:ين|ون)?|مشترك(?:ين)?|معجب(?:ون|ين)?)`, "i"),
+    // "إعجابات : 50 ألف" (Facebook likes as follower proxy)
+    new RegExp(`(?:إعجاب(?:ات)?|likes?)\\s*:?\\s*([\\d,،]+(?:\\.\\d+)?)\\s*(${UNIT_WORDS}|${UNIT_CHARS})?`, "i"),
+    // bare "58K" / "36ك" / "1.2M" (last resort)
+    new RegExp(`\\b(\\d[\\d,،]*(?:\\.\\d+)?)(${UNIT_CHARS})\\b`, "i"),
   ];
 
   for (const rx of followerPatterns) {
@@ -224,10 +228,12 @@ export function parsePostText(rawText: string, messageId: number): ParsedAccount
   const pricePatterns: RegExp[] = [
     // "السعر: 1،600" / "السعر : 250" / "price: 250"
     /(?:السعر|سعر|price)\s*:?\s*([\d,،]+(?:\.\d+)?)/i,
-    // "1،600 شيكل" / "250 دولار" / "250$" / "250 USD"
-    /([\d,،]+(?:\.\d+)?)\s*(?:شيكل|دولار|دينار|ريال|جنيه|\$|USD|ILS|JOD)/i,
-    // "$250"
-    /\$\s*([\d,،]+(?:\.\d+)?)/i,
+    // "1،600 شيكل" / "250 دولار" / "250 USD" / "250₪"
+    /([\d,،]+(?:\.\d+)?)\s*(?:شيكل|دولار|دينار|ريال|جنيه|₪|\$|USD|ILS|JOD)/i,
+    // "$250" or "₪250"
+    /[$₪]\s*([\d,،]+(?:\.\d+)?)/i,
+    // Last resort: standalone large number ≥100 on its own line (likely a price)
+    /^([\d,،]{3,})$/m,
   ];
 
   for (const rx of pricePatterns) {

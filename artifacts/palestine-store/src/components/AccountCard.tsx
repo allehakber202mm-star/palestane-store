@@ -110,15 +110,21 @@ export function AccountCard({ account }: AccountCardProps) {
           </span>
         </div>
 
-        {/* Features — platform-specific, no raw Telegram description */}
-        <ul className="grid grid-cols-2 gap-x-1 gap-y-0.5">
-          {cardFeatures.map((feat) => (
-            <li key={feat} className="flex items-center gap-0.5 text-[9px] sm:text-[10px] text-muted-foreground">
-              <CheckCircle2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-green-500 shrink-0" />
-              <span className="truncate">{feat}</span>
-            </li>
-          ))}
-        </ul>
+        {/* Description — real DB value if present, else platform features */}
+        {account.description ? (
+          <p className="text-[10px] sm:text-xs text-muted-foreground leading-relaxed line-clamp-3">
+            {account.description}
+          </p>
+        ) : (
+          <ul className="grid grid-cols-2 gap-x-1 gap-y-0.5">
+            {cardFeatures.map((feat) => (
+              <li key={feat} className="flex items-center gap-0.5 text-[9px] sm:text-[10px] text-muted-foreground">
+                <CheckCircle2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-green-500 shrink-0" />
+                <span className="truncate">{feat}</span>
+              </li>
+            ))}
+          </ul>
+        )}
 
         <div className="flex-1" />
 
