@@ -36,10 +36,7 @@ export default function Accounts() {
   });
 
   const accounts = rawAccounts
-    ? [...rawAccounts].sort((a, b) => {
-        if (a.status === b.status) return 0;
-        return a.status === "available" ? -1 : 1;
-      })
+    ? [...rawAccounts].sort((a, b) => b.followers - a.followers)
     : undefined;
 
   const activeFilter = filters.find((f) => f.value === active)!;

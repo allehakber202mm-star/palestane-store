@@ -44,14 +44,14 @@ router.get("/", async (req, res) => {
       .select()
       .from(accountsTable)
       .where(and(...conditions))
-      .orderBy(desc(accountsTable.createdAt))
+      .orderBy(desc(accountsTable.followers))
       .limit(params.limit ?? 50)
       .offset(params.offset ?? 0);
   } else {
     rows = await db
       .select()
       .from(accountsTable)
-      .orderBy(desc(accountsTable.createdAt))
+      .orderBy(desc(accountsTable.followers))
       .limit(params.limit ?? 50)
       .offset(params.offset ?? 0);
   }
