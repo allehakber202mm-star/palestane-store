@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { db, accountsTable } from "@workspace/db";
-import { eq, desc, and, ilike } from "drizzle-orm";
+import { db, accountsTable, accountVisitsTable } from "@workspace/db";
+import { eq, desc, and, ilike, sql, inArray, max } from "drizzle-orm";
 import { CreateAccountBody, UpdateAccountBody, AdminListAccountsQueryParams } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/auth";
 import { formatAccount } from "./accounts";
@@ -120,6 +120,49 @@ router.delete("/accounts/:id", async (req, res) => {
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   await db.delete(accountsTable).where(eq(accountsTable.id, id));
   res.json({ success: true });
+});
+
+// ── GET /admin/visits/stats ──────────────────────────────────────────────────
+router.get("/visits/stats", async (_req, res) => {
+  const [totals] = await db
+    .select({ total: sql<number>`coalesce(sum(${accountsTable.visitCount}), 0)` })
+    .from(accountsTable);
+
+  const rows = await db
+    .select({
+      accountId:    accountVisitsTable.accountId,
+      accountTitle: accountVisitsTable.accountTitle,
+      visitCount:   sql<number>`count(*)::int`,
+      lastVisit:    max(accountVisitsTable.visitedAt),
+    })
+    .from(accountVisitsTable)
+    .groupBy(accountVisitsTable.accountId, accountVisitsTable.accountTitle)
+    .orderBy(desc(sql`count(*)`))
+    .limit(20);
+
+  const ids = rows.map(r => r.accountId);
+  const accMap: Record<number, { platform: string; imageUrl: string | null }> = {};
+  if (ids.length) {
+    const accs = await db
+      .select({ id: accountsTable.id, platform: accountsTable.platform, imageUrl: accountsTable.imageUrl })
+      .from(accountsTable)
+      .where(inArray(accountsTable.id, ids));
+    for (const a of accs) accMap[a.id] = { platform: a.platform, imageUrl: a.imageUrl };
+  }
+
+  res.json({
+    totalVisits: Number(totals.total),
+    topAccounts: rows.map(r => ({
+      accountId:    r.accountId,
+      accountTitle: r.accountTitle,
+      platform:     accMap[r.accountId]?.platform ?? "tiktok",
+      imageUrl:     accMap[r.accountId]?.imageUrl ?? null,
+      visitCount:   Number(r.visitCount),
+      lastVisit:    r.lastVisit instanceof Date
+        ? r.lastVisit.toISOString()
+        : (r.lastVisit ? String(r.lastVisit) : null),
+    })),
+  });
 });
 
 export default router;

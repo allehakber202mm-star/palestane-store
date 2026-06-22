@@ -38,3 +38,7 @@ export * from './siteSettings';
 export * from './siteSettingsUpdate';
 export * from './uploadUrlRequest';
 export * from './uploadUrlResponse';
+export * from './visitInput';
+export * from './visitResult';
+export * from './visitStatRow';
+export * from './visitStats';

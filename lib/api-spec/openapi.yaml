@@ -130,6 +130,31 @@ paths:
         "404":
           description: Not found
 
+  /accounts/{id}/visit:
+    post:
+      operationId: trackAccountVisit
+      tags: [accounts]
+      summary: Track a visit to an account URL (with 30-min rate limiting per visitor)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VisitInput"
+      responses:
+        "200":
+          description: Visit tracked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VisitResult"
+
   /accounts/{id}/click:
     post:
       operationId: trackAccountClick
@@ -272,6 +297,19 @@ paths:
               schema:
                 $ref: "#/components/schemas/DeleteResult"
 
+
+  /admin/visits/stats:
+    get:
+      operationId: getVisitStats
+      tags: [admin]
+      summary: Get visit statistics for all accounts
+      responses:
+        "200":
+          description: Visit statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VisitStats"
 
   /settings:
     get:
@@ -565,6 +603,8 @@ components:
           type: boolean
         clickCount:
           type: integer
+        visitCount:
+          type: integer
         createdAt:
           type: string
         updatedAt:
@@ -805,6 +845,52 @@ components:
       properties:
         success:
           type: boolean
+
+    VisitInput:
+      type: object
+      required: [visitorId]
+      properties:
+        visitorId:
+          type: string
+
+    VisitResult:
+      type: object
+      required: [counted, visitCount]
+      properties:
+        counted:
+          type: boolean
+        visitCount:
+          type: integer
+        accountUrl:
+          type: ["string", "null"]
+
+    VisitStatRow:
+      type: object
+      required: [accountId, accountTitle, visitCount]
+      properties:
+        accountId:
+          type: integer
+        accountTitle:
+          type: string
+        platform:
+          type: string
+        imageUrl:
+          type: ["string", "null"]
+        visitCount:
+          type: integer
+        lastVisit:
+          type: ["string", "null"]
+
+    VisitStats:
+      type: object
+      required: [totalVisits, topAccounts]
+      properties:
+        totalVisits:
+          type: integer
+        topAccounts:
+          type: array
+          items:
+            $ref: "#/components/schemas/VisitStatRow"
 
     UploadUrlRequest:
       type: object

@@ -15,6 +15,7 @@ export const accountsTable = pgTable("accounts", {
   status: text("status").notNull().default("available"), // available | sold
   featured: boolean("featured").notNull().default(false),
   clickCount: integer("click_count").notNull().default(0),
+  visitCount: integer("visit_count").notNull().default(0),
   earningsStatus: text("earnings_status"),    // active | inactive | null
   eligibleCountry: text("eligible_country"),
   activationDate: text("activation_date"),

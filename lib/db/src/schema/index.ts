@@ -1,4 +1,5 @@
 export * from "./accounts";
+export * from "./account-visits";
 export * from "./settings";
 export * from "./stats";
 export * from "./reviews";

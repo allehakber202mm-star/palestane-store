@@ -1,6 +1,6 @@
 import { useLocation } from "wouter";
 import { Account } from "@workspace/api-client-react";
-import { CheckCircle2, ExternalLink, DollarSign, Link2 } from "lucide-react";
+import { CheckCircle2, DollarSign, Link2, Eye } from "lucide-react";
 import { SiTiktok, SiInstagram, SiFacebook } from "react-icons/si";
 
 interface AccountCardProps {
@@ -11,6 +11,17 @@ const TIKTOK_FEATURES = ["متابعين حقيقيين 100%", "جمهور نش�
 const TIKTOK_MONETIZED_FEATURES = ["💰 فيه أرباح المشاهدات", "متابعين حقيقيين 100%", "جمهور نشط ومتفاعل", "جاهز للاستخدام"];
 const INSTAGRAM_FEATURES = ["متابعين حقيقيين 100%", "جمهور نشط ومتفاعل", "بدون بوتات", "جاهز للاستخدام"];
 const FACEBOOK_FEATURES = ["متابعين حقيقيين 100%", "جمهور نشط ومتفاعل", "بدون بوتات", "جاهز للاستخدام"];
+
+// Get or create a persistent visitor ID stored in localStorage
+function getVisitorId(): string {
+  const KEY = "visitor_id";
+  let id = localStorage.getItem(KEY);
+  if (!id) {
+    id = `v-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    localStorage.setItem(KEY, id);
+  }
+  return id;
+}
 
 export function AccountCard({ account }: AccountCardProps) {
   const [, navigate] = useLocation();
@@ -43,6 +54,27 @@ export function AccountCard({ account }: AccountCardProps) {
       : `${account.followers}`;
 
   const goToDetails = () => navigate(`/account/${account.id}`);
+
+  // Track visit: POST to API first (fire-and-forget), then open the URL
+  const handleVisitClick = async (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const url = account.accountUrl;
+    if (!url) return;
+
+    try {
+      await fetch(`/api/accounts/${account.id}/visit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ visitorId: getVisitorId() }),
+      });
+    } catch {
+      // Don't block navigation on tracking failure
+    }
+
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
 
   return (
     <div
@@ -91,6 +123,16 @@ export function AccountCard({ account }: AccountCardProps) {
             </span>
           )}
         </div>
+
+        {/* Bottom-left: Visit count badge (if any) */}
+        {(account.visitCount ?? 0) > 0 && (
+          <div className="absolute bottom-2 left-2">
+            <span className="bg-black/60 text-white text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none flex items-center gap-0.5 shadow-sm">
+              <Eye className="w-2.5 h-2.5" />
+              {(account.visitCount ?? 0).toLocaleString("ar-EG")}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* ── Body ── */}
@@ -134,9 +176,7 @@ export function AccountCard({ account }: AccountCardProps) {
           {account.accountUrl && (
             <a
               href={account.accountUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
+              onClick={handleVisitClick}
               className="flex-1 flex items-center justify-center gap-1 rounded-lg py-2 sm:py-2.5 text-[11px] sm:text-xs font-bold border-2 border-primary/40 hover:border-primary bg-primary/5 hover:bg-primary/10 transition-colors text-primary"
             >
               <Link2 className="w-3 h-3 shrink-0" />

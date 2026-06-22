@@ -25,6 +25,7 @@ export interface Account {
   status: AccountStatus;
   featured?: boolean;
   clickCount?: number;
+  visitCount?: number;
   createdAt: string;
   updatedAt?: string;
   /** @nullable */

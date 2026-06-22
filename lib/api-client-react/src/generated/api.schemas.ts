@@ -44,6 +44,7 @@ export interface Account {
   status: AccountStatus;
   featured?: boolean;
   clickCount?: number;
+  visitCount?: number;
   createdAt: string;
   updatedAt?: string;
   /** @nullable */
@@ -212,6 +213,33 @@ export interface DeleteResult {
 
 export interface ClickResult {
   success: boolean;
+}
+
+export interface VisitInput {
+  visitorId: string;
+}
+
+export interface VisitResult {
+  counted: boolean;
+  visitCount: number;
+  /** @nullable */
+  accountUrl?: string | null;
+}
+
+export interface VisitStatRow {
+  accountId: number;
+  accountTitle: string;
+  platform?: string;
+  /** @nullable */
+  imageUrl?: string | null;
+  visitCount: number;
+  /** @nullable */
+  lastVisit?: string | null;
+}
+
+export interface VisitStats {
+  totalVisits: number;
+  topAccounts: VisitStatRow[];
 }
 
 export interface UploadUrlRequest {

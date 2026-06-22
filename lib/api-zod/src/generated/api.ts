@@ -40,6 +40,7 @@ export const ListAccountsResponseItem = zod.object({
   "status": zod.enum(['available', 'sold']),
   "featured": zod.boolean().optional(),
   "clickCount": zod.number().optional(),
+  "visitCount": zod.number().optional(),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional(),
   "earningsStatus": zod.string().nullish(),
@@ -67,6 +68,7 @@ export const ListFeaturedAccountsResponseItem = zod.object({
   "status": zod.enum(['available', 'sold']),
   "featured": zod.boolean().optional(),
   "clickCount": zod.number().optional(),
+  "visitCount": zod.number().optional(),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional(),
   "earningsStatus": zod.string().nullish(),
@@ -94,6 +96,7 @@ export const ListRecentAccountsResponseItem = zod.object({
   "status": zod.enum(['available', 'sold']),
   "featured": zod.boolean().optional(),
   "clickCount": zod.number().optional(),
+  "visitCount": zod.number().optional(),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional(),
   "earningsStatus": zod.string().nullish(),
@@ -125,6 +128,7 @@ export const GetAccountResponse = zod.object({
   "status": zod.enum(['available', 'sold']),
   "featured": zod.boolean().optional(),
   "clickCount": zod.number().optional(),
+  "visitCount": zod.number().optional(),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional(),
   "earningsStatus": zod.string().nullish(),
@@ -132,6 +136,24 @@ export const GetAccountResponse = zod.object({
   "activationDate": zod.string().nullish(),
   "earningsNotes": zod.string().nullish(),
   "avgEarningsPer10k": zod.number().nullish()
+})
+
+
+/**
+ * @summary Track a visit to an account URL (with 30-min rate limiting per visitor)
+ */
+export const TrackAccountVisitParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const TrackAccountVisitBody = zod.object({
+  "visitorId": zod.string()
+})
+
+export const TrackAccountVisitResponse = zod.object({
+  "counted": zod.boolean(),
+  "visitCount": zod.number(),
+  "accountUrl": zod.string().nullish()
 })
 
 
@@ -190,6 +212,7 @@ export const AdminListAccountsResponseItem = zod.object({
   "status": zod.enum(['available', 'sold']),
   "featured": zod.boolean().optional(),
   "clickCount": zod.number().optional(),
+  "visitCount": zod.number().optional(),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional(),
   "earningsStatus": zod.string().nullish(),
@@ -261,6 +284,7 @@ export const UpdateAccountResponse = zod.object({
   "status": zod.enum(['available', 'sold']),
   "featured": zod.boolean().optional(),
   "clickCount": zod.number().optional(),
+  "visitCount": zod.number().optional(),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional(),
   "earningsStatus": zod.string().nullish(),
@@ -280,6 +304,22 @@ export const DeleteAccountParams = zod.object({
 
 export const DeleteAccountResponse = zod.object({
   "success": zod.boolean()
+})
+
+
+/**
+ * @summary Get visit statistics for all accounts
+ */
+export const GetVisitStatsResponse = zod.object({
+  "totalVisits": zod.number(),
+  "topAccounts": zod.array(zod.object({
+  "accountId": zod.number(),
+  "accountTitle": zod.string(),
+  "platform": zod.string().optional(),
+  "imageUrl": zod.string().nullish(),
+  "visitCount": zod.number(),
+  "lastVisit": zod.string().nullish()
+}))
 })
 
 
@@ -357,6 +397,7 @@ export const GetDashboardStatsResponse = zod.object({
   "status": zod.enum(['available', 'sold']),
   "featured": zod.boolean().optional(),
   "clickCount": zod.number().optional(),
+  "visitCount": zod.number().optional(),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional(),
   "earningsStatus": zod.string().nullish(),
@@ -378,6 +419,7 @@ export const GetDashboardStatsResponse = zod.object({
   "status": zod.enum(['available', 'sold']),
   "featured": zod.boolean().optional(),
   "clickCount": zod.number().optional(),
+  "visitCount": zod.number().optional(),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional(),
   "earningsStatus": zod.string().nullish(),

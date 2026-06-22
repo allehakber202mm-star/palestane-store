@@ -42,7 +42,10 @@ import type {
   SiteSettings,
   SiteSettingsUpdate,
   UploadUrlRequest,
-  UploadUrlResponse
+  UploadUrlResponse,
+  VisitInput,
+  VisitResult,
+  VisitStats
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -448,6 +451,78 @@ export function useGetAccount<TData = Awaited<ReturnType<typeof getAccount>>, TE
 
 
 
+
+export const getTrackAccountVisitUrl = (id: number,) => {
+
+
+
+
+  return `/api/accounts/${id}/visit`
+}
+
+/**
+ * @summary Track a visit to an account URL (with 30-min rate limiting per visitor)
+ */
+export const trackAccountVisit = async (id: number,
+    visitInput: VisitInput, options?: RequestInit): Promise<VisitResult> => {
+
+  return customFetch<VisitResult>(getTrackAccountVisitUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      visitInput,)
+  }
+);}
+
+
+
+
+export const getTrackAccountVisitMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof trackAccountVisit>>, TError,{id: number;data: BodyType<VisitInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof trackAccountVisit>>, TError,{id: number;data: BodyType<VisitInput>}, TContext> => {
+
+const mutationKey = ['trackAccountVisit'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof trackAccountVisit>>, {id: number;data: BodyType<VisitInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  trackAccountVisit(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type TrackAccountVisitMutationResult = NonNullable<Awaited<ReturnType<typeof trackAccountVisit>>>
+    export type TrackAccountVisitMutationBody = BodyType<VisitInput>
+    export type TrackAccountVisitMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Track a visit to an account URL (with 30-min rate limiting per visitor)
+ */
+export const useTrackAccountVisit = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof trackAccountVisit>>, TError,{id: number;data: BodyType<VisitInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof trackAccountVisit>>,
+        TError,
+        {id: number;data: BodyType<VisitInput>},
+        TContext
+      > => {
+      return useMutation(getTrackAccountVisitMutationOptions(options));
+    }
 
 export const getTrackAccountClickUrl = (id: number,) => {
 
@@ -963,6 +1038,83 @@ export const useDeleteAccount = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getDeleteAccountMutationOptions(options));
     }
+
+export const getGetVisitStatsUrl = () => {
+
+
+
+
+  return `/api/admin/visits/stats`
+}
+
+/**
+ * @summary Get visit statistics for all accounts
+ */
+export const getVisitStats = async ( options?: RequestInit): Promise<VisitStats> => {
+
+  return customFetch<VisitStats>(getGetVisitStatsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetVisitStatsQueryKey = () => {
+    return [
+    `/api/admin/visits/stats`
+    ] as const;
+    }
+
+
+export const getGetVisitStatsQueryOptions = <TData = Awaited<ReturnType<typeof getVisitStats>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getVisitStats>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetVisitStatsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getVisitStats>>> = ({ signal }) => getVisitStats({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getVisitStats>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetVisitStatsQueryResult = NonNullable<Awaited<ReturnType<typeof getVisitStats>>>
+export type GetVisitStatsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get visit statistics for all accounts
+ */
+
+export function useGetVisitStats<TData = Awaited<ReturnType<typeof getVisitStats>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getVisitStats>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetVisitStatsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 
 export const getGetSettingsUrl = () => {
 

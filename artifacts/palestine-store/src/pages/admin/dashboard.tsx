@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { uploadImageToStorage } from "@/lib/uploadImage";
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import {
@@ -9,6 +9,7 @@ import {
   useDeleteAccount,
   useGetSettings,
   useUpdateSettings,
+  useGetVisitStats,
   getAdminListAccountsQueryKey,
   getGetDashboardStatsQueryKey,
   getGetSettingsQueryKey,
@@ -40,7 +41,7 @@ import {
   CheckCircle, XCircle, Settings, Package, MousePointerClick,
   MessageCircle, Loader2, UploadCloud, X, Check,
   ShoppingBag, TrendingUp, ExternalLink, FileText, Clock,
-  BarChart3, EyeOff,
+  BarChart3, EyeOff, Eye,
 } from "lucide-react";
 import { SiTiktok, SiInstagram, SiFacebook } from "react-icons/si";
 
@@ -101,6 +102,13 @@ export default function AdminDashboard() {
   const { data: stats, isLoading: statsLoading } = useGetDashboardStats();
   const { data: accounts, isLoading: accsLoading } = useAdminListAccounts({});
   const { data: settings } = useGetSettings();
+  const { data: visitStats, isLoading: visitStatsLoading, refetch: refetchVisits } = useGetVisitStats();
+
+  // Real-time: refetch visit stats every 30 seconds automatically
+  useEffect(() => {
+    const id = setInterval(() => { void refetchVisits(); }, 30_000);
+    return () => clearInterval(id);
+  }, [refetchVisits]);
 
   const createMut  = useCreateAccount();
   const updateMut  = useUpdateAccount();
@@ -390,6 +398,92 @@ export default function AdminDashboard() {
           </div>
         </div>
 
+        {/* ── Visit Stats ────────────────────────────────────────────────── */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Eye className="w-4 h-4 text-blue-500" />
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                إحصائيات الزيارات
+                {!visitStatsLoading && visitStats && (
+                  <span className="mr-2 text-blue-500 font-black normal-case">
+                    ({visitStats.totalVisits.toLocaleString("ar-EG")} زيارة)
+                  </span>
+                )}
+              </h2>
+            </div>
+            <span className="text-[10px] text-muted-foreground bg-muted px-2 py-1 rounded-full">يتحدث كل 30 ثانية</span>
+          </div>
+
+          {visitStatsLoading ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+              {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
+            </div>
+          ) : !visitStats?.topAccounts?.length ? (
+            <div className="bg-card border rounded-xl p-8 text-center text-sm text-muted-foreground">
+              لا توجد زيارات مسجلة بعد — ستظهر الزيارات هنا فور الضغط على "زيارة الحساب"
+            </div>
+          ) : (
+            <div className="bg-card border rounded-xl overflow-hidden shadow-sm">
+              <table className="w-full text-sm">
+                <thead className="border-b bg-muted/30">
+                  <tr>
+                    <th className="text-right py-2.5 px-3 font-semibold text-xs text-muted-foreground">الحساب</th>
+                    <th className="text-right py-2.5 px-3 font-semibold text-xs text-muted-foreground hidden sm:table-cell">المنصة</th>
+                    <th className="text-right py-2.5 px-3 font-semibold text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1"><Eye className="w-3 h-3" />الزيارات</span>
+                    </th>
+                    <th className="text-right py-2.5 px-3 font-semibold text-xs text-muted-foreground hidden md:table-cell">آخر زيارة</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {visitStats.topAccounts.map((row, i) => {
+                    const plt = PLT[row.platform ?? "tiktok"] ?? PLT.tiktok;
+                    const lastVisitStr = row.lastVisit
+                      ? new Date(row.lastVisit).toLocaleString("ar-EG", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })
+                      : "—";
+                    return (
+                      <tr key={row.accountId} className="hover:bg-muted/20 transition-colors">
+                        {/* Rank + name */}
+                        <td className="py-2.5 px-3">
+                          <div className="flex items-center gap-2">
+                            <span className={`text-xs font-black w-5 text-center ${i === 0 ? "text-yellow-500" : i === 1 ? "text-muted-foreground" : i === 2 ? "text-amber-700" : "text-muted-foreground/50"}`}>
+                              {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `#${i + 1}`}
+                            </span>
+                            {row.imageUrl ? (
+                              <img src={row.imageUrl} alt="" className="w-7 h-7 rounded object-cover border shrink-0" />
+                            ) : (
+                              <div className="w-7 h-7 rounded border bg-muted flex items-center justify-center shrink-0">
+                                <ImageIcon className="w-3.5 h-3.5 text-muted-foreground/30" />
+                              </div>
+                            )}
+                            <span className="text-xs font-medium truncate max-w-[120px]" dir="ltr">{row.accountTitle}</span>
+                          </div>
+                        </td>
+                        {/* Platform */}
+                        <td className="py-2.5 px-3 hidden sm:table-cell">
+                          <span className={`flex items-center gap-1 text-xs ${plt.color}`}>{plt.icon} {plt.label}</span>
+                        </td>
+                        {/* Visit count */}
+                        <td className="py-2.5 px-3">
+                          <span className="flex items-center gap-1 font-black text-blue-500 text-sm">
+                            <Eye className="w-3.5 h-3.5" />
+                            {row.visitCount.toLocaleString("ar-EG")}
+                          </span>
+                        </td>
+                        {/* Last visit */}
+                        <td className="py-2.5 px-3 hidden md:table-cell">
+                          <span className="text-[11px] text-muted-foreground">{lastVisitStr}</span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
         {/* ── Quick Action Cards ─────────────────────────────────────────── */}
         <div>
           <h2 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wider">إجراءات سريعة</h2>
@@ -494,6 +588,9 @@ export default function AdminDashboard() {
                       <th className="text-right py-3 px-3 font-semibold text-xs text-muted-foreground hidden sm:table-cell">المنصة</th>
                       <th className="text-right py-3 px-3 font-semibold text-xs text-muted-foreground hidden md:table-cell">المتابعين</th>
                       <th className="text-right py-3 px-3 font-semibold text-xs text-muted-foreground">السعر</th>
+                      <th className="text-right py-3 px-3 font-semibold text-xs text-muted-foreground hidden lg:table-cell">
+                        <span className="flex items-center gap-1"><Eye className="w-3 h-3" />زيارة</span>
+                      </th>
                       <th className="text-left  py-3 px-3 font-semibold text-xs text-muted-foreground">إجراءات</th>
                     </tr>
                   </thead>
@@ -528,6 +625,13 @@ export default function AdminDashboard() {
                           {/* Price */}
                           <td className="py-2 px-3">
                             <span className="font-black text-primary text-sm">{acc.price}₪</span>
+                          </td>
+                          {/* Visit count */}
+                          <td className="py-2 px-3 hidden lg:table-cell">
+                            <span className="flex items-center gap-1 text-xs text-muted-foreground font-medium">
+                              <Eye className="w-3 h-3 text-blue-400" />
+                              {(acc.visitCount ?? 0).toLocaleString("ar-EG")}
+                            </span>
                           </td>
                           {/* Actions */}
                           <td className="py-2 px-3">
