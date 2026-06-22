@@ -226,6 +226,21 @@ export default function AccountDetails() {
     if (!isNaN(id) && id > 0) trackEvent("page_view", id);
   }, [id]);
 
+  // Debug logging — shows account fields in browser console
+  useEffect(() => {
+    if (account) {
+      console.log("[AccountDetails] Debug:", {
+        "account.id":          account.id,
+        "account.price":       account.price,
+        "account.accountUrl":  account.accountUrl,
+        "account.description": account.description?.substring(0, 120),
+        "account.followers":   account.followers,
+        "account.platform":    account.platform,
+        "account.status":      account.status,
+      });
+    }
+  }, [account]);
+
   const handleBack = () => {
     if (window.history.length > 1) window.history.back();
     else window.location.href = "/accounts";
@@ -386,7 +401,7 @@ export default function AccountDetails() {
         </div>
 
         {/* ── Stats ── */}
-        <div className="grid grid-cols-2 gap-3 mb-5">
+        <div className="grid grid-cols-2 gap-3 mb-4">
           <div className="flex items-center gap-3 bg-muted/50 rounded-xl px-4 py-3">
             <Users className="w-4 h-4 text-primary shrink-0" />
             <div>
@@ -402,6 +417,32 @@ export default function AccountDetails() {
             </div>
           </div>
         </div>
+
+        {/* ── Visit Account — inline button (visible without scrolling) ── */}
+        {account.accountUrl ? (
+          <a
+            href={account.accountUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => trackEvent("account_url_click", account.id)}
+            className={`w-full flex items-center justify-center gap-2 rounded-xl py-3.5 mb-5 text-sm font-bold border-2 transition-colors ${
+              account.platform === "instagram"
+                ? "border-pink-300 text-pink-600 dark:text-pink-400 hover:bg-pink-50 dark:hover:bg-pink-950/30"
+                : account.platform === "facebook"
+                ? "border-blue-300 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30"
+                : "border-border text-foreground hover:bg-muted/50"
+            }`}
+          >
+            <PlatformIcon className={`w-4 h-4 ${platformColor}`} />
+            زيارة الحساب على {platformAr}
+            <ExternalLink className="w-3.5 h-3.5 opacity-70" />
+          </a>
+        ) : (
+          <div className="w-full flex items-center justify-center gap-2 rounded-xl py-3 mb-5 text-xs text-muted-foreground bg-muted/30 border border-dashed border-border">
+            <ExternalLink className="w-3.5 h-3.5 opacity-50" />
+            رابط الحساب غير متاح حالياً — تواصل عبر واتساب
+          </div>
+        )}
 
         {/* ── Description block — all platforms ── */}
         <div className="mb-5 rounded-2xl border border-border bg-muted/30 overflow-hidden">
@@ -518,17 +559,29 @@ export default function AccountDetails() {
         {/* ── Sticky action buttons ── */}
         <div className="fixed bottom-0 inset-x-0 z-50 bg-background/95 backdrop-blur-sm border-t px-4 py-3">
           <div className="max-w-2xl mx-auto flex flex-col gap-2">
+            {/* Price summary row */}
+            <div className="flex items-center justify-between px-1">
+              <span className="text-xs text-muted-foreground">السعر النهائي</span>
+              <span className="font-black text-xl text-primary">{account.price}₪</span>
+            </div>
+            {/* Visit account — only when URL exists */}
             {account.accountUrl && (
               <a
                 href={account.accountUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => trackEvent("account_url_click", account.id)}
-                className="w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold border border-border hover:border-primary/50 hover:bg-primary/5 transition-colors text-muted-foreground hover:text-primary"
+                className={`w-full flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-bold border-2 transition-colors ${
+                  account.platform === "instagram"
+                    ? "border-pink-300 text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-950/30"
+                    : account.platform === "facebook"
+                    ? "border-blue-300 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30"
+                    : "border-border text-foreground hover:bg-muted/50"
+                }`}
               >
                 <PlatformIcon className={`w-4 h-4 ${platformColor}`} />
                 زيارة الحساب
-                <ExternalLink className="w-3.5 h-3.5 opacity-60" />
+                <ExternalLink className="w-3.5 h-3.5 opacity-70" />
               </a>
             )}
             <button
