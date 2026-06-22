@@ -13,13 +13,14 @@ import AccountDetails from "@/pages/account-details";
 import About from "@/pages/about";
 import Feedback from "@/pages/feedback";
 import Contact from "@/pages/contact";
-import Guarantee from "@/pages/guarantee";
+import CelebrityAds from "@/pages/celebrity-ads";
 
 // Admin Pages
 import AdminLogin from "@/pages/admin/login";
 import AdminDashboard from "@/pages/admin/dashboard";
 import AdminAccounts from "@/pages/admin/accounts";
 import AdminSettings from "@/pages/admin/settings";
+import AdminCelebrityAds from "@/pages/admin/celebrity-ads";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -55,7 +56,7 @@ function Router() {
       <Route path="/about" component={About} />
       <Route path="/feedback" component={Feedback} />
       <Route path="/contact" component={Contact} />
-      <Route path="/guarantee" component={Guarantee} />
+      <Route path="/celebrity-ads" component={CelebrityAds} />
 
       {/* Admin Routes */}
       <Route path="/admin" component={AdminRedirect} />
@@ -68,6 +69,9 @@ function Router() {
       </Route>
       <Route path="/admin/settings">
         <ProtectedRoute component={AdminSettings} />
+      </Route>
+      <Route path="/admin/celebrity-ads">
+        <ProtectedRoute component={AdminCelebrityAds} />
       </Route>
 
       <Route component={NotFound} />

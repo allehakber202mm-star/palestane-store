@@ -25,6 +25,8 @@ tags:
     description: Customer review images
   - name: feedback
     description: Telegram channel feedback posts
+  - name: celebrity-ads
+    description: Celebrity endorsement ad videos
 paths:
   /healthz:
     get:
@@ -328,6 +330,82 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ClickResult"
+
+  /celebrity-ads:
+    get:
+      operationId: listCelebrityAds
+      tags: [celebrity-ads]
+      summary: List celebrity ad videos
+      responses:
+        "200":
+          description: List of celebrity ad videos ordered newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CelebrityAd"
+
+  /admin/celebrity-ads:
+    post:
+      operationId: createCelebrityAd
+      tags: [admin]
+      summary: Create a celebrity ad video
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CelebrityAdInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CelebrityAd"
+
+  /admin/celebrity-ads/{id}:
+    patch:
+      operationId: updateCelebrityAd
+      tags: [admin]
+      summary: Update a celebrity ad video
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CelebrityAdUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CelebrityAd"
+    delete:
+      operationId: deleteCelebrityAd
+      tags: [admin]
+      summary: Delete a celebrity ad video
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResult"
 
   /feedback:
     get:
@@ -746,6 +824,62 @@ components:
           type: string
         metadata:
           $ref: '#/components/schemas/UploadUrlRequest'
+    CelebrityAd:
+      type: object
+      required: [id, title, videoUrl, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        videoUrl:
+          type: string
+        thumbnailUrl:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CelebrityAdInput:
+      type: object
+      required: [title, videoUrl]
+      properties:
+        title:
+          type: string
+          minLength: 1
+        description:
+          type: string
+          nullable: true
+        videoUrl:
+          type: string
+          minLength: 1
+        thumbnailUrl:
+          type: string
+          nullable: true
+
+    CelebrityAdUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+        description:
+          type: string
+          nullable: true
+        videoUrl:
+          type: string
+          minLength: 1
+        thumbnailUrl:
+          type: string
+          nullable: true
+
     FeedbackPost:
       type: object
       required: [id, telegramMessageId, postedAt, createdAt, updatedAt]

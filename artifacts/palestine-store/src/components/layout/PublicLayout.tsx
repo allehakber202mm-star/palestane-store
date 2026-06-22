@@ -4,10 +4,9 @@ import { useGetSettings } from "@workspace/api-client-react";
 import { WhatsAppButton } from "../WhatsAppButton";
 import {
   Menu, X, Home, Info, Star, Phone, ShieldCheck,
-  Users, ExternalLink, Send,
+  Users, ExternalLink, Send, Video,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { SiTiktok } from "react-icons/si";
 
 /* ── Sidebar link definitions ── */
 type InternalLink = { kind: "internal"; href: string; label: string; icon: React.ReactNode; badge?: string };
@@ -16,16 +15,15 @@ type SeparatorItem = { kind: "separator" };
 type SidebarItem = InternalLink | ExternalLink | SeparatorItem;
 
 const SIDEBAR_ITEMS: SidebarItem[] = [
-  { kind: "internal", href: "/",                                    label: "الرئيسية",          icon: <Home      className="w-5 h-5" /> },
-  { kind: "internal", href: "/accounts",                            label: "جميع الحسابات",     icon: <Users     className="w-5 h-5" /> },
-  { kind: "internal", href: "/accounts?platform=tiktok_monetized",  label: "تيك توك أرباح",    icon: <SiTiktok  className="w-5 h-5 text-green-500" />, badge: "💰" },
+  { kind: "internal", href: "/",               label: "الرئيسية",                    icon: <Home  className="w-5 h-5" /> },
+  { kind: "internal", href: "/accounts",        label: "جميع الحسابات",               icon: <Users className="w-5 h-5" /> },
   { kind: "separator" },
-  { kind: "internal", href: "/feedback",   label: "فيدباك العملاء",     icon: <Star      className="w-5 h-5 text-yellow-500" /> },
-  { kind: "internal", href: "/guarantee",  label: "ضمان المعاملة",      icon: <ShieldCheck className="w-5 h-5 text-blue-500" /> },
-  { kind: "internal", href: "/about",      label: "تفاصيل عنا أكثر",   icon: <Info      className="w-5 h-5" /> },
+  { kind: "internal", href: "/feedback",        label: "فيدباك العملاء",              icon: <Star  className="w-5 h-5 text-yellow-500" /> },
+  { kind: "internal", href: "/celebrity-ads",   label: "إعلانات المشاهير لمتجرنا",   icon: <Video className="w-5 h-5 text-purple-500" /> },
+  { kind: "internal", href: "/about",           label: "تفاصيل عنا أكثر",            icon: <Info  className="w-5 h-5" /> },
   { kind: "separator" },
-  { kind: "external", hrefKey: "whatsapp",  label: "تواصل معنا",        icon: <Phone     className="w-5 h-5 text-green-500" />, fallback: "972566112031" },
-  { kind: "external", hrefKey: "telegram",  label: "قناة التليجرام",    icon: <Send      className="w-5 h-5 text-sky-500" />,   fallback: "https://t.me/Palestine_storeL" },
+  { kind: "external", hrefKey: "whatsapp",  label: "تواصل معنا",     icon: <Phone className="w-5 h-5 text-green-500" />, fallback: "972566112031" },
+  { kind: "external", hrefKey: "telegram",  label: "قناة التليجرام", icon: <Send  className="w-5 h-5 text-sky-500" />,   fallback: "https://t.me/Palestine_storeL" },
 ];
 
 function buildExternalHref(item: ExternalLink, settings: Record<string, string | null | undefined> | undefined): string {

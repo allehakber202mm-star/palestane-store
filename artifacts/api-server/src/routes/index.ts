@@ -9,6 +9,7 @@ import storageRouter from "./storage";
 import telegramRouter from "./telegram";
 import reviewsRouter from "./reviews";
 import feedbackRouter from "./feedback";
+import celebrityAdsRouter from "./celebrity-ads";
 
 const router: IRouter = Router();
 
@@ -24,6 +25,8 @@ router.use("/telegram", telegramRouter);
 router.use("/admin/telegram", telegramRouter);
 router.use("/reviews", reviewsRouter);
 router.use("/feedback", feedbackRouter);
+router.use("/celebrity-ads", celebrityAdsRouter);
+router.use("/", celebrityAdsRouter);
 router.use("/", reviewsRouter);
 
 export default router;

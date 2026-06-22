@@ -25,6 +25,9 @@ import type {
   AccountUpdate,
   AdminInfo,
   AdminListAccountsParams,
+  CelebrityAd,
+  CelebrityAdInput,
+  CelebrityAdUpdate,
   ClickResult,
   DashboardStats,
   DeleteResult,
@@ -1254,6 +1257,296 @@ export const useTrackWhatsappClick = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getTrackWhatsappClickMutationOptions(options));
+    }
+
+export const getListCelebrityAdsUrl = () => {
+
+
+
+
+  return `/api/celebrity-ads`
+}
+
+/**
+ * @summary List celebrity ad videos
+ */
+export const listCelebrityAds = async ( options?: RequestInit): Promise<CelebrityAd[]> => {
+
+  return customFetch<CelebrityAd[]>(getListCelebrityAdsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCelebrityAdsQueryKey = () => {
+    return [
+    `/api/celebrity-ads`
+    ] as const;
+    }
+
+
+export const getListCelebrityAdsQueryOptions = <TData = Awaited<ReturnType<typeof listCelebrityAds>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCelebrityAds>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCelebrityAdsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCelebrityAds>>> = ({ signal }) => listCelebrityAds({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCelebrityAds>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCelebrityAdsQueryResult = NonNullable<Awaited<ReturnType<typeof listCelebrityAds>>>
+export type ListCelebrityAdsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List celebrity ad videos
+ */
+
+export function useListCelebrityAds<TData = Awaited<ReturnType<typeof listCelebrityAds>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCelebrityAds>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCelebrityAdsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCreateCelebrityAdUrl = () => {
+
+
+
+
+  return `/api/admin/celebrity-ads`
+}
+
+/**
+ * @summary Create a celebrity ad video
+ */
+export const createCelebrityAd = async (celebrityAdInput: CelebrityAdInput, options?: RequestInit): Promise<CelebrityAd> => {
+
+  return customFetch<CelebrityAd>(getCreateCelebrityAdUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      celebrityAdInput,)
+  }
+);}
+
+
+
+
+export const getCreateCelebrityAdMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCelebrityAd>>, TError,{data: BodyType<CelebrityAdInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createCelebrityAd>>, TError,{data: BodyType<CelebrityAdInput>}, TContext> => {
+
+const mutationKey = ['createCelebrityAd'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createCelebrityAd>>, {data: BodyType<CelebrityAdInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createCelebrityAd(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateCelebrityAdMutationResult = NonNullable<Awaited<ReturnType<typeof createCelebrityAd>>>
+    export type CreateCelebrityAdMutationBody = BodyType<CelebrityAdInput>
+    export type CreateCelebrityAdMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Create a celebrity ad video
+ */
+export const useCreateCelebrityAd = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCelebrityAd>>, TError,{data: BodyType<CelebrityAdInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createCelebrityAd>>,
+        TError,
+        {data: BodyType<CelebrityAdInput>},
+        TContext
+      > => {
+      return useMutation(getCreateCelebrityAdMutationOptions(options));
+    }
+
+export const getUpdateCelebrityAdUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/celebrity-ads/${id}`
+}
+
+/**
+ * @summary Update a celebrity ad video
+ */
+export const updateCelebrityAd = async (id: number,
+    celebrityAdUpdate: CelebrityAdUpdate, options?: RequestInit): Promise<CelebrityAd> => {
+
+  return customFetch<CelebrityAd>(getUpdateCelebrityAdUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      celebrityAdUpdate,)
+  }
+);}
+
+
+
+
+export const getUpdateCelebrityAdMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCelebrityAd>>, TError,{id: number;data: BodyType<CelebrityAdUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateCelebrityAd>>, TError,{id: number;data: BodyType<CelebrityAdUpdate>}, TContext> => {
+
+const mutationKey = ['updateCelebrityAd'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateCelebrityAd>>, {id: number;data: BodyType<CelebrityAdUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateCelebrityAd(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateCelebrityAdMutationResult = NonNullable<Awaited<ReturnType<typeof updateCelebrityAd>>>
+    export type UpdateCelebrityAdMutationBody = BodyType<CelebrityAdUpdate>
+    export type UpdateCelebrityAdMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Update a celebrity ad video
+ */
+export const useUpdateCelebrityAd = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCelebrityAd>>, TError,{id: number;data: BodyType<CelebrityAdUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateCelebrityAd>>,
+        TError,
+        {id: number;data: BodyType<CelebrityAdUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateCelebrityAdMutationOptions(options));
+    }
+
+export const getDeleteCelebrityAdUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/celebrity-ads/${id}`
+}
+
+/**
+ * @summary Delete a celebrity ad video
+ */
+export const deleteCelebrityAd = async (id: number, options?: RequestInit): Promise<DeleteResult> => {
+
+  return customFetch<DeleteResult>(getDeleteCelebrityAdUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteCelebrityAdMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCelebrityAd>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteCelebrityAd>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteCelebrityAd'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteCelebrityAd>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteCelebrityAd(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteCelebrityAdMutationResult = NonNullable<Awaited<ReturnType<typeof deleteCelebrityAd>>>
+
+    export type DeleteCelebrityAdMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Delete a celebrity ad video
+ */
+export const useDeleteCelebrityAd = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCelebrityAd>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteCelebrityAd>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteCelebrityAdMutationOptions(options));
     }
 
 export const getListFeedbackUrl = () => {

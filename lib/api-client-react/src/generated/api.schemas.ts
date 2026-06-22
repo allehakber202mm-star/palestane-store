@@ -227,6 +227,34 @@ export interface UploadUrlResponse {
   metadata?: UploadUrlRequest;
 }
 
+export interface CelebrityAd {
+  id: number;
+  title: string;
+  description?: string | null;
+  videoUrl: string;
+  thumbnailUrl?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CelebrityAdInput {
+  /** @minLength 1 */
+  title: string;
+  description?: string | null;
+  /** @minLength 1 */
+  videoUrl: string;
+  thumbnailUrl?: string | null;
+}
+
+export interface CelebrityAdUpdate {
+  /** @minLength 1 */
+  title?: string;
+  description?: string | null;
+  /** @minLength 1 */
+  videoUrl?: string;
+  thumbnailUrl?: string | null;
+}
+
 export interface FeedbackPost {
   id: number;
   telegramMessageId: number;

@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
-import { LayoutDashboard, Users, Settings, LogOut, Menu, Sun, Moon } from "lucide-react";
+import { LayoutDashboard, Users, Settings, LogOut, Menu, Sun, Moon, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useTheme } from "next-themes";
@@ -28,6 +28,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
   const navItems = [
     { href: "/admin/dashboard", label: "الرئيسية", icon: LayoutDashboard },
     { href: "/admin/accounts", label: "الحسابات", icon: Users },
+    { href: "/admin/celebrity-ads", label: "إعلانات المشاهير", icon: Video },
     { href: "/admin/settings", label: "الإعدادات", icon: Settings },
   ];
 

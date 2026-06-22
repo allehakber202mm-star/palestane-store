@@ -376,6 +376,77 @@ export const TrackWhatsappClickResponse = zod.object({
 
 
 /**
+ * @summary List celebrity ad videos
+ */
+export const ListCelebrityAdsResponseItem = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "description": zod.string().nullish(),
+  "videoUrl": zod.string(),
+  "thumbnailUrl": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListCelebrityAdsResponse = zod.array(ListCelebrityAdsResponseItem)
+
+
+/**
+ * @summary Create a celebrity ad video
+ */
+
+
+
+
+export const CreateCelebrityAdBody = zod.object({
+  "title": zod.string().min(1),
+  "description": zod.string().nullish(),
+  "videoUrl": zod.string().min(1),
+  "thumbnailUrl": zod.string().nullish()
+})
+
+
+/**
+ * @summary Update a celebrity ad video
+ */
+export const UpdateCelebrityAdParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+
+export const UpdateCelebrityAdBody = zod.object({
+  "title": zod.string().min(1).optional(),
+  "description": zod.string().nullish(),
+  "videoUrl": zod.string().min(1).optional(),
+  "thumbnailUrl": zod.string().nullish()
+})
+
+export const UpdateCelebrityAdResponse = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "description": zod.string().nullish(),
+  "videoUrl": zod.string(),
+  "thumbnailUrl": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Delete a celebrity ad video
+ */
+export const DeleteCelebrityAdParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteCelebrityAdResponse = zod.object({
+  "success": zod.boolean()
+})
+
+
+/**
  * @summary List feedback posts from Telegram channel
  */
 export const ListFeedbackResponseItem = zod.object({
