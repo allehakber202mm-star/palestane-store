@@ -5,6 +5,7 @@ export const feedbackPostsTable = pgTable("feedback_posts", {
   telegramMessageId: integer("telegram_message_id").notNull().unique(),
   text: text("text"),
   imageUrl: text("image_url"),
+  videoUrl: text("video_url"),
   postedAt: timestamp("posted_at").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
