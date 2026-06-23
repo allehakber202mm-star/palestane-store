@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Play, Video, CalendarDays, X } from "lucide-react";
 import { useState } from "react";
 import { VideoEmbed } from "@/components/VideoEmbed";
+import { useVideoThumbnail } from "@/hooks/useVideoThumbnail";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("ar-EG", {
@@ -14,6 +15,7 @@ function formatDate(iso: string) {
 
 type Ad = CelebrityAd;
 
+// ── Modal ────────────────────────────────────────────────────────────────────
 function VideoModal({ ad, onClose }: { ad: Ad; onClose: () => void }) {
   return (
     <div
@@ -24,21 +26,16 @@ function VideoModal({ ad, onClose }: { ad: Ad; onClose: () => void }) {
         className="relative w-full max-w-3xl bg-black rounded-2xl overflow-hidden shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Close */}
         <button
           onClick={onClose}
           className="absolute top-3 right-3 z-20 bg-black/60 hover:bg-black/90 text-white rounded-full p-1.5 transition-colors"
         >
           <X className="w-5 h-5" />
         </button>
-
-        {/* Smart video player — handles MP4, YouTube, TikTok, Instagram, Facebook */}
         <VideoEmbed
           url={ad.videoUrl}
           className="w-full max-h-[72vh] object-contain bg-black aspect-video"
         />
-
-        {/* Metadata */}
         <div className="p-4 bg-background">
           <h3 className="font-bold text-lg leading-snug">{ad.title}</h3>
           {ad.description && (
@@ -52,6 +49,59 @@ function VideoModal({ ad, onClose }: { ad: Ad; onClose: () => void }) {
   );
 }
 
+// ── Card with auto-thumbnail ─────────────────────────────────────────────────
+function AdCard({ ad, onClick }: { ad: Ad; onClick: () => void }) {
+  const thumbnail = useVideoThumbnail(ad.videoUrl, ad.thumbnailUrl);
+
+  return (
+    <div className="group bg-card border rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-200 flex flex-col cursor-pointer">
+      {/* Thumbnail area — always 16:9 */}
+      <div
+        className="relative w-full aspect-video overflow-hidden bg-black"
+        onClick={onClick}
+      >
+        {thumbnail ? (
+          <img
+            src={thumbnail}
+            alt={ad.title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            loading="lazy"
+          />
+        ) : (
+          /* Gradient placeholder while extracting */
+          <div className="w-full h-full bg-gradient-to-br from-zinc-800 to-zinc-900" />
+        )}
+
+        {/* Play overlay — always visible */}
+        <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/40 transition-colors duration-200">
+          <div className="bg-white/90 group-hover:bg-white rounded-full p-4 shadow-xl transition-all duration-200 group-hover:scale-110">
+            <Play className="w-8 h-8 text-primary fill-primary" />
+          </div>
+        </div>
+      </div>
+
+      {/* Info */}
+      <div className="p-4 flex flex-col flex-1 gap-2">
+        <h3 className="font-bold text-base line-clamp-2 leading-snug">{ad.title}</h3>
+        {ad.description && (
+          <p className="text-sm text-muted-foreground line-clamp-2 flex-1">{ad.description}</p>
+        )}
+        <div className="flex items-center justify-between mt-auto pt-2 border-t border-border/50">
+          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <CalendarDays className="w-3.5 h-3.5" />
+            {formatDate(ad.createdAt)}
+          </span>
+          <Button size="sm" onClick={onClick} className="gap-1.5 h-8 text-xs">
+            <Play className="w-3.5 h-3.5 fill-current" />
+            مشاهدة
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Page ─────────────────────────────────────────────────────────────────────
 export default function CelebrityAds() {
   const { data: ads, isLoading } = useListCelebrityAds();
   const [activeAd, setActiveAd] = useState<Ad | null>(null);
@@ -96,57 +146,7 @@ export default function CelebrityAds() {
         {!isLoading && ads && ads.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
             {ads.map((ad) => (
-              <div
-                key={ad.id}
-                className="group bg-card border rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-200 flex flex-col"
-              >
-                {/* Thumbnail / click target */}
-                <div
-                  className="relative cursor-pointer bg-muted aspect-video overflow-hidden"
-                  onClick={() => setActiveAd(ad)}
-                >
-                  {ad.thumbnailUrl ? (
-                    <img
-                      src={ad.thumbnailUrl}
-                      alt={ad.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/10 to-primary/20">
-                      <Video className="w-12 h-12 text-primary/40" />
-                    </div>
-                  )}
-                  {/* Play overlay */}
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                    <div className="bg-white/90 rounded-full p-3 shadow-lg">
-                      <Play className="w-7 h-7 text-primary fill-primary" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Info */}
-                <div className="p-4 flex flex-col flex-1 gap-3">
-                  <h3 className="font-bold text-base line-clamp-2 leading-snug">{ad.title}</h3>
-                  {ad.description && (
-                    <p className="text-sm text-muted-foreground line-clamp-2 flex-1">{ad.description}</p>
-                  )}
-                  <div className="flex items-center justify-between mt-auto pt-2 border-t border-border/50">
-                    <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <CalendarDays className="w-3.5 h-3.5" />
-                      {formatDate(ad.createdAt)}
-                    </span>
-                    <Button
-                      size="sm"
-                      onClick={() => setActiveAd(ad)}
-                      className="gap-1.5 h-8 text-xs"
-                    >
-                      <Play className="w-3.5 h-3.5 fill-current" />
-                      مشاهدة
-                    </Button>
-                  </div>
-                </div>
-              </div>
+              <AdCard key={ad.id} ad={ad} onClick={() => setActiveAd(ad)} />
             ))}
           </div>
         )}
