@@ -10,7 +10,7 @@ import {
   AccountUpdate,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -103,6 +103,14 @@ export default function AdminAccounts() {
     platform: tab,
     status:   statusFilter !== "all" ? statusFilter : undefined,
   });
+
+  // Sort: available first (by followers desc), then sold (by followers desc)
+  const sortedAccounts = useMemo(() => {
+    if (!accounts) return accounts;
+    const available = accounts.filter(a => a.status !== "sold").sort((a, b) => b.followers - a.followers);
+    const sold      = accounts.filter(a => a.status === "sold").sort((a, b) => b.followers - a.followers);
+    return [...available, ...sold];
+  }, [accounts]);
 
   // Auto-refresh every 30 s to pick up Telegram-synced accounts
   useEffect(() => {
@@ -392,7 +400,7 @@ export default function AdminAccounts() {
               <Skeleton key={i} className="h-64 rounded-xl" />
             ))}
           </div>
-        ) : !accounts?.length ? (
+        ) : !sortedAccounts?.length ? (
           <div className="text-center py-20 border border-dashed rounded-xl text-muted-foreground">
             <p className="text-lg mb-1">لا يوجد حسابات</p>
             <p className="text-sm opacity-60">
@@ -401,7 +409,7 @@ export default function AdminAccounts() {
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-            {accounts.map((acc) => {
+            {sortedAccounts.map((acc) => {
               const plt = PLT[acc.platform] ?? PLT.tiktok;
               const isSold = acc.status === "sold";
               return (
