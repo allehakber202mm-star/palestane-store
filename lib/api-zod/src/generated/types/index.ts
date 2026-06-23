@@ -32,6 +32,7 @@ export * from './healthStatus';
 export * from './imageUploadResult';
 export * from './listAccountsParams';
 export * from './listAccountsPlatform';
+export * from './listAccountsSort';
 export * from './listAccountsStatus';
 export * from './loginInput';
 export * from './loginResult';

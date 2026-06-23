@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, accountsTable, statsTable, accountVisitsTable } from "@workspace/db";
+import { db, accountsTable, accountVisitsTable } from "@workspace/db";
 import { eq, desc, and, sql, asc, gte } from "drizzle-orm";
 import { ListAccountsQueryParams } from "@workspace/api-zod";
 
@@ -33,6 +33,36 @@ export function formatAccount(a: Record<string, unknown>) {
   };
 }
 
+// ── Sort helpers ──────────────────────────────────────────────────────────────
+// Sold accounts always go last regardless of sort
+const statusOrder = sql`CASE WHEN ${accountsTable.status} = 'sold' THEN 1 ELSE 0 END`;
+
+// Zero or NULL followers → sent to the end when sorting by followers
+const followersZeroLast = sql`CASE WHEN COALESCE(${accountsTable.followers}, 0) = 0 THEN 1 ELSE 0 END`;
+
+type SortKey = "followers_desc" | "followers_asc" | "newest" | "oldest" | "price_desc" | "price_asc";
+
+function buildOrderBy(sort?: string | null) {
+  const key = (sort as SortKey) ?? "followers_desc";
+  switch (key) {
+    case "followers_asc":
+      // Zero/null still go to end even ascending (they have no real data)
+      return [asc(statusOrder), asc(followersZeroLast), asc(accountsTable.followers)];
+    case "newest":
+      return [asc(statusOrder), desc(accountsTable.createdAt)];
+    case "oldest":
+      return [asc(statusOrder), asc(accountsTable.createdAt)];
+    case "price_desc":
+      return [asc(statusOrder), desc(accountsTable.price)];
+    case "price_asc":
+      return [asc(statusOrder), asc(accountsTable.price)];
+    case "followers_desc":
+    default:
+      return [asc(statusOrder), asc(followersZeroLast), desc(accountsTable.followers)];
+  }
+}
+
+// ── GET /accounts ─────────────────────────────────────────────────────────────
 router.get("/", async (req, res) => {
   const parse = ListAccountsQueryParams.safeParse(req.query);
   const params = parse.success ? parse.data : {};
@@ -42,26 +72,22 @@ router.get("/", async (req, res) => {
   if (params.status) conditions.push(eq(accountsTable.status, params.status));
   if (params.featured !== undefined) conditions.push(eq(accountsTable.featured, params.featured));
 
-  // available first, sold last — then by followers desc
-  const statusOrder = sql`CASE WHEN ${accountsTable.status} = 'sold' THEN 1 ELSE 0 END`;
+  const orderBy = buildOrderBy(params.sort);
 
-  let rows;
-  if (conditions.length > 0) {
-    rows = await db
-      .select()
-      .from(accountsTable)
-      .where(and(...conditions))
-      .orderBy(asc(statusOrder), desc(accountsTable.followers))
-      .limit(params.limit ?? 50)
-      .offset(params.offset ?? 0);
-  } else {
-    rows = await db
-      .select()
-      .from(accountsTable)
-      .orderBy(asc(statusOrder), desc(accountsTable.followers))
-      .limit(params.limit ?? 50)
-      .offset(params.offset ?? 0);
-  }
+  const rows = conditions.length > 0
+    ? await db
+        .select()
+        .from(accountsTable)
+        .where(and(...conditions))
+        .orderBy(...orderBy)
+        .limit(params.limit ?? 100)
+        .offset(params.offset ?? 0)
+    : await db
+        .select()
+        .from(accountsTable)
+        .orderBy(...orderBy)
+        .limit(params.limit ?? 100)
+        .offset(params.offset ?? 0);
 
   res.json(rows.map(formatAccount));
 });
@@ -102,62 +128,55 @@ router.post("/:id/visit", async (req, res) => {
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
 
   const { visitorId } = req.body as { visitorId?: string };
-  if (!visitorId || typeof visitorId !== "string" || !visitorId.trim()) {
-    res.status(400).json({ error: "visitorId required" }); return;
-  }
+  if (!visitorId) { res.status(400).json({ error: "visitorId required" }); return; }
 
   const [account] = await db
-    .select({ id: accountsTable.id, name: accountsTable.name, accountUrl: accountsTable.accountUrl, visitCount: accountsTable.visitCount })
+    .select({ id: accountsTable.id, accountUrl: accountsTable.accountUrl, visitCount: accountsTable.visitCount })
     .from(accountsTable)
     .where(eq(accountsTable.id, id));
-
   if (!account) { res.status(404).json({ error: "Not found" }); return; }
 
-  // Rate limit: 1 counted visit per visitorId per account per 30 minutes
+  // Rate-limit: check if this visitor already visited this account in the last 30 min
   const thirtyMinsAgo = new Date(Date.now() - 30 * 60 * 1000);
-  const [recent] = await db
+  const [existing] = await db
     .select({ id: accountVisitsTable.id })
     .from(accountVisitsTable)
     .where(
       and(
         eq(accountVisitsTable.accountId, id),
-        eq(accountVisitsTable.visitorId, visitorId.trim()),
-        gte(accountVisitsTable.visitedAt, thirtyMinsAgo),
-      ),
+        eq(accountVisitsTable.visitorId, visitorId),
+        gte(accountVisitsTable.visitedAt, thirtyMinsAgo)
+      )
     )
     .limit(1);
 
-  if (recent) {
-    // Already visited within 30 min — still return current count but don't increment
-    res.json({ counted: false, visitCount: account.visitCount, accountUrl: account.accountUrl });
+  if (existing) {
+    // Already counted — return current count without incrementing
+    res.json({ counted: false, visitCount: Number(account.visitCount ?? 0), accountUrl: account.accountUrl });
     return;
   }
 
-  // Record visit + increment counter atomically
-  await Promise.all([
-    db.insert(accountVisitsTable).values({
-      accountId:    id,
-      accountTitle: account.name,
-      visitorId:    visitorId.trim(),
-    }),
-    db.update(accountsTable)
-      .set({ visitCount: sql`${accountsTable.visitCount} + 1` })
-      .where(eq(accountsTable.id, id)),
-  ]);
+  // Record visit
+  const [accountRow] = await db
+    .select({ name: accountsTable.name })
+    .from(accountsTable)
+    .where(eq(accountsTable.id, id));
 
-  res.json({ counted: true, visitCount: account.visitCount + 1, accountUrl: account.accountUrl });
-});
+  await db.insert(accountVisitsTable).values({
+    accountId: id,
+    accountTitle: String(accountRow?.name ?? ""),
+    visitorId,
+    visitedAt: new Date(),
+  });
 
-router.post("/:id/click", async (req, res) => {
-  const id = parseInt(req.params.id, 10);
-  if (!isNaN(id)) {
-    await db
-      .update(accountsTable)
-      .set({ clickCount: sql`${accountsTable.clickCount} + 1` })
-      .where(eq(accountsTable.id, id));
-    await db.insert(statsTable).values({ eventType: "account_click", accountId: id });
-  }
-  res.json({ success: true });
+  // Increment visitCount on account
+  const [updated] = await db
+    .update(accountsTable)
+    .set({ visitCount: sql`${accountsTable.visitCount} + 1` })
+    .where(eq(accountsTable.id, id))
+    .returning({ visitCount: accountsTable.visitCount, accountUrl: accountsTable.accountUrl });
+
+  res.json({ counted: true, visitCount: Number(updated.visitCount ?? 0), accountUrl: updated.accountUrl });
 });
 
 export default router;

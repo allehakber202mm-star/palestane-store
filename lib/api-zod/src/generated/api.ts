@@ -23,6 +23,7 @@ export const ListAccountsQueryParams = zod.object({
   "platform": zod.enum(['tiktok', 'instagram', 'facebook', 'tiktok_monetized']).optional(),
   "status": zod.enum(['available', 'sold']).optional(),
   "featured": zod.coerce.boolean().optional(),
+  "sort": zod.enum(['followers_desc', 'followers_asc', 'newest', 'oldest', 'price_desc', 'price_asc']).optional(),
   "limit": zod.coerce.number().optional(),
   "offset": zod.coerce.number().optional()
 })

@@ -6,12 +6,14 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { ListAccountsPlatform } from './listAccountsPlatform';
+import type { ListAccountsSort } from './listAccountsSort';
 import type { ListAccountsStatus } from './listAccountsStatus';
 
 export type ListAccountsParams = {
 platform?: ListAccountsPlatform;
 status?: ListAccountsStatus;
 featured?: boolean;
+sort?: ListAccountsSort;
 limit?: number;
 offset?: number;
 };

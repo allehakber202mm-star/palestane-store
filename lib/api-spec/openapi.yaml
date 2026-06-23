@@ -61,6 +61,11 @@ paths:
           in: query
           schema:
             type: boolean
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [followers_desc, followers_asc, newest, oldest, price_desc, price_asc]
         - name: limit
           in: query
           schema:

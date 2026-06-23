@@ -332,6 +332,7 @@ export type ListAccountsParams = {
 platform?: ListAccountsPlatform;
 status?: ListAccountsStatus;
 featured?: boolean;
+sort?: ListAccountsSort;
 limit?: number;
 offset?: number;
 };
@@ -352,6 +353,18 @@ export type ListAccountsStatus = typeof ListAccountsStatus[keyof typeof ListAcco
 export const ListAccountsStatus = {
   available: 'available',
   sold: 'sold',
+} as const;
+
+export type ListAccountsSort = typeof ListAccountsSort[keyof typeof ListAccountsSort];
+
+
+export const ListAccountsSort = {
+  followers_desc: 'followers_desc',
+  followers_asc: 'followers_asc',
+  newest: 'newest',
+  oldest: 'oldest',
+  price_desc: 'price_desc',
+  price_asc: 'price_asc',
 } as const;
 
 export type AdminListAccountsParams = {

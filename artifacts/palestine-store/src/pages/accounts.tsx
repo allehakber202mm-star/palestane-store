@@ -2,18 +2,31 @@ import { useState, useEffect } from "react";
 import { PublicLayout } from "@/components/layout/PublicLayout";
 import { AccountCard } from "@/components/AccountCard";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useListAccounts } from "@workspace/api-client-react";
-import { ListAccountsPlatform } from "@workspace/api-client-react";
+import { useListAccounts, ListAccountsPlatform, ListAccountsSort } from "@workspace/api-client-react";
 import { SiTiktok, SiInstagram, SiFacebook } from "react-icons/si";
-import { DollarSign } from "lucide-react";
+import { DollarSign, ArrowUpDown } from "lucide-react";
 
 type Platform = "tiktok" | "instagram" | "facebook" | "tiktok_monetized";
 
 const filters: { value: Platform; label: string; icon: React.ReactNode; color: string }[] = [
-  { value: "tiktok",           label: "تيك توك",              icon: <SiTiktok className="w-4 h-4" />,                              color: "text-foreground" },
-  { value: "tiktok_monetized", label: "تيك توك أرباح",         icon: <DollarSign className="w-4 h-4 text-green-500" />,             color: "text-green-600" },
-  { value: "instagram",        label: "انستغرام",              icon: <SiInstagram className="w-4 h-4 text-pink-500" />,             color: "text-pink-500" },
-  { value: "facebook",         label: "فيسبوك",                icon: <SiFacebook className="w-4 h-4 text-blue-600" />,              color: "text-blue-600" },
+  { value: "tiktok",           label: "تيك توك",     icon: <SiTiktok className="w-4 h-4" />,                      color: "text-foreground" },
+  { value: "tiktok_monetized", label: "تيك توك أرباح", icon: <DollarSign className="w-4 h-4 text-green-500" />,     color: "text-green-600" },
+  { value: "instagram",        label: "انستغرام",     icon: <SiInstagram className="w-4 h-4 text-pink-500" />,     color: "text-pink-500" },
+  { value: "facebook",         label: "فيسبوك",       icon: <SiFacebook className="w-4 h-4 text-blue-600" />,      color: "text-blue-600" },
+];
+
+type SortOption = {
+  value: ListAccountsSort;
+  label: string;
+};
+
+const SORT_OPTIONS: SortOption[] = [
+  { value: "followers_desc", label: "الأكثر متابعين" },
+  { value: "followers_asc",  label: "الأقل متابعين" },
+  { value: "newest",         label: "الأحدث" },
+  { value: "oldest",         label: "الأقدم" },
+  { value: "price_desc",     label: "الأعلى سعراً" },
+  { value: "price_asc",      label: "الأقل سعراً" },
 ];
 
 export default function Accounts() {
@@ -25,19 +38,17 @@ export default function Accounts() {
     : "tiktok";
 
   const [active, setActive] = useState<Platform>(initialPlatform);
+  const [sort, setSort]     = useState<ListAccountsSort>("followers_desc");
 
   useEffect(() => {
     const p = new URLSearchParams(window.location.search).get("platform") as Platform | null;
     if (p && validPlatforms.includes(p) && p !== active) setActive(p);
   }, []);
 
-  const { data: rawAccounts, isLoading } = useListAccounts({
+  const { data: accounts, isLoading } = useListAccounts({
     platform: active as ListAccountsPlatform,
+    sort,
   });
-
-  const accounts = rawAccounts
-    ? [...rawAccounts].sort((a, b) => b.followers - a.followers)
-    : undefined;
 
   const activeFilter = filters.find((f) => f.value === active)!;
 
@@ -54,8 +65,8 @@ export default function Accounts() {
       </div>
 
       <div className="container mx-auto px-3 sm:px-4 py-5 sm:py-8">
-        {/* Platform Tabs — grid, no horizontal scroll */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-6">
+        {/* Platform Tabs */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
           {filters.map((f) => (
             <button
               key={f.value}
@@ -79,14 +90,32 @@ export default function Accounts() {
           ))}
         </div>
 
-        {/* Results count */}
-        {!isLoading && accounts && (
-          <p className="text-xs text-muted-foreground mb-4">
-            <span className={activeFilter.color}>{activeFilter.label}</span>
-            {" — "}
-            {accounts.length} حساب
-          </p>
-        )}
+        {/* Sort bar */}
+        <div className="flex items-center justify-between mb-5 gap-3 flex-wrap">
+          {/* Results count */}
+          {!isLoading && accounts && (
+            <p className="text-xs text-muted-foreground">
+              <span className={activeFilter.color}>{activeFilter.label}</span>
+              {" — "}
+              {accounts.length} حساب
+            </p>
+          )}
+          {isLoading && <div className="h-4 w-28 bg-muted rounded animate-pulse" />}
+
+          {/* Sort selector */}
+          <div className="flex items-center gap-2 ms-auto">
+            <ArrowUpDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value as ListAccountsSort)}
+              className="text-xs border rounded-lg px-2 py-1.5 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer"
+            >
+              {SORT_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
 
         {/* Grid */}
         {isLoading ? (

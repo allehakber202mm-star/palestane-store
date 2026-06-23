@@ -97,6 +97,7 @@ export default function AdminDashboard() {
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [fbSyncReport, setFbSyncReport] = useState<FacebookSyncReport | null>(null);
   const [fbSyncing, setFbSyncing]       = useState(false);
+  const [adminSort, setAdminSort] = useState<string>("followers_desc");
   const fileRef = useRef<HTMLInputElement>(null);
   const imageAccountRef = useRef<AccountRow | null>(null);
 
@@ -658,11 +659,25 @@ export default function AdminDashboard() {
 
         {/* ── Full Accounts Table ────────────────────────────────────────── */}
         <div>
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
             <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">جميع الحسابات</h2>
-            <Button size="sm" onClick={openAdd} className="gap-1.5 h-8 text-xs">
-              <Plus className="w-3.5 h-3.5" /> إضافة
-            </Button>
+            <div className="flex items-center gap-2 ms-auto">
+              <select
+                value={adminSort}
+                onChange={(e) => setAdminSort(e.target.value)}
+                className="text-xs border rounded-lg px-2 py-1.5 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer h-8"
+              >
+                <option value="followers_desc">الأكثر متابعين</option>
+                <option value="followers_asc">الأقل متابعين</option>
+                <option value="newest">الأحدث</option>
+                <option value="oldest">الأقدم</option>
+                <option value="price_desc">الأعلى سعراً</option>
+                <option value="price_asc">الأقل سعراً</option>
+              </select>
+              <Button size="sm" onClick={openAdd} className="gap-1.5 h-8 text-xs">
+                <Plus className="w-3.5 h-3.5" /> إضافة
+              </Button>
+            </div>
           </div>
 
           <div className="bg-card border rounded-xl overflow-hidden shadow-sm">
@@ -690,7 +705,19 @@ export default function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    {accounts.map((acc) => {
+                    {[...(accounts ?? [])].sort((a, b) => {
+                      const af = Number(a.followers ?? 0), bf = Number(b.followers ?? 0);
+                      const ap = Number(a.price ?? 0),     bp = Number(b.price ?? 0);
+                      const ad = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                      const bd = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                      if (adminSort === "followers_desc") return af === bf ? 0 : af === 0 ? 1 : bf === 0 ? -1 : bf - af;
+                      if (adminSort === "followers_asc")  return af === bf ? 0 : af === 0 ? 1 : bf === 0 ? -1 : af - bf;
+                      if (adminSort === "price_desc")     return bp - ap;
+                      if (adminSort === "price_asc")      return ap - bp;
+                      if (adminSort === "newest")         return bd - ad;
+                      if (adminSort === "oldest")         return ad - bd;
+                      return 0;
+                    }).map((acc) => {
                       const plt = PLT[acc.platform] ?? PLT.tiktok;
                       return (
                         <tr key={acc.id} className="hover:bg-muted/20 transition-colors group">
