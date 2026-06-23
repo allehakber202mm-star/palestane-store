@@ -139,10 +139,14 @@ async function streamObjectToResponse(
   const contentType = (metadata.contentType as string) || "application/octet-stream";
   const totalSize = Number(metadata.size) || 0;
 
-  // Always advertise range support — required for Safari/iOS video
+  // Safari/iOS: Range support + explicit CORS for cross-origin canvas/video
   res.setHeader("Accept-Ranges", "bytes");
   res.setHeader("Content-Type", contentType);
   res.setHeader("Cache-Control", "private, max-age=3600");
+  res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Range, Authorization");
 
   const rangeHeader = req.headers.range;
 
