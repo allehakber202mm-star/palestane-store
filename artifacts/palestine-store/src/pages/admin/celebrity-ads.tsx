@@ -8,8 +8,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useRef } from "react";
 import {
-  Plus, Trash2, Pencil, Upload, Loader2, X, Video, Play, Save,
+  Plus, Trash2, Pencil, Upload, Loader2, X, Video, Play, Save, AlertCircle,
 } from "lucide-react";
+import { VideoEmbed, VideoTypeBadge, detectVideoType, isValidVideoUrl } from "@/components/VideoEmbed";
 
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -38,13 +39,14 @@ export default function AdminCelebrityAds() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editing, setEditing] = useState<Ad | null>(null);
-  const [form, setForm] = useState<AdForm>(EMPTY_FORM);
-  const [saving, setSaving] = useState(false);
+  const [modalOpen, setModalOpen]       = useState(false);
+  const [editing, setEditing]           = useState<Ad | null>(null);
+  const [form, setForm]                 = useState<AdForm>(EMPTY_FORM);
+  const [saving, setSaving]             = useState(false);
   const [uploadingVideo, setUploadingVideo] = useState(false);
   const [uploadingThumb, setUploadingThumb] = useState(false);
-  const [previewAd, setPreviewAd] = useState<Ad | null>(null);
+  const [previewAd, setPreviewAd]       = useState<Ad | null>(null);
+  const [urlError, setUrlError]         = useState<string | null>(null);
 
   const videoRef = useRef<HTMLInputElement>(null);
   const thumbRef = useRef<HTMLInputElement>(null);
@@ -54,18 +56,35 @@ export default function AdminCelebrityAds() {
   function openCreate() {
     setEditing(null);
     setForm(EMPTY_FORM);
+    setUrlError(null);
     setModalOpen(true);
   }
 
   function openEdit(ad: Ad) {
     setEditing(ad);
     setForm({
-      title: ad.title,
-      description: ad.description ?? "",
-      videoUrl: ad.videoUrl,
+      title:        ad.title,
+      description:  ad.description ?? "",
+      videoUrl:     ad.videoUrl,
       thumbnailUrl: ad.thumbnailUrl ?? "",
     });
+    setUrlError(null);
     setModalOpen(true);
+  }
+
+  function handleVideoUrlChange(val: string) {
+    setForm((f) => ({ ...f, videoUrl: val }));
+    if (!val.trim()) { setUrlError(null); return; }
+    if (!isValidVideoUrl(val)) {
+      setUrlError("الرابط غير صالح — يجب أن يبدأ بـ https:// أو أن يكون ملفاً مرفوعاً");
+    } else {
+      const info = detectVideoType(val);
+      if (!info.canEmbed) {
+        setUrlError(`رابط ${info.label} هذا سيفتح خارجياً — يُفضَّل رابط /video/ المباشر`);
+      } else {
+        setUrlError(null);
+      }
+    }
   }
 
   async function uploadFile(file: File, type: "video" | "thumb") {
@@ -77,7 +96,12 @@ export default function AdminCelebrityAds() {
       });
       await fetch(uploadURL, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
       const url = `/api/storage/objects/${objectPath}`;
-      setForm((f) => type === "video" ? { ...f, videoUrl: url } : { ...f, thumbnailUrl: url });
+      setForm((f) =>
+        type === "video"
+          ? { ...f, videoUrl: url }
+          : { ...f, thumbnailUrl: url },
+      );
+      if (type === "video") setUrlError(null);
     } catch {
       toast({ title: "فشل رفع الملف", variant: "destructive" });
     } finally {
@@ -86,14 +110,24 @@ export default function AdminCelebrityAds() {
   }
 
   async function handleSave() {
-    if (!form.title.trim()) { toast({ title: "العنوان مطلوب", variant: "destructive" }); return; }
-    if (!form.videoUrl.trim()) { toast({ title: "الفيديو مطلوب", variant: "destructive" }); return; }
+    if (!form.title.trim()) {
+      toast({ title: "العنوان مطلوب", variant: "destructive" });
+      return;
+    }
+    if (!form.videoUrl.trim()) {
+      toast({ title: "الفيديو مطلوب — أدخل رابطاً أو ارفع ملفاً", variant: "destructive" });
+      return;
+    }
+    if (!isValidVideoUrl(form.videoUrl)) {
+      toast({ title: "رابط الفيديو غير صالح", description: "يجب أن يبدأ بـ https:// أو أن يكون ملفاً مرفوعاً", variant: "destructive" });
+      return;
+    }
     setSaving(true);
     try {
       const payload = {
-        title: form.title,
-        description: form.description || null,
-        videoUrl: form.videoUrl,
+        title:        form.title,
+        description:  form.description || null,
+        videoUrl:     form.videoUrl,
         thumbnailUrl: form.thumbnailUrl || null,
       };
       if (editing) {
@@ -106,7 +140,7 @@ export default function AdminCelebrityAds() {
       invalidate();
       setModalOpen(false);
     } catch {
-      toast({ title: "حدث خطأ", variant: "destructive" });
+      toast({ title: "حدث خطأ أثناء الحفظ", variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -121,62 +155,118 @@ export default function AdminCelebrityAds() {
 
   return (
     <AdminLayout>
-      {/* Video Preview Modal */}
+      {/* ── Video Preview Modal ──────────────────────────────────────────── */}
       {previewAd && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm p-3"
           onClick={() => setPreviewAd(null)}
         >
-          <div className="relative w-full max-w-3xl bg-black rounded-2xl overflow-hidden shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <button onClick={() => setPreviewAd(null)} className="absolute top-3 right-3 z-10 bg-black/60 hover:bg-black/80 text-white rounded-full p-1.5">
+          <div
+            className="relative w-full max-w-3xl bg-black rounded-2xl overflow-hidden shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setPreviewAd(null)}
+              className="absolute top-3 right-3 z-20 bg-black/60 hover:bg-black/90 text-white rounded-full p-1.5 transition-colors"
+            >
               <X className="w-5 h-5" />
             </button>
-            <video src={previewAd.videoUrl} controls autoPlay playsInline className="w-full max-h-[70vh] object-contain bg-black" />
+            <VideoEmbed url={previewAd.videoUrl} className="w-full max-h-[72vh] object-contain bg-black aspect-video" />
             <div className="p-4 bg-background">
               <h3 className="font-bold text-lg">{previewAd.title}</h3>
-              {previewAd.description && <p className="text-sm text-muted-foreground mt-1">{previewAd.description}</p>}
+              {previewAd.description && (
+                <p className="text-sm text-muted-foreground mt-1">{previewAd.description}</p>
+              )}
             </div>
           </div>
         </div>
       )}
 
-      {/* Edit/Create Modal */}
+      {/* ── Edit / Create Modal ──────────────────────────────────────────── */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setModalOpen(false)}>
-          <div className="bg-background border rounded-2xl shadow-2xl w-full max-w-lg p-6 space-y-5" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onClick={() => setModalOpen(false)}
+        >
+          <div
+            className="bg-background border rounded-2xl shadow-2xl w-full max-w-lg p-6 space-y-5 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold">{editing ? "تعديل الفيديو" : "إضافة فيديو جديد"}</h2>
-              <Button variant="ghost" size="icon" onClick={() => setModalOpen(false)}><X className="w-4 h-4" /></Button>
+              <Button variant="ghost" size="icon" onClick={() => setModalOpen(false)}>
+                <X className="w-4 h-4" />
+              </Button>
             </div>
 
             <div className="space-y-4">
+              {/* Title */}
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">العنوان *</label>
-                <Input value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} placeholder="عنوان الفيديو" />
+                <Input
+                  value={form.title}
+                  onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+                  placeholder="عنوان الفيديو"
+                />
               </div>
 
+              {/* Description */}
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">الوصف</label>
-                <Textarea rows={2} value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder="وصف مختصر..." />
+                <Textarea
+                  rows={2}
+                  value={form.description}
+                  onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                  placeholder="وصف مختصر..."
+                />
               </div>
 
-              {/* Video Upload */}
+              {/* Video URL / Upload */}
               <div className="space-y-1.5">
-                <label className="text-sm font-medium">ملف الفيديو *</label>
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium">الفيديو *</label>
+                  {form.videoUrl && <VideoTypeBadge url={form.videoUrl} />}
+                </div>
                 <div className="flex gap-2">
                   <Input
                     dir="ltr"
                     className="text-left text-xs flex-1"
                     value={form.videoUrl}
-                    onChange={(e) => setForm((f) => ({ ...f, videoUrl: e.target.value }))}
-                    placeholder="رابط الفيديو أو ارفع ملف..."
+                    onChange={(e) => handleVideoUrlChange(e.target.value)}
+                    placeholder="https://youtube.com/... أو TikTok أو Instagram أو MP4..."
                   />
-                  <Button type="button" variant="outline" size="sm" disabled={uploadingVideo} onClick={() => videoRef.current?.click()} className="shrink-0 gap-1.5">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={uploadingVideo}
+                    onClick={() => videoRef.current?.click()}
+                    className="shrink-0 gap-1.5"
+                  >
                     {uploadingVideo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
                     رفع
                   </Button>
-                  <input ref={videoRef} type="file" accept="video/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f, "video"); }} />
+                  <input
+                    ref={videoRef}
+                    type="file"
+                    accept="video/*"
+                    className="hidden"
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f, "video"); }}
+                  />
                 </div>
+                {/* Validation message */}
+                {urlError && (
+                  <p className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-400">
+                    <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                    {urlError}
+                  </p>
+                )}
+                {/* Platform hint */}
+                {!urlError && (
+                  <p className="text-xs text-muted-foreground">
+                    يدعم: YouTube • TikTok • Instagram Reels • Facebook Video • MP4 مباشر
+                  </p>
+                )}
               </div>
 
               {/* Thumbnail Upload */}
@@ -193,11 +283,24 @@ export default function AdminCelebrityAds() {
                     onChange={(e) => setForm((f) => ({ ...f, thumbnailUrl: e.target.value }))}
                     placeholder="رابط الصورة أو ارفع ملف..."
                   />
-                  <Button type="button" variant="outline" size="sm" disabled={uploadingThumb} onClick={() => thumbRef.current?.click()} className="shrink-0 gap-1.5">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={uploadingThumb}
+                    onClick={() => thumbRef.current?.click()}
+                    className="shrink-0 gap-1.5"
+                  >
                     {uploadingThumb ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
                     رفع
                   </Button>
-                  <input ref={thumbRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f, "thumb"); }} />
+                  <input
+                    ref={thumbRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f, "thumb"); }}
+                  />
                 </div>
               </div>
             </div>
@@ -213,7 +316,7 @@ export default function AdminCelebrityAds() {
         </div>
       )}
 
-      {/* Page */}
+      {/* ── Page ────────────────────────────────────────────────────────── */}
       <div className="space-y-6">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
@@ -236,21 +339,31 @@ export default function AdminCelebrityAds() {
           <div className="text-center py-24 text-muted-foreground border rounded-xl bg-muted/30">
             <Video className="w-12 h-12 mx-auto mb-4 opacity-30" />
             <p className="font-medium">لا يوجد فيديوهات بعد.</p>
-            <Button onClick={openCreate} className="mt-4 gap-2"><Plus className="w-4 h-4" /> إضافة أول فيديو</Button>
+            <Button onClick={openCreate} className="mt-4 gap-2">
+              <Plus className="w-4 h-4" /> إضافة أول فيديو
+            </Button>
           </div>
         )}
 
         {!isLoading && ads && ads.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {ads.map((ad) => (
-              <div key={ad.id} className="group bg-card border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all">
-                {/* Thumbnail */}
+              <div
+                key={ad.id}
+                className="group bg-card border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all"
+              >
+                {/* Thumbnail — click opens player modal */}
                 <div
                   className="relative aspect-video bg-muted cursor-pointer"
                   onClick={() => setPreviewAd(ad as Ad)}
                 >
                   {ad.thumbnailUrl ? (
-                    <img src={ad.thumbnailUrl} alt={ad.title} className="w-full h-full object-cover" loading="lazy" />
+                    <img
+                      src={ad.thumbnailUrl}
+                      alt={ad.title}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                    />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
                       <Video className="w-10 h-10 text-muted-foreground/30" />
@@ -261,17 +374,33 @@ export default function AdminCelebrityAds() {
                       <Play className="w-6 h-6 text-primary fill-primary" />
                     </div>
                   </div>
+                  {/* Video type badge */}
+                  <div className="absolute bottom-2 left-2">
+                    <VideoTypeBadge url={ad.videoUrl} />
+                  </div>
                 </div>
 
                 {/* Info + actions */}
                 <div className="p-3 space-y-2">
                   <p className="font-semibold text-sm line-clamp-1">{ad.title}</p>
-                  {ad.description && <p className="text-xs text-muted-foreground line-clamp-2">{ad.description}</p>}
+                  {ad.description && (
+                    <p className="text-xs text-muted-foreground line-clamp-2">{ad.description}</p>
+                  )}
                   <div className="flex gap-2 pt-1">
-                    <Button variant="outline" size="sm" className="flex-1 gap-1.5 h-8 text-xs" onClick={() => openEdit(ad as Ad)}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 gap-1.5 h-8 text-xs"
+                      onClick={() => openEdit(ad as Ad)}
+                    >
                       <Pencil className="w-3.5 h-3.5" /> تعديل
                     </Button>
-                    <Button variant="destructive" size="sm" className="h-8 px-3" onClick={() => handleDelete(ad.id)}>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="h-8 px-3"
+                      onClick={() => handleDelete(ad.id)}
+                    >
                       <Trash2 className="w-3.5 h-3.5" />
                     </Button>
                   </div>

@@ -4,6 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Play, Video, CalendarDays, X } from "lucide-react";
 import { useState } from "react";
+import { VideoEmbed } from "@/components/VideoEmbed";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("ar-EG", {
@@ -16,29 +17,35 @@ type Ad = CelebrityAd;
 function VideoModal({ ad, onClose }: { ad: Ad; onClose: () => void }) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm p-3"
       onClick={onClose}
     >
       <div
         className="relative w-full max-w-3xl bg-black rounded-2xl overflow-hidden shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Close */}
         <button
           onClick={onClose}
-          className="absolute top-3 right-3 z-10 bg-black/60 hover:bg-black/80 text-white rounded-full p-1.5 transition-colors"
+          className="absolute top-3 right-3 z-20 bg-black/60 hover:bg-black/90 text-white rounded-full p-1.5 transition-colors"
         >
           <X className="w-5 h-5" />
         </button>
-        <video
-          src={ad.videoUrl}
-          controls
-          autoPlay
-          playsInline
-          className="w-full max-h-[70vh] object-contain bg-black"
+
+        {/* Smart video player — handles MP4, YouTube, TikTok, Instagram, Facebook */}
+        <VideoEmbed
+          url={ad.videoUrl}
+          className="w-full max-h-[72vh] object-contain bg-black aspect-video"
         />
+
+        {/* Metadata */}
         <div className="p-4 bg-background">
-          <h3 className="font-bold text-lg">{ad.title}</h3>
-          {ad.description && <p className="text-sm text-muted-foreground mt-1">{ad.description}</p>}
+          <h3 className="font-bold text-lg leading-snug">{ad.title}</h3>
+          {ad.description && (
+            <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+              {ad.description}
+            </p>
+          )}
         </div>
       </div>
     </div>
@@ -93,7 +100,7 @@ export default function CelebrityAds() {
                 key={ad.id}
                 className="group bg-card border rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-200 flex flex-col"
               >
-                {/* Thumbnail */}
+                {/* Thumbnail / click target */}
                 <div
                   className="relative cursor-pointer bg-muted aspect-video overflow-hidden"
                   onClick={() => setActiveAd(ad)}
@@ -129,7 +136,11 @@ export default function CelebrityAds() {
                       <CalendarDays className="w-3.5 h-3.5" />
                       {formatDate(ad.createdAt)}
                     </span>
-                    <Button size="sm" onClick={() => setActiveAd(ad)} className="gap-1.5 h-8 text-xs">
+                    <Button
+                      size="sm"
+                      onClick={() => setActiveAd(ad)}
+                      className="gap-1.5 h-8 text-xs"
+                    >
                       <Play className="w-3.5 h-3.5 fill-current" />
                       مشاهدة
                     </Button>
