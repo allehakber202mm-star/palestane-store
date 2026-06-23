@@ -1,5 +1,15 @@
 @import url("https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap");
 
+/* ── Eliminate 300ms touch delay on all interactive elements ── */
+button, a, [role="button"], input, select, textarea, label {
+  touch-action: manipulation;
+}
+
+/* ── Ensure cursor pointer on all interactive elements ── */
+button:not(:disabled), a, [role="button"] {
+  cursor: pointer;
+}
+
 @import "tailwindcss";
 
 /* ── Hide all Replit dev-tool widgets from visitors ── */

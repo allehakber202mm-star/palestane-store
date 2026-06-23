@@ -436,8 +436,8 @@ export default function AdminAccounts() {
                       </Badge>
                     </div>
 
-                    {/* Hover overlay — desktop */}
-                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity hidden sm:flex items-center justify-center">
+                    {/* Hover overlay — desktop: pointer-events-none when invisible */}
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity hidden sm:flex items-center justify-center pointer-events-none group-hover:pointer-events-auto">
                       <div className="grid grid-cols-4 gap-1.5 px-2">
                         {[
                           { icon: <Edit2 className="w-3.5 h-3.5" />,    label: "تعديل",    action: () => openEdit(acc as AccRow),              cls: "hover:bg-primary hover:text-white" },

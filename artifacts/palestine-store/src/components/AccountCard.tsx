@@ -96,8 +96,8 @@ export function AccountCard({ account }: AccountCardProps) {
           </div>
         )}
 
-        {/* Hover hint */}
-        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/15 transition-colors flex items-center justify-center">
+        {/* Hover hint — pointer-events-none so it never blocks clicks under it */}
+        <div className="pointer-events-none absolute inset-0 bg-black/0 group-hover:bg-black/15 transition-colors flex items-center justify-center">
           <span className="opacity-0 group-hover:opacity-100 transition-opacity text-white text-[10px] font-bold bg-black/50 px-2 py-0.5 rounded-full">
             عرض التفاصيل
           </span>

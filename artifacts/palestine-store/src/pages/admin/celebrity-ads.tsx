@@ -132,10 +132,11 @@ function AdminAdCard({ ad, onEdit, onDelete, onPreview }: {
           </span>
         </div>
 
-        {/* Desktop hover overlay — same style as admin accounts */}
+        {/* Desktop hover overlay — pointer-events-none when not hovered */}
         <div
           className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity
-                     hidden sm:flex items-center justify-center z-20"
+                     hidden sm:flex items-center justify-center z-20
+                     pointer-events-none group-hover:pointer-events-auto"
         >
           <div className="flex gap-1.5 px-2">
             {[

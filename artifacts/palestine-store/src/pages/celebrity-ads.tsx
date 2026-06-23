@@ -84,9 +84,8 @@ function AdCard({ ad, onClick }: { ad: Ad; onClick: () => void }) {
           </div>
         )}
 
-        {/* Hover overlay — same as AccountCard */}
-        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/15 transition-colors flex items-center justify-center">
-          {/* Play icon badge — shown on hover */}
+        {/* Hover overlay — pointer-events-none: never blocks card click */}
+        <div className="pointer-events-none absolute inset-0 bg-black/0 group-hover:bg-black/15 transition-colors flex items-center justify-center">
           <span className="opacity-0 group-hover:opacity-100 transition-opacity">
             <div className="bg-white/90 rounded-full shadow-2xl p-2.5 sm:p-3">
               <Play className="w-5 h-5 sm:w-7 sm:h-7 text-primary fill-primary" />
@@ -94,8 +93,8 @@ function AdCard({ ad, onClick }: { ad: Ad; onClick: () => void }) {
           </span>
         </div>
 
-        {/* Play badge — always visible (small, top-left like AccountCard's badges) */}
-        <div className="absolute top-2 right-2 z-20">
+        {/* Play badge — pointer-events-none (card onClick handles it) */}
+        <div className="pointer-events-none absolute top-2 right-2 z-20">
           <span className="bg-black/60 text-white text-[10px] sm:text-[11px]
                            px-2 py-0.5 rounded-full font-bold shadow-sm
                            flex items-center gap-1 leading-none">
