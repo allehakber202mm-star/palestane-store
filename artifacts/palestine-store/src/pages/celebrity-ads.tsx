@@ -15,31 +15,74 @@ function formatDate(iso: string) {
 
 type Ad = CelebrityAd;
 
-// ── Modal ────────────────────────────────────────────────────────────────────
+// ── Blurred thumbnail frame ────────────────────────────────────────────────────
+// Shows the image contained, with a blurred copy filling the surrounding space.
+// Works great for vertical (9:16) videos inside a 16:9 card.
+interface BlurredThumbnailProps {
+  src: string | null;
+  alt: string;
+  loading?: boolean;
+}
+function BlurredThumbnail({ src, alt, loading }: BlurredThumbnailProps) {
+  return (
+    <div className="relative w-full h-full overflow-hidden bg-zinc-900">
+      {/* Blurred fill layer */}
+      {src && (
+        <img
+          src={src}
+          aria-hidden
+          className="pointer-events-none select-none absolute inset-0 w-full h-full object-cover scale-110 blur-3xl opacity-60"
+        />
+      )}
+      {/* Contained actual thumbnail */}
+      {src ? (
+        <img
+          src={src}
+          alt={alt}
+          className="relative z-10 w-full h-full object-contain"
+          loading="lazy"
+        />
+      ) : (
+        /* Gradient placeholder while extracting / no thumbnail yet */
+        <div className="absolute inset-0 bg-gradient-to-br from-zinc-800 to-zinc-900 flex items-center justify-center">
+          {loading && (
+            <div className="w-8 h-8 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Modal ──────────────────────────────────────────────────────────────────────
 function VideoModal({ ad, onClose }: { ad: Ad; onClose: () => void }) {
+  const thumbnail = useVideoThumbnail(ad.videoUrl, ad.thumbnailUrl);
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm p-3"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-3"
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-3xl bg-black rounded-2xl overflow-hidden shadow-2xl"
+        className="relative w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Close button */}
         <button
           onClick={onClose}
-          className="absolute top-3 right-3 z-20 bg-black/60 hover:bg-black/90 text-white rounded-full p-1.5 transition-colors"
+          className="absolute top-3 right-3 z-30 bg-black/60 hover:bg-black/90 text-white rounded-full p-1.5 transition-colors"
         >
           <X className="w-5 h-5" />
         </button>
-        <VideoEmbed
-          url={ad.videoUrl}
-          className="w-full max-h-[72vh] object-contain bg-black aspect-video"
-        />
-        <div className="p-4 bg-background">
-          <h3 className="font-bold text-lg leading-snug">{ad.title}</h3>
+
+        {/* Video player — blurred bg built into VideoEmbed */}
+        <VideoEmbed url={ad.videoUrl} thumbnail={thumbnail} autoPlay />
+
+        {/* Info bar */}
+        <div className="p-4 bg-background border-t">
+          <h3 className="font-bold text-base leading-snug">{ad.title}</h3>
           {ad.description && (
-            <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+            <p className="text-sm text-muted-foreground mt-1 leading-relaxed line-clamp-3">
               {ad.description}
             </p>
           )}
@@ -49,32 +92,24 @@ function VideoModal({ ad, onClose }: { ad: Ad; onClose: () => void }) {
   );
 }
 
-// ── Card with auto-thumbnail ─────────────────────────────────────────────────
+// ── Ad card ────────────────────────────────────────────────────────────────────
 function AdCard({ ad, onClick }: { ad: Ad; onClick: () => void }) {
   const thumbnail = useVideoThumbnail(ad.videoUrl, ad.thumbnailUrl);
 
   return (
-    <div className="group bg-card border rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-200 flex flex-col cursor-pointer">
-      {/* Thumbnail area — always 16:9 */}
-      <div
-        className="relative w-full aspect-video overflow-hidden bg-black"
-        onClick={onClick}
-      >
-        {thumbnail ? (
-          <img
-            src={thumbnail}
-            alt={ad.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            loading="lazy"
-          />
-        ) : (
-          /* Gradient placeholder while extracting */
-          <div className="w-full h-full bg-gradient-to-br from-zinc-800 to-zinc-900" />
-        )}
+    <div
+      className="group bg-card border rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-200 flex flex-col cursor-pointer"
+      onClick={onClick}
+    >
+      {/* Thumbnail — 16:9 frame with blurred bg for any aspect ratio */}
+      <div className="relative w-full aspect-video overflow-hidden">
+        <BlurredThumbnail src={thumbnail} alt={ad.title} loading={!thumbnail} />
 
-        {/* Play overlay — always visible */}
-        <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/40 transition-colors duration-200">
-          <div className="bg-white/90 group-hover:bg-white rounded-full p-4 shadow-xl transition-all duration-200 group-hover:scale-110">
+        {/* Play button overlay */}
+        <div className="absolute inset-0 z-20 flex items-center justify-center
+                        bg-black/10 group-hover:bg-black/30 transition-colors duration-200">
+          <div className="bg-white/90 group-hover:bg-white rounded-full p-4 shadow-xl
+                          transition-all duration-200 group-hover:scale-110 group-active:scale-95">
             <Play className="w-8 h-8 text-primary fill-primary" />
           </div>
         </div>
@@ -91,7 +126,11 @@ function AdCard({ ad, onClick }: { ad: Ad; onClick: () => void }) {
             <CalendarDays className="w-3.5 h-3.5" />
             {formatDate(ad.createdAt)}
           </span>
-          <Button size="sm" onClick={onClick} className="gap-1.5 h-8 text-xs">
+          <Button
+            size="sm"
+            className="gap-1.5 h-8 text-xs"
+            onClick={(e) => { e.stopPropagation(); onClick(); }}
+          >
             <Play className="w-3.5 h-3.5 fill-current" />
             مشاهدة
           </Button>
@@ -101,7 +140,7 @@ function AdCard({ ad, onClick }: { ad: Ad; onClick: () => void }) {
   );
 }
 
-// ── Page ─────────────────────────────────────────────────────────────────────
+// ── Page ───────────────────────────────────────────────────────────────────────
 export default function CelebrityAds() {
   const { data: ads, isLoading } = useListCelebrityAds();
   const [activeAd, setActiveAd] = useState<Ad | null>(null);
@@ -113,9 +152,7 @@ export default function CelebrityAds() {
       <div className="container mx-auto px-4 py-10 max-w-6xl space-y-8">
         {/* Header */}
         <div className="text-center space-y-3">
-          <div className="flex justify-center mb-2">
-            <span className="text-5xl">🎥</span>
-          </div>
+          <span className="text-5xl">🎥</span>
           <h1 className="text-3xl sm:text-4xl font-black">إعلانات المشاهير لمتجرنا</h1>
           <p className="text-muted-foreground text-base max-w-2xl mx-auto leading-relaxed">
             نفخر بتعاوننا مع العديد من صناع المحتوى والمشاهير، ويمكنكم مشاهدة بعض الإعلانات والتوصيات الخاصة بمتجر فلسطين للحسابات.
@@ -127,14 +164,14 @@ export default function CelebrityAds() {
           )}
         </div>
 
-        {/* Loading */}
+        {/* Loading skeletons */}
         {isLoading && (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
             {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-64 rounded-2xl" />)}
           </div>
         )}
 
-        {/* Empty */}
+        {/* Empty state */}
         {!isLoading && (!ads || ads.length === 0) && (
           <div className="text-center py-24 text-muted-foreground">
             <Video className="w-14 h-14 mx-auto mb-4 opacity-25" />

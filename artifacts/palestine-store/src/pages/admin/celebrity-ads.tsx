@@ -329,10 +329,7 @@ export default function AdminCelebrityAds() {
             >
               <X className="w-5 h-5" />
             </button>
-            <VideoEmbed
-              url={previewAd.videoUrl}
-              className="w-full max-h-[72vh] object-contain bg-black aspect-video"
-            />
+            <VideoEmbed url={previewAd.videoUrl} autoPlay />
             <div className="p-4 bg-background">
               <h3 className="font-bold text-lg">{previewAd.title}</h3>
               {previewAd.description && (
