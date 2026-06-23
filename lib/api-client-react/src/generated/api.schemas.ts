@@ -57,6 +57,35 @@ export interface Account {
   earningsNotes?: string | null;
   /** @nullable */
   avgEarningsPer10k?: number | null;
+  /** @nullable */
+  followersUpdatedAt?: string | null;
+}
+
+export type FacebookSyncResultItemStatus = typeof FacebookSyncResultItemStatus[keyof typeof FacebookSyncResultItemStatus];
+
+
+export const FacebookSyncResultItemStatus = {
+  updated: 'updated',
+  unchanged: 'unchanged',
+  failed: 'failed',
+} as const;
+
+export interface FacebookSyncResultItem {
+  accountId: number;
+  accountName: string;
+  status: FacebookSyncResultItemStatus;
+  oldCount: number;
+  newCount?: number | null;
+  resolvedUrl?: string | null;
+  reason?: string | null;
+}
+
+export interface FacebookSyncReport {
+  total: number;
+  updated: number;
+  unchanged: number;
+  failed: number;
+  results: FacebookSyncResultItem[];
 }
 
 export type AccountInputPlatform = typeof AccountInputPlatform[keyof typeof AccountInputPlatform];

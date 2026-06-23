@@ -298,6 +298,19 @@ paths:
                 $ref: "#/components/schemas/DeleteResult"
 
 
+  /admin/facebook/sync:
+    post:
+      operationId: facebookSync
+      tags: [admin]
+      summary: Scrape and sync Facebook follower counts for all Facebook accounts
+      responses:
+        "200":
+          description: Sync report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FacebookSyncReport"
+
   /admin/visits/stats:
     get:
       operationId: getVisitStats
@@ -619,6 +632,49 @@ components:
           type: ["string", "null"]
         avgEarningsPer10k:
           type: ["number", "null"]
+        followersUpdatedAt:
+          type: ["string", "null"]
+          format: date-time
+
+    FacebookSyncResultItem:
+      type: object
+      required: [accountId, accountName, status, oldCount]
+      properties:
+        accountId:
+          type: integer
+        accountName:
+          type: string
+        status:
+          type: string
+          enum: [updated, unchanged, failed]
+        oldCount:
+          type: integer
+        newCount:
+          type: integer
+          nullable: true
+        resolvedUrl:
+          type: string
+          nullable: true
+        reason:
+          type: string
+          nullable: true
+
+    FacebookSyncReport:
+      type: object
+      required: [total, updated, unchanged, failed, results]
+      properties:
+        total:
+          type: integer
+        updated:
+          type: integer
+        unchanged:
+          type: integer
+        failed:
+          type: integer
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/FacebookSyncResultItem"
 
     AccountInput:
       type: object

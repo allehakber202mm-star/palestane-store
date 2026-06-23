@@ -10,12 +10,14 @@ import {
   useGetSettings,
   useUpdateSettings,
   useGetVisitStats,
+  useFacebookSync,
   getAdminListAccountsQueryKey,
   getGetDashboardStatsQueryKey,
   getGetSettingsQueryKey,
   AccountInput,
   AccountUpdate,
   SiteSettingsUpdate,
+  FacebookSyncReport,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -93,6 +95,8 @@ export default function AdminDashboard() {
     bannerSubtitle: string; paymentMethods: string; paymentNote: string;
   } | null>(null);
   const [settingsSaving, setSettingsSaving] = useState(false);
+  const [fbSyncReport, setFbSyncReport] = useState<FacebookSyncReport | null>(null);
+  const [fbSyncing, setFbSyncing]       = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const imageAccountRef = useRef<AccountRow | null>(null);
 
@@ -110,10 +114,27 @@ export default function AdminDashboard() {
     return () => clearInterval(id);
   }, [refetchVisits]);
 
-  const createMut  = useCreateAccount();
-  const updateMut  = useUpdateAccount();
-  const deleteMut  = useDeleteAccount();
+  const createMut   = useCreateAccount();
+  const updateMut   = useUpdateAccount();
+  const deleteMut   = useDeleteAccount();
   const settingsMut = useUpdateSettings();
+  const fbSyncMut   = useFacebookSync();
+
+  const handleFbSync = () => {
+    setFbSyncing(true);
+    fbSyncMut.mutate(undefined, {
+      onSuccess: (report) => {
+        setFbSyncing(false);
+        setFbSyncReport(report);
+        invalidate();
+        toast({ title: `✅ انتهى الفحص: ${report.updated} محدَّث، ${report.failed} فشل` });
+      },
+      onError: () => {
+        setFbSyncing(false);
+        toast({ variant: "destructive", title: "فشل تحديث متابعي Facebook" });
+      },
+    });
+  };
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: getAdminListAccountsQueryKey() });
@@ -484,6 +505,79 @@ export default function AdminDashboard() {
           )}
         </div>
 
+        {/* ── Facebook Followers Sync ────────────────────────────────────── */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <SiFacebook className="w-4 h-4 text-blue-500" />
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                مزامنة متابعي Facebook
+              </h2>
+            </div>
+            <Button
+              size="sm"
+              disabled={fbSyncing}
+              onClick={handleFbSync}
+              className="gap-2 h-8 text-xs bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              {fbSyncing
+                ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> جاري الفحص...</>
+                : <><TrendingUp className="w-3.5 h-3.5" /> تحديث متابعي صفحات Facebook</>}
+            </Button>
+          </div>
+
+          {fbSyncReport ? (
+            <div className="bg-card border rounded-xl overflow-hidden shadow-sm">
+              {/* Summary bar */}
+              <div className="grid grid-cols-4 divide-x divide-x-reverse divide-border border-b bg-muted/30">
+                {[
+                  { label: "الإجمالي",  val: fbSyncReport.total,     color: "text-foreground" },
+                  { label: "محدَّث",    val: fbSyncReport.updated,   color: "text-green-500" },
+                  { label: "بدون تغيير", val: fbSyncReport.unchanged, color: "text-muted-foreground" },
+                  { label: "فشل",      val: fbSyncReport.failed,    color: "text-destructive" },
+                ].map((s, i) => (
+                  <div key={i} className="p-3 text-center">
+                    <div className={`text-lg font-black ${s.color}`}>{s.val}</div>
+                    <div className="text-[10px] text-muted-foreground">{s.label}</div>
+                  </div>
+                ))}
+              </div>
+              {/* Detail rows */}
+              <div className="divide-y divide-border max-h-64 overflow-y-auto">
+                {fbSyncReport.results.map((r) => (
+                  <div key={r.accountId} className="flex items-center gap-3 px-4 py-2.5 text-xs">
+                    <span className={`shrink-0 font-bold w-16 text-center px-2 py-0.5 rounded-full text-[10px] ${
+                      r.status === "updated"   ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" :
+                      r.status === "unchanged" ? "bg-muted text-muted-foreground" :
+                                                 "bg-destructive/10 text-destructive"
+                    }`}>
+                      {r.status === "updated" ? "✅ محدَّث" : r.status === "unchanged" ? "◌ ثابت" : "❌ فشل"}
+                    </span>
+                    <span className="font-medium truncate flex-1" dir="ltr">{r.accountName}</span>
+                    {r.status === "updated" && (
+                      <span className="text-muted-foreground shrink-0 hidden sm:inline">
+                        {r.oldCount?.toLocaleString("ar-EG")} → <strong className="text-green-500">{r.newCount?.toLocaleString("ar-EG")}</strong>
+                      </span>
+                    )}
+                    {r.status === "failed" && (
+                      <span className="text-destructive/80 shrink-0 text-[10px] max-w-[200px] truncate hidden sm:inline" title={r.reason ?? ""}>
+                        {r.reason}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="bg-card border rounded-xl p-6 text-center text-sm text-muted-foreground">
+              اضغط الزر أعلاه لفحص عدد المتابعين الحقيقي لجميع صفحات Facebook
+              <div className="text-[11px] mt-1 text-muted-foreground/60">
+                ملاحظة: يعتمد الجلب على البيانات المتاحة في HTML العام — قد لا يعمل مع جميع أنواع الصفحات
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* ── Quick Action Cards ─────────────────────────────────────────── */}
         <div>
           <h2 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wider">إجراءات سريعة</h2>
@@ -587,6 +681,7 @@ export default function AdminDashboard() {
                       <th className="text-right py-3 px-3 font-semibold text-xs text-muted-foreground">الاسم</th>
                       <th className="text-right py-3 px-3 font-semibold text-xs text-muted-foreground hidden sm:table-cell">المنصة</th>
                       <th className="text-right py-3 px-3 font-semibold text-xs text-muted-foreground hidden md:table-cell">المتابعين</th>
+                      <th className="text-right py-3 px-3 font-semibold text-xs text-muted-foreground hidden xl:table-cell">آخر مزامنة</th>
                       <th className="text-right py-3 px-3 font-semibold text-xs text-muted-foreground">السعر</th>
                       <th className="text-right py-3 px-3 font-semibold text-xs text-muted-foreground hidden lg:table-cell">
                         <span className="flex items-center gap-1"><Eye className="w-3 h-3" />زيارة</span>
@@ -621,6 +716,20 @@ export default function AdminDashboard() {
                           {/* Followers */}
                           <td className="py-2 px-3 hidden md:table-cell">
                             <span className="text-xs text-muted-foreground">{fmt(acc.followers)}</span>
+                          </td>
+                          {/* Last followers sync */}
+                          <td className="py-2 px-3 hidden xl:table-cell">
+                            {acc.platform === "facebook" ? (
+                              acc.followersUpdatedAt ? (
+                                <span className="text-[11px] text-green-600 dark:text-green-400">
+                                  {new Date(acc.followersUpdatedAt).toLocaleString("ar-EG", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                                </span>
+                              ) : (
+                                <span className="text-[11px] text-muted-foreground/50">لم يُزامَن</span>
+                              )
+                            ) : (
+                              <span className="text-[11px] text-muted-foreground/30">—</span>
+                            )}
                           </td>
                           {/* Price */}
                           <td className="py-2 px-3">

@@ -38,4 +38,6 @@ export interface Account {
   earningsNotes?: string | null;
   /** @nullable */
   avgEarningsPer10k?: number | null;
+  /** @nullable */
+  followersUpdatedAt?: Date | null;
 }

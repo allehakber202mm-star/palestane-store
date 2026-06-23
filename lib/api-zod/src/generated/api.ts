@@ -47,7 +47,8 @@ export const ListAccountsResponseItem = zod.object({
   "eligibleCountry": zod.string().nullish(),
   "activationDate": zod.string().nullish(),
   "earningsNotes": zod.string().nullish(),
-  "avgEarningsPer10k": zod.number().nullish()
+  "avgEarningsPer10k": zod.number().nullish(),
+  "followersUpdatedAt": zod.coerce.date().nullish()
 })
 export const ListAccountsResponse = zod.array(ListAccountsResponseItem)
 
@@ -75,7 +76,8 @@ export const ListFeaturedAccountsResponseItem = zod.object({
   "eligibleCountry": zod.string().nullish(),
   "activationDate": zod.string().nullish(),
   "earningsNotes": zod.string().nullish(),
-  "avgEarningsPer10k": zod.number().nullish()
+  "avgEarningsPer10k": zod.number().nullish(),
+  "followersUpdatedAt": zod.coerce.date().nullish()
 })
 export const ListFeaturedAccountsResponse = zod.array(ListFeaturedAccountsResponseItem)
 
@@ -103,7 +105,8 @@ export const ListRecentAccountsResponseItem = zod.object({
   "eligibleCountry": zod.string().nullish(),
   "activationDate": zod.string().nullish(),
   "earningsNotes": zod.string().nullish(),
-  "avgEarningsPer10k": zod.number().nullish()
+  "avgEarningsPer10k": zod.number().nullish(),
+  "followersUpdatedAt": zod.coerce.date().nullish()
 })
 export const ListRecentAccountsResponse = zod.array(ListRecentAccountsResponseItem)
 
@@ -135,7 +138,8 @@ export const GetAccountResponse = zod.object({
   "eligibleCountry": zod.string().nullish(),
   "activationDate": zod.string().nullish(),
   "earningsNotes": zod.string().nullish(),
-  "avgEarningsPer10k": zod.number().nullish()
+  "avgEarningsPer10k": zod.number().nullish(),
+  "followersUpdatedAt": zod.coerce.date().nullish()
 })
 
 
@@ -219,7 +223,8 @@ export const AdminListAccountsResponseItem = zod.object({
   "eligibleCountry": zod.string().nullish(),
   "activationDate": zod.string().nullish(),
   "earningsNotes": zod.string().nullish(),
-  "avgEarningsPer10k": zod.number().nullish()
+  "avgEarningsPer10k": zod.number().nullish(),
+  "followersUpdatedAt": zod.coerce.date().nullish()
 })
 export const AdminListAccountsResponse = zod.array(AdminListAccountsResponseItem)
 
@@ -291,7 +296,8 @@ export const UpdateAccountResponse = zod.object({
   "eligibleCountry": zod.string().nullish(),
   "activationDate": zod.string().nullish(),
   "earningsNotes": zod.string().nullish(),
-  "avgEarningsPer10k": zod.number().nullish()
+  "avgEarningsPer10k": zod.number().nullish(),
+  "followersUpdatedAt": zod.coerce.date().nullish()
 })
 
 
@@ -304,6 +310,26 @@ export const DeleteAccountParams = zod.object({
 
 export const DeleteAccountResponse = zod.object({
   "success": zod.boolean()
+})
+
+
+/**
+ * @summary Scrape and sync Facebook follower counts for all Facebook accounts
+ */
+export const FacebookSyncResponse = zod.object({
+  "total": zod.number(),
+  "updated": zod.number(),
+  "unchanged": zod.number(),
+  "failed": zod.number(),
+  "results": zod.array(zod.object({
+  "accountId": zod.number(),
+  "accountName": zod.string(),
+  "status": zod.enum(['updated', 'unchanged', 'failed']),
+  "oldCount": zod.number(),
+  "newCount": zod.number().nullish(),
+  "resolvedUrl": zod.string().nullish(),
+  "reason": zod.string().nullish()
+}))
 })
 
 
@@ -404,7 +430,8 @@ export const GetDashboardStatsResponse = zod.object({
   "eligibleCountry": zod.string().nullish(),
   "activationDate": zod.string().nullish(),
   "earningsNotes": zod.string().nullish(),
-  "avgEarningsPer10k": zod.number().nullish()
+  "avgEarningsPer10k": zod.number().nullish(),
+  "followersUpdatedAt": zod.coerce.date().nullish()
 })).optional(),
   "topAccounts": zod.array(zod.object({
   "id": zod.number(),
@@ -426,7 +453,8 @@ export const GetDashboardStatsResponse = zod.object({
   "eligibleCountry": zod.string().nullish(),
   "activationDate": zod.string().nullish(),
   "earningsNotes": zod.string().nullish(),
-  "avgEarningsPer10k": zod.number().nullish()
+  "avgEarningsPer10k": zod.number().nullish(),
+  "followersUpdatedAt": zod.coerce.date().nullish()
 }))
 })
 

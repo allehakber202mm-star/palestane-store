@@ -1,10 +1,11 @@
 import { Router } from "express";
 import { db, accountsTable, accountVisitsTable } from "@workspace/db";
-import { eq, desc, and, ilike, sql, inArray, max } from "drizzle-orm";
+import { eq, desc, and, ilike, sql, inArray, max, isNotNull } from "drizzle-orm";
 import { CreateAccountBody, UpdateAccountBody, AdminListAccountsQueryParams } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/auth";
 import { formatAccount } from "./accounts";
 import { logger } from "../lib/logger";
+import { scrapeFacebookFollowers } from "../lib/facebookScraper";
 
 const router = Router();
 router.use(requireAuth);
@@ -120,6 +121,85 @@ router.delete("/accounts/:id", async (req, res) => {
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   await db.delete(accountsTable).where(eq(accountsTable.id, id));
   res.json({ success: true });
+});
+
+// ── POST /admin/facebook/sync ─────────────────────────────────────────────────
+router.post("/facebook/sync", async (req, res) => {
+  const accounts = await db
+    .select()
+    .from(accountsTable)
+    .where(and(eq(accountsTable.platform, "facebook"), isNotNull(accountsTable.accountUrl)));
+
+  // Deduplicate URLs — scrape each unique URL once, then reuse result
+  const urlCache = new Map<string, Awaited<ReturnType<typeof scrapeFacebookFollowers>>>();
+  const uniqueUrls = [...new Set(accounts.map(a => a.accountUrl).filter(Boolean) as string[])];
+
+  await Promise.allSettled(
+    uniqueUrls.map(async (url) => {
+      const result = await scrapeFacebookFollowers(url);
+      urlCache.set(url, result);
+    })
+  );
+
+  const results: Array<{
+    accountId: number;
+    accountName: string;
+    status: "updated" | "unchanged" | "failed";
+    oldCount: number;
+    newCount?: number;
+    resolvedUrl?: string;
+    reason?: string;
+  }> = [];
+
+  const now = new Date();
+
+  for (const account of accounts) {
+    if (!account.accountUrl) continue;
+
+    const scrape = urlCache.get(account.accountUrl) ?? { success: false, reason: "لا نتيجة" };
+
+    if (scrape.success && scrape.count !== undefined) {
+      const oldCount = account.followers ?? 0;
+      const changed  = scrape.count !== oldCount;
+
+      if (changed) {
+        await db
+          .update(accountsTable)
+          .set({ followers: scrape.count, followersUpdatedAt: now })
+          .where(eq(accountsTable.id, account.id));
+      }
+
+      results.push({
+        accountId:   account.id,
+        accountName: account.name,
+        status:      changed ? "updated" : "unchanged",
+        oldCount,
+        newCount:    scrape.count,
+        resolvedUrl: scrape.resolvedUrl,
+      });
+    } else {
+      logger.warn(
+        { accountId: account.id, accountName: account.name, reason: scrape.reason },
+        "facebook/sync: فشل جلب المتابعين"
+      );
+      results.push({
+        accountId:   account.id,
+        accountName: account.name,
+        status:      "failed",
+        oldCount:    account.followers ?? 0,
+        resolvedUrl: scrape.resolvedUrl,
+        reason:      scrape.reason ?? "خطأ غير معروف",
+      });
+    }
+  }
+
+  res.json({
+    total:     accounts.length,
+    updated:   results.filter(r => r.status === "updated").length,
+    unchanged: results.filter(r => r.status === "unchanged").length,
+    failed:    results.filter(r => r.status === "failed").length,
+    results,
+  });
 });
 
 // ── GET /admin/visits/stats ──────────────────────────────────────────────────

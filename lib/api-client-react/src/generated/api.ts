@@ -32,6 +32,7 @@ import type {
   DashboardStats,
   DeleteResult,
   ErrorEnvelope,
+  FacebookSyncReport,
   FeedbackPost,
   HealthStatus,
   ListAccountsParams,
@@ -1037,6 +1038,76 @@ export const useDeleteAccount = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getDeleteAccountMutationOptions(options));
+    }
+
+export const getFacebookSyncUrl = () => {
+
+
+
+
+  return `/api/admin/facebook/sync`
+}
+
+/**
+ * @summary Scrape and sync Facebook follower counts for all Facebook accounts
+ */
+export const facebookSync = async ( options?: RequestInit): Promise<FacebookSyncReport> => {
+
+  return customFetch<FacebookSyncReport>(getFacebookSyncUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getFacebookSyncMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof facebookSync>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof facebookSync>>, TError,void, TContext> => {
+
+const mutationKey = ['facebookSync'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof facebookSync>>, void> = () => {
+
+
+          return  facebookSync(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type FacebookSyncMutationResult = NonNullable<Awaited<ReturnType<typeof facebookSync>>>
+
+    export type FacebookSyncMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Scrape and sync Facebook follower counts for all Facebook accounts
+ */
+export const useFacebookSync = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof facebookSync>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof facebookSync>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getFacebookSyncMutationOptions(options));
     }
 
 export const getGetVisitStatsUrl = () => {
