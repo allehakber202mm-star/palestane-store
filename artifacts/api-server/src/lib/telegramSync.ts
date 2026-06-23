@@ -248,15 +248,32 @@ export function parsePostText(rawText: string, messageId: number): ParsedAccount
   let platformLog = `المنصة: ${platform} (من الرابط)`;
   if (!urlM) {
     const lower = text.toLowerCase();
-    // BUG FIX #2: Arabic Instagram has two common spellings:
-    //   إنستغرام (with hamza إ U+0625) — the correct/common spelling
-    //   انستغرام (with alef  ا U+0627) — alternate spelling
-    // The previous regex only had 'انستغرام', missing the hamza variant.
-    // Fix: use character class [اإأ] to match both.
-    if (/instagram|[اإأ]نست[غق]رام/.test(lower))            { platform = "instagram"; }
-    else if (/facebook|فيسبوك|فيس\s*بوك/.test(lower))       { platform = "facebook";  }
-    else if (/tiktok|تيك\s*توك/.test(lower))                 { platform = "tiktok";    }
-    platformLog = `المنصة: ${platform} (من الكلمات المفتاحية)`;
+    // Instagram: covers all Arabic spelling variants + common abbreviations:
+    //   إنستغرام / انستغرام (غ or ق) / إنستاغرام / انستاجرام / انستاقرام
+    //   انستا / إنستا  (very common Arabic short form — NOTE: no \b after Arabic chars,
+    //                   \b only works for ASCII \w chars; Arabic is always \W)
+    //   insta / IG     (Latin short forms — \b works fine here)
+    const instaRx = /instagram|insta\b|\big\b|[اإأ]نستا|[اإأ]نست[اي]?[اغجق]?رام/;
+    if (instaRx.test(lower))                                  { platform = "instagram"; platformLog = `المنصة: instagram (كلمة مفتاحية)`; }
+    else if (/facebook|فيسبوك|فيس\s*بوك/.test(lower))        { platform = "facebook";  platformLog = `المنصة: facebook (كلمة مفتاحية)`;  }
+    else if (/tiktok|تيك\s*توك/.test(lower))                  { platform = "tiktok";    platformLog = `المنصة: tiktok (كلمة مفتاحية)`;    }
+    else if (username) {
+      // ── Fallback: infer platform from @handle itself ───────────────────
+      // Catches cases where the post has no URL, no platform keyword,
+      // but the @username name contains a platform hint, e.g. @my_insta_shop
+      const uname = username.toLowerCase();
+      if (uname.includes("instagram") || uname.includes("insta")) {
+        platform    = "instagram";
+        platformLog = `المنصة: instagram (من اسم المستخدم: @${username})`;
+      } else if (uname.includes("facebook")) {
+        platform    = "facebook";
+        platformLog = `المنصة: facebook (من اسم المستخدم: @${username})`;
+      } else {
+        platformLog = `المنصة: ${platform} (افتراضي — لم يُعثر على مؤشر)`;
+      }
+    } else {
+      platformLog = `المنصة: ${platform} (افتراضي — لا رابط ولا كلمة مفتاحية ولا @username)`;
+    }
   }
 
   // ── 3b. Construct accountUrl from username AFTER platform is known ─────────
@@ -523,11 +540,94 @@ export function isSoldPost(text: string): boolean {
   return SOLD_PATTERN.test(text);
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// fixMisclassifiedAccounts
+//
+// Re-parses the originalDescription of every Telegram-imported account and
+// corrects the platform field if the detected platform differs from what is
+// currently stored in the DB.
+//
+// Called automatically at the start of every runTelegramSync() so that even
+// accounts imported before this fix was deployed get corrected on the next sync.
+// ─────────────────────────────────────────────────────────────────────────────
+async function fixMisclassifiedAccounts(): Promise<{ checked: number; fixed: number }> {
+  const accounts = await db
+    .select({
+      id:                  accountsTable.id,
+      name:                accountsTable.name,
+      platform:            accountsTable.platform,
+      telegramMessageId:   accountsTable.telegramMessageId,
+      originalDescription: accountsTable.originalDescription,
+    })
+    .from(accountsTable)
+    .where(
+      sql`${accountsTable.telegramMessageId} IS NOT NULL
+          AND ${accountsTable.originalDescription} IS NOT NULL
+          AND ${accountsTable.originalDescription} != ''`,
+    );
+
+  let fixed = 0;
+
+  for (const acc of accounts) {
+    const reparsed    = parsePostText(acc.originalDescription!, acc.telegramMessageId!);
+    const detectedPlt = reparsed.platform;
+
+    logger.info(
+      {
+        accountId:        acc.id,
+        accountName:      acc.name,
+        storedPlatform:   acc.platform,
+        detectedPlatform: detectedPlt,
+        detectionReason:  reparsed.parseLog.platform,
+        needsFix:         detectedPlt !== acc.platform,
+      },
+      `[FIX_CHECK] "${acc.name}" | stored: ${acc.platform} | detected: ${detectedPlt}`,
+    );
+
+    if (detectedPlt !== acc.platform) {
+      await db
+        .update(accountsTable)
+        .set({ platform: detectedPlt, updatedAt: new Date() })
+        .where(eq(accountsTable.id, acc.id));
+
+      logger.warn(
+        {
+          accountId:      acc.id,
+          accountName:    acc.name,
+          fromPlatform:   acc.platform,
+          toPlatform:     detectedPlt,
+          reason:         reparsed.parseLog.platform,
+          sectionBefore:  acc.platform,
+          sectionAfter:   detectedPlt,
+        },
+        `🔧 PLATFORM_FIXED: "${acc.name}" | ${acc.platform} → ${detectedPlt} | سبب: ${reparsed.parseLog.platform}`,
+      );
+
+      fixed++;
+    }
+  }
+
+  logger.info(
+    { checked: accounts.length, fixed },
+    `✅ fixMisclassifiedAccounts: فحص ${accounts.length} حساب — صُحِّح ${fixed}`,
+  );
+
+  return { checked: accounts.length, fixed };
+}
+
 // ── Core sync (used by route + background job) ─────────────────────────────
 export async function runTelegramSync(): Promise<SyncResult> {
   const token   = BOT_TOKEN();
   const channel = CHANNEL();
   if (!token) throw new Error("TELEGRAM_BOT_TOKEN not configured");
+
+  // ── Fix any existing mis-classified accounts before processing new ones ────
+  // This runs on every sync so accounts imported before this fix get corrected.
+  try {
+    await fixMisclassifiedAccounts();
+  } catch (fixErr) {
+    logger.warn({ fixErr }, "runTelegramSync: fixMisclassifiedAccounts() خطأ — متابعة المزامنة");
+  }
 
   // Load stored update offset
   const [offsetRow] = await db
@@ -921,6 +1021,21 @@ export async function runTelegramSync(): Promise<SyncResult> {
         },
       },
       "[DIAG] DATA_BEFORE_SAVE",
+    );
+
+    // ══════════════════════════════════════════════════════════════════════
+    // [PLATFORM] سجل Debug للمنصة — مطلوب من المستخدم
+    // ══════════════════════════════════════════════════════════════════════
+    logger.info(
+      {
+        accountName:      p.name,
+        platformReceived: p.parseLog.platform,   // ما قرأه الكود من الرسالة
+        platformSaved:    p.platform,             // ما سيُحفظ في DB
+        sectionDisplayed: p.categorySelected,    // القسم الذي سيظهر فيه
+        username:         p.username ?? "—",
+        accountUrl:       p.accountUrl ?? "—",
+      },
+      `📋 [PLATFORM] "${p.name}" | مستلم: ${p.parseLog.platform} | محفوظ: ${p.platform} | قسم: ${p.categorySelected}`,
     );
 
     // ── Insert account ──────────────────────────────────────────────────────
