@@ -1,5 +1,6 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { Readable } from "stream";
+import multer from "multer";
 import {
   RequestUploadUrlBody,
   RequestUploadUrlResponse,
@@ -7,6 +8,11 @@ import {
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
 import { ObjectPermission } from "../lib/objectAcl";
 import { requireAuth } from "../middlewares/auth";
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 500 * 1024 * 1024 }, // 500 MB
+});
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
@@ -43,6 +49,44 @@ router.post("/uploads/request-url", requireAuth, async (req: Request, res: Respo
     res.status(500).json({ error: "Failed to generate upload URL" });
   }
 });
+
+/**
+ * POST /storage/uploads/upload-file
+ *
+ * Proxy file upload: client sends multipart/form-data with field "file".
+ * Server receives buffer and uploads directly to GCS — no CORS issues.
+ * Returns { objectPath, servingUrl }
+ */
+router.post(
+  "/uploads/upload-file",
+  requireAuth,
+  upload.single("file"),
+  async (req: Request, res: Response) => {
+    const file = req.file;
+    if (!file) {
+      res.status(400).json({ error: "No file provided (expected field name: file)" });
+      return;
+    }
+    req.log.info(
+      { name: file.originalname, size: file.size, type: file.mimetype },
+      "[Upload] استلم الملف من المتصفح",
+    );
+    try {
+      const objectPath = await objectStorageService.uploadObjectEntityBuffer(
+        file.buffer,
+        file.mimetype,
+        file.originalname,
+      );
+      const servingUrl = `/api/storage${objectPath}`;
+      req.log.info({ objectPath, servingUrl }, "[Upload] تم الرفع إلى GCS بنجاح");
+      res.json({ objectPath, servingUrl });
+    } catch (error) {
+      req.log.error({ err: error }, "[Upload] فشل رفع الملف إلى GCS");
+      const msg = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ error: `فشل رفع الملف: ${msg}` });
+    }
+  },
+);
 
 /**
  * GET /storage/public-objects/*

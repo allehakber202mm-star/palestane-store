@@ -1,5 +1,5 @@
 import { AdminLayout } from "@/components/layout/AdminLayout";
-import { useListCelebrityAds, useRequestUploadUrl } from "@workspace/api-client-react";
+import { useListCelebrityAds } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import {
   Plus, Trash2, Pencil, Upload, Loader2, X, Video, Play, Save, AlertCircle,
 } from "lucide-react";
 import { VideoEmbed, VideoTypeBadge, detectVideoType, isValidVideoUrl } from "@/components/VideoEmbed";
+import { uploadFileToStorage } from "@/lib/uploadImage";
 
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -35,7 +36,6 @@ type Ad = { id: number; title: string; description: string | null; videoUrl: str
 
 export default function AdminCelebrityAds() {
   const { data: ads, isLoading } = useListCelebrityAds();
-  const requestUpload = useRequestUploadUrl();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -45,6 +45,7 @@ export default function AdminCelebrityAds() {
   const [saving, setSaving]             = useState(false);
   const [uploadingVideo, setUploadingVideo] = useState(false);
   const [uploadingThumb, setUploadingThumb] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<string | null>(null);
   const [previewAd, setPreviewAd]       = useState<Ad | null>(null);
   const [urlError, setUrlError]         = useState<string | null>(null);
 
@@ -90,22 +91,33 @@ export default function AdminCelebrityAds() {
   async function uploadFile(file: File, type: "video" | "thumb") {
     const setter = type === "video" ? setUploadingVideo : setUploadingThumb;
     setter(true);
+    setUploadProgress(
+      `جاري رفع ${type === "video" ? "الفيديو" : "الصورة"}: ${file.name} (${(file.size / 1024 / 1024).toFixed(1)} MB)...`,
+    );
+    console.log(
+      `[Upload] 📁 الملف: ${file.name} | الحجم: ${(file.size / 1024 / 1024).toFixed(2)} MB | النوع: ${file.type} | الهدف: ${type}`,
+    );
     try {
-      const { uploadURL, objectPath } = await requestUpload.mutateAsync({
-        data: { name: file.name, size: file.size, contentType: file.type },
-      });
-      await fetch(uploadURL, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
-      const url = `/api/storage/objects/${objectPath}`;
+      const servingUrl = await uploadFileToStorage(file);
+      console.log(`[Upload] ✅ تم الرفع: ${servingUrl}`);
       setForm((f) =>
         type === "video"
-          ? { ...f, videoUrl: url }
-          : { ...f, thumbnailUrl: url },
+          ? { ...f, videoUrl: servingUrl }
+          : { ...f, thumbnailUrl: servingUrl },
       );
       if (type === "video") setUrlError(null);
-    } catch {
-      toast({ title: "فشل رفع الملف", variant: "destructive" });
+      toast({ title: type === "video" ? "✅ تم رفع الفيديو بنجاح" : "✅ تم رفع الصورة بنجاح" });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[Upload] ❌ فشل الرفع:`, msg);
+      toast({
+        title: "فشل رفع الملف",
+        description: msg,
+        variant: "destructive",
+      });
     } finally {
       setter(false);
+      setUploadProgress(null);
     }
   }
 
@@ -254,15 +266,22 @@ export default function AdminCelebrityAds() {
                     onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f, "video"); }}
                   />
                 </div>
+                {/* Upload progress */}
+                {uploadProgress && uploadingVideo && (
+                  <p className="flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400">
+                    <Loader2 className="w-3 h-3 animate-spin shrink-0" />
+                    {uploadProgress}
+                  </p>
+                )}
                 {/* Validation message */}
-                {urlError && (
+                {!uploadingVideo && urlError && (
                   <p className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-400">
                     <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
                     {urlError}
                   </p>
                 )}
                 {/* Platform hint */}
-                {!urlError && (
+                {!uploadingVideo && !urlError && (
                   <p className="text-xs text-muted-foreground">
                     يدعم: YouTube • TikTok • Instagram Reels • Facebook Video • MP4 مباشر
                   </p>

@@ -175,6 +175,37 @@ export class ObjectStorageService {
     return `/objects/${entityId}`;
   }
 
+  /**
+   * Upload a buffer directly to GCS (server-side).
+   * Use this from API routes to avoid CORS issues with presigned URLs.
+   * Returns the normalized objectPath (e.g. /objects/uploads/<uuid>)
+   */
+  async uploadObjectEntityBuffer(
+    buffer: Buffer,
+    contentType: string,
+    originalName?: string,
+  ): Promise<string> {
+    const privateObjectDir = this.getPrivateObjectDir();
+    const objectId = randomUUID();
+    const ext = originalName ? originalName.replace(/^.*(\.[^.]+)$/, "$1") : "";
+
+    // Build the GCS path: privateObjectDir + /uploads/<uuid><ext>
+    const fullPath = `${privateObjectDir}/uploads/${objectId}${ext}`;
+    const { bucketName, objectName } = parseObjectPath(fullPath);
+    const bucket = objectStorageClient.bucket(bucketName);
+    const file = bucket.file(objectName);
+    await file.save(buffer, { contentType, resumable: false });
+
+    // Return normalized path that GET /storage/objects/* can serve
+    // This mirrors what getObjectEntityFile() expects: /objects/<entityId>
+    // where entityId is the path AFTER privateObjectDir/ prefix.
+    let entityDir = privateObjectDir;
+    if (!entityDir.endsWith("/")) entityDir = `${entityDir}/`;
+    const { objectName: fullObjectName } = parseObjectPath(entityDir);
+    const entityId = objectName.slice(fullObjectName.length);
+    return `/objects/${entityId}`;
+  }
+
   async trySetObjectEntityAclPolicy(
     rawPath: string,
     aclPolicy: ObjectAclPolicy

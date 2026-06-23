@@ -1,33 +1,59 @@
+const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
 /**
- * Uploads an image file to GCS via presigned URL and returns the permanent serving URL.
- * The serving URL is stored in the database as imageUrl.
+ * Uploads any file to GCS via the server-side proxy endpoint.
+ * Avoids CORS issues that occur when uploading directly to GCS from the browser.
+ * Returns the permanent serving URL (e.g. /api/storage/objects/uploads/<uuid>)
  */
 export async function uploadImageToStorage(file: File): Promise<string> {
+  return uploadFileToStorage(file);
+}
+
+/**
+ * Uploads a file to GCS via server proxy.
+ * Supports images, videos, and any other file type.
+ * Returns the permanent serving URL.
+ */
+export async function uploadFileToStorage(file: File): Promise<string> {
   const token = localStorage.getItem("admin_token");
 
-  const urlRes = await fetch("/api/storage/uploads/request-url", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({
-      name: file.name,
-      size: file.size,
-      contentType: file.type,
-    }),
-  });
+  console.log(`[Upload] 📁 الملف: ${file.name} | الحجم: ${(file.size / 1024 / 1024).toFixed(2)} MB | النوع: ${file.type}`);
+  console.log(`[Upload] ⬆️  بدأ الرفع...`);
 
-  if (!urlRes.ok) throw new Error("Failed to get upload URL");
-  const { uploadURL, objectPath } = await urlRes.json();
+  const formData = new FormData();
+  formData.append("file", file);
 
-  const uploadRes = await fetch(uploadURL, {
-    method: "PUT",
-    headers: { "Content-Type": file.type },
-    body: file,
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => {
+    controller.abort();
+    console.error("[Upload] ⏰ انتهت مهلة الرفع (60 ثانية)");
+  }, 60_000);
 
-  if (!uploadRes.ok) throw new Error("Failed to upload image");
+  try {
+    const res = await fetch(`${API_BASE}/api/storage/uploads/upload-file`, {
+      method: "POST",
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: formData,
+      signal: controller.signal,
+    });
 
-  return `/api/storage${objectPath}`;
+    if (!res.ok) {
+      const errText = await res.text().catch(() => `HTTP ${res.status}`);
+      console.error(`[Upload] ❌ فشل الرفع: ${errText}`);
+      throw new Error(errText || `فشل الرفع: HTTP ${res.status}`);
+    }
+
+    const { servingUrl } = await res.json();
+    console.log(`[Upload] ✅ تم الرفع بنجاح: ${servingUrl}`);
+    return servingUrl;
+  } catch (err) {
+    if ((err as Error)?.name === "AbortError") {
+      throw new Error("انتهت مهلة الرفع (60 ثانية) — الملف كبير جداً أو الشبكة بطيئة");
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
