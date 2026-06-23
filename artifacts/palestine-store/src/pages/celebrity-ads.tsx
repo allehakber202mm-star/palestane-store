@@ -16,7 +16,7 @@ function formatDate(iso: string) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// VideoModal
+// VideoModal — opens the full video when a card is clicked
 // ─────────────────────────────────────────────────────────────────────────────
 function VideoModal({ ad, onClose }: { ad: Ad; onClose: () => void }) {
   const thumbnail = useVideoThumbnail(ad.videoUrl, ad.thumbnailUrl);
@@ -52,95 +52,88 @@ function VideoModal({ ad, onClose }: { ad: Ad; onClose: () => void }) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AdCard
-// Detects the thumbnail's natural aspect ratio and adjusts the card height so
-// the video is never cropped.  Vertical (9:16) content gets a tall card;
-// horizontal (16:9) content gets a wide card. A blurred copy of the thumbnail
-// fills any remaining space so there are no black/grey bars.
+// Fixed 4:3 thumbnail area — same proportion as AccountCard.
+// The thumbnail (any aspect ratio) sits inside with object-contain + blurred
+// background so vertical videos show without black bars and cards stay uniform.
 // ─────────────────────────────────────────────────────────────────────────────
 function AdCard({ ad, onClick }: { ad: Ad; onClick: () => void }) {
   const thumbnail = useVideoThumbnail(ad.videoUrl, ad.thumbnailUrl);
 
-  // null = not yet detected, true = vertical (9:16), false = horizontal (16:9)
-  const [isVertical, setIsVertical] = useState<boolean | null>(null);
-
-  function handleImgLoad(e: React.SyntheticEvent<HTMLImageElement>) {
-    const { naturalWidth, naturalHeight } = e.currentTarget;
-    // Consider "vertical" when taller than wide with ≥10 % margin
-    setIsVertical(naturalHeight > naturalWidth * 1.1);
-  }
-
-  // Aspect ratio class:
-  //   - null / vertical → 9:16  (tall card — no cropping for portrait content)
-  //   - horizontal      → 16:9
-  const thumbAspect = isVertical === false ? "aspect-video" : "aspect-[9/16]";
-
   return (
     <div
-      className="group bg-card border rounded-2xl overflow-hidden shadow-sm hover:shadow-lg
-                 transition-all duration-200 flex flex-col cursor-pointer"
+      className="group overflow-hidden rounded-xl border bg-card shadow-sm
+                 transition-all hover:shadow-md hover:border-primary/40
+                 flex flex-col h-full cursor-pointer"
       onClick={onClick}
     >
-      {/* ── Thumbnail ───────────────────────────────────────────────────────── */}
-      <div className={`relative w-full ${thumbAspect} overflow-hidden bg-zinc-900`}>
-        {/* Blurred fill — covers the background behind the contained image */}
+      {/* ── Thumbnail — fixed 4:3, same as AccountCard ─────────────────────── */}
+      <div
+        className="relative w-full shrink-0 overflow-hidden bg-zinc-900"
+        style={{ aspectRatio: "4/3" }}
+      >
+        {/* Blurred fill — same image stretched to cover, blurred heavily */}
         {thumbnail && (
           <img
             src={thumbnail}
             aria-hidden
             className="pointer-events-none select-none
                        absolute inset-0 w-full h-full
-                       object-cover scale-110 blur-3xl opacity-55"
+                       object-cover scale-110 blur-3xl opacity-60"
           />
         )}
 
-        {/* Actual thumbnail — fully contained, never cropped */}
+        {/* Contained thumbnail — never cropped, preserves original aspect ratio */}
         {thumbnail ? (
           <img
             src={thumbnail}
             alt={ad.title}
             loading="lazy"
-            onLoad={handleImgLoad}
-            className="relative z-10 w-full h-full object-contain"
+            className="relative z-10 w-full h-full object-contain
+                       transition-transform duration-300 group-hover:scale-105"
           />
         ) : (
-          /* Spinner while extracting */
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="w-9 h-9 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
           </div>
         )}
 
-        {/* Play button — centred, visible on hover */}
-        <div
-          className="absolute inset-0 z-20 flex items-center justify-center
-                     bg-black/5 group-hover:bg-black/30 transition-colors duration-200"
-        >
+        {/* Hover overlay */}
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200" />
+
+        {/* Play button — centred, always visible, larger on hover */}
+        <div className="absolute inset-0 z-20 flex items-center justify-center">
           <div
             className="bg-white/90 group-hover:bg-white rounded-full shadow-2xl
                        transition-all duration-200 group-hover:scale-110 group-active:scale-95
-                       p-4 sm:p-5"
+                       p-3 sm:p-4"
           >
-            <Play className="w-8 h-8 sm:w-10 sm:h-10 text-primary fill-primary" />
+            <Play className="w-7 h-7 sm:w-9 sm:h-9 text-primary fill-primary" />
           </div>
         </div>
       </div>
 
-      {/* ── Info ────────────────────────────────────────────────────────────── */}
-      <div className="p-4 flex flex-col flex-1 gap-2">
-        <h3 className="font-bold text-base line-clamp-2 leading-snug">{ad.title}</h3>
+      {/* ── Info ─────────────────────────────────────────────────────────────── */}
+      <div className="p-2.5 sm:p-3 flex flex-col gap-2 flex-1">
+        <h3 className="font-bold text-sm sm:text-base line-clamp-2 leading-snug">{ad.title}</h3>
         {ad.description && (
-          <p className="text-sm text-muted-foreground line-clamp-2 flex-1">{ad.description}</p>
+          <p className="text-[11px] sm:text-xs text-muted-foreground line-clamp-2 flex-1 leading-relaxed">
+            {ad.description}
+          </p>
         )}
+
+        <div className="flex-1" />
+
         <div className="flex items-center justify-between mt-auto pt-2 border-t border-border/50">
-          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <CalendarDays className="w-3.5 h-3.5" />
+          <span className="flex items-center gap-1 text-[10px] sm:text-xs text-muted-foreground">
+            <CalendarDays className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
             {formatDate(ad.createdAt)}
           </span>
           <Button
             size="sm"
-            className="gap-1.5 h-8 text-xs"
+            className="gap-1.5 h-7 sm:h-8 text-[11px] sm:text-xs"
             onClick={(e) => { e.stopPropagation(); onClick(); }}
           >
-            <Play className="w-3.5 h-3.5 fill-current" />
+            <Play className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-current" />
             مشاهدة
           </Button>
         </div>
@@ -177,9 +170,9 @@ export default function CelebrityAds() {
 
         {/* Loading */}
         {isLoading && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {[...Array(6)].map((_, i) => (
-              <Skeleton key={i} className="rounded-2xl aspect-[9/16]" />
+              <Skeleton key={i} className="rounded-xl" style={{ aspectRatio: "4/3" }} />
             ))}
           </div>
         )}
@@ -192,9 +185,7 @@ export default function CelebrityAds() {
           </div>
         )}
 
-        {/* Grid
-            Using 2 columns on sm and up — vertical cards are wide enough to
-            show faces/text clearly without squishing them into 3 narrow cols. */}
+        {/* Grid — 3 columns, uniform card height */}
         {!isLoading && ads && ads.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {ads.map((ad) => (
