@@ -7,54 +7,17 @@ import { useState } from "react";
 import { VideoEmbed } from "@/components/VideoEmbed";
 import { useVideoThumbnail } from "@/hooks/useVideoThumbnail";
 
+type Ad = CelebrityAd;
+
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("ar-EG", {
     year: "numeric", month: "long", day: "numeric",
   });
 }
 
-type Ad = CelebrityAd;
-
-// ── Blurred thumbnail frame ────────────────────────────────────────────────────
-// Shows the image contained, with a blurred copy filling the surrounding space.
-// Works great for vertical (9:16) videos inside a 16:9 card.
-interface BlurredThumbnailProps {
-  src: string | null;
-  alt: string;
-  loading?: boolean;
-}
-function BlurredThumbnail({ src, alt, loading }: BlurredThumbnailProps) {
-  return (
-    <div className="relative w-full h-full overflow-hidden bg-zinc-900">
-      {/* Blurred fill layer */}
-      {src && (
-        <img
-          src={src}
-          aria-hidden
-          className="pointer-events-none select-none absolute inset-0 w-full h-full object-cover scale-110 blur-3xl opacity-60"
-        />
-      )}
-      {/* Contained actual thumbnail */}
-      {src ? (
-        <img
-          src={src}
-          alt={alt}
-          className="relative z-10 w-full h-full object-contain"
-          loading="lazy"
-        />
-      ) : (
-        /* Gradient placeholder while extracting / no thumbnail yet */
-        <div className="absolute inset-0 bg-gradient-to-br from-zinc-800 to-zinc-900 flex items-center justify-center">
-          {loading && (
-            <div className="w-8 h-8 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Modal ──────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// VideoModal
+// ─────────────────────────────────────────────────────────────────────────────
 function VideoModal({ ad, onClose }: { ad: Ad; onClose: () => void }) {
   const thumbnail = useVideoThumbnail(ad.videoUrl, ad.thumbnailUrl);
 
@@ -67,18 +30,13 @@ function VideoModal({ ad, onClose }: { ad: Ad; onClose: () => void }) {
         className="relative w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Close button */}
         <button
           onClick={onClose}
           className="absolute top-3 right-3 z-30 bg-black/60 hover:bg-black/90 text-white rounded-full p-1.5 transition-colors"
         >
           <X className="w-5 h-5" />
         </button>
-
-        {/* Video player — blurred bg built into VideoEmbed */}
         <VideoEmbed url={ad.videoUrl} thumbnail={thumbnail} autoPlay />
-
-        {/* Info bar */}
         <div className="p-4 bg-background border-t">
           <h3 className="font-bold text-base leading-snug">{ad.title}</h3>
           {ad.description && (
@@ -92,30 +50,81 @@ function VideoModal({ ad, onClose }: { ad: Ad; onClose: () => void }) {
   );
 }
 
-// ── Ad card ────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// AdCard
+// Detects the thumbnail's natural aspect ratio and adjusts the card height so
+// the video is never cropped.  Vertical (9:16) content gets a tall card;
+// horizontal (16:9) content gets a wide card. A blurred copy of the thumbnail
+// fills any remaining space so there are no black/grey bars.
+// ─────────────────────────────────────────────────────────────────────────────
 function AdCard({ ad, onClick }: { ad: Ad; onClick: () => void }) {
   const thumbnail = useVideoThumbnail(ad.videoUrl, ad.thumbnailUrl);
 
+  // null = not yet detected, true = vertical (9:16), false = horizontal (16:9)
+  const [isVertical, setIsVertical] = useState<boolean | null>(null);
+
+  function handleImgLoad(e: React.SyntheticEvent<HTMLImageElement>) {
+    const { naturalWidth, naturalHeight } = e.currentTarget;
+    // Consider "vertical" when taller than wide with ≥10 % margin
+    setIsVertical(naturalHeight > naturalWidth * 1.1);
+  }
+
+  // Aspect ratio class:
+  //   - null / vertical → 9:16  (tall card — no cropping for portrait content)
+  //   - horizontal      → 16:9
+  const thumbAspect = isVertical === false ? "aspect-video" : "aspect-[9/16]";
+
   return (
     <div
-      className="group bg-card border rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-200 flex flex-col cursor-pointer"
+      className="group bg-card border rounded-2xl overflow-hidden shadow-sm hover:shadow-lg
+                 transition-all duration-200 flex flex-col cursor-pointer"
       onClick={onClick}
     >
-      {/* Thumbnail — 16:9 frame with blurred bg for any aspect ratio */}
-      <div className="relative w-full aspect-video overflow-hidden">
-        <BlurredThumbnail src={thumbnail} alt={ad.title} loading={!thumbnail} />
+      {/* ── Thumbnail ───────────────────────────────────────────────────────── */}
+      <div className={`relative w-full ${thumbAspect} overflow-hidden bg-zinc-900`}>
+        {/* Blurred fill — covers the background behind the contained image */}
+        {thumbnail && (
+          <img
+            src={thumbnail}
+            aria-hidden
+            className="pointer-events-none select-none
+                       absolute inset-0 w-full h-full
+                       object-cover scale-110 blur-3xl opacity-55"
+          />
+        )}
 
-        {/* Play button overlay */}
-        <div className="absolute inset-0 z-20 flex items-center justify-center
-                        bg-black/10 group-hover:bg-black/30 transition-colors duration-200">
-          <div className="bg-white/90 group-hover:bg-white rounded-full p-4 shadow-xl
-                          transition-all duration-200 group-hover:scale-110 group-active:scale-95">
-            <Play className="w-8 h-8 text-primary fill-primary" />
+        {/* Actual thumbnail — fully contained, never cropped */}
+        {thumbnail ? (
+          <img
+            src={thumbnail}
+            alt={ad.title}
+            loading="lazy"
+            onLoad={handleImgLoad}
+            className="relative z-10 w-full h-full object-contain"
+          />
+        ) : (
+          /* Spinner while extracting */
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-9 h-9 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+          </div>
+        )}
+
+        {/* Play button — centred, visible on hover */}
+        <div
+          className="absolute inset-0 z-20 flex items-center justify-center
+                     bg-black/5 group-hover:bg-black/30 transition-colors duration-200"
+        >
+          <div
+            className="bg-white/90 group-hover:bg-white rounded-full shadow-2xl
+                       transition-all duration-200 group-hover:scale-110 group-active:scale-95
+                       p-4 sm:p-5"
+          >
+            <Play className="w-8 h-8 sm:w-10 sm:h-10 text-primary fill-primary" />
           </div>
         </div>
       </div>
 
-      {/* Info */}
+      {/* ── Info ────────────────────────────────────────────────────────────── */}
       <div className="p-4 flex flex-col flex-1 gap-2">
         <h3 className="font-bold text-base line-clamp-2 leading-snug">{ad.title}</h3>
         {ad.description && (
@@ -140,7 +149,9 @@ function AdCard({ ad, onClick }: { ad: Ad; onClick: () => void }) {
   );
 }
 
-// ── Page ───────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Page
+// ─────────────────────────────────────────────────────────────────────────────
 export default function CelebrityAds() {
   const { data: ads, isLoading } = useListCelebrityAds();
   const [activeAd, setActiveAd] = useState<Ad | null>(null);
@@ -164,14 +175,16 @@ export default function CelebrityAds() {
           )}
         </div>
 
-        {/* Loading skeletons */}
+        {/* Loading */}
         {isLoading && (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-            {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-64 rounded-2xl" />)}
+            {[...Array(6)].map((_, i) => (
+              <Skeleton key={i} className="rounded-2xl aspect-[9/16]" />
+            ))}
           </div>
         )}
 
-        {/* Empty state */}
+        {/* Empty */}
         {!isLoading && (!ads || ads.length === 0) && (
           <div className="text-center py-24 text-muted-foreground">
             <Video className="w-14 h-14 mx-auto mb-4 opacity-25" />
@@ -179,9 +192,11 @@ export default function CelebrityAds() {
           </div>
         )}
 
-        {/* Grid */}
+        {/* Grid
+            Using 2 columns on sm and up — vertical cards are wide enough to
+            show faces/text clearly without squishing them into 3 narrow cols. */}
         {!isLoading && ads && ads.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {ads.map((ad) => (
               <AdCard key={ad.id} ad={ad} onClick={() => setActiveAd(ad)} />
             ))}
