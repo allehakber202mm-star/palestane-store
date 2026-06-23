@@ -144,18 +144,10 @@ const features = [
 export default function Home() {
   const { data: settings } = useGetSettings();
 
-  const { data: rawTiktok, isLoading: isLoadingTiktok } = useListAccounts({ platform: "tiktok", limit: 8 });
-  const { data: rawMonetized, isLoading: isLoadingMonetized } = useListAccounts({ platform: "tiktok_monetized", limit: 8 });
-  const { data: rawInstagram, isLoading: isLoadingInstagram } = useListAccounts({ platform: "instagram", limit: 8 });
-  const { data: rawFacebook, isLoading: isLoadingFacebook } = useListAccounts({ platform: "facebook", limit: 8 });
-
-  const sortByFollowers = (arr?: typeof rawTiktok) =>
-    arr ? [...arr].sort((a, b) => b.followers - a.followers) : undefined;
-
-  const tiktok = sortByFollowers(rawTiktok);
-  const monetized = sortByFollowers(rawMonetized);
-  const instagram = sortByFollowers(rawInstagram);
-  const facebook = sortByFollowers(rawFacebook);
+  const { data: tiktok,    isLoading: isLoadingTiktok }     = useListAccounts({ platform: "tiktok",            sort: "followers_desc", limit: 8 });
+  const { data: monetized, isLoading: isLoadingMonetized }  = useListAccounts({ platform: "tiktok_monetized",  sort: "followers_desc", limit: 8 });
+  const { data: instagram, isLoading: isLoadingInstagram }  = useListAccounts({ platform: "instagram",         sort: "followers_desc", limit: 8 });
+  const { data: facebook,  isLoading: isLoadingFacebook }   = useListAccounts({ platform: "facebook",          sort: "followers_desc", limit: 8 });
 
   const phone = settings?.whatsapp?.replace(/\D/g, "") || "972566112031";
 

@@ -97,7 +97,7 @@ router.get("/featured", async (_req, res) => {
     .select()
     .from(accountsTable)
     .where(and(eq(accountsTable.featured, true), eq(accountsTable.status, "available")))
-    .orderBy(desc(accountsTable.createdAt))
+    .orderBy(...buildOrderBy("followers_desc"))
     .limit(8);
   res.json(rows.map(formatAccount));
 });
@@ -107,7 +107,7 @@ router.get("/recent", async (_req, res) => {
     .select()
     .from(accountsTable)
     .where(eq(accountsTable.status, "available"))
-    .orderBy(desc(accountsTable.createdAt))
+    .orderBy(...buildOrderBy("followers_desc"))
     .limit(8);
   res.json(rows.map(formatAccount));
 });

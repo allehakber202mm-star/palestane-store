@@ -1,5 +1,5 @@
 import { db, accountsTable, settingsTable, feedbackPostsTable } from "@workspace/db";
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, and, desc, sql } from "drizzle-orm";
 import { objectStorageClient } from "./objectStorage";
 import { randomUUID } from "crypto";
 import { logger } from "./logger";
@@ -960,6 +960,53 @@ export async function runTelegramSync(): Promise<SyncResult> {
       target: settingsTable.key,
       set:    { value: String(maxUpdateId) },
     });
+
+  // ── Sort log: show follower order per platform ─────────────────────────────
+  if (imported > 0 || accountPosts.length > 0) {
+    try {
+      const platforms = ["tiktok", "tiktok_monetized", "instagram", "facebook"] as const;
+      logger.info({ event: "SORTING ACCOUNTS..." }, "🔃 SORTING ACCOUNTS...");
+      for (const platform of platforms) {
+        const rows = await db
+          .select({
+            id:        accountsTable.id,
+            followers: accountsTable.followers,
+          })
+          .from(accountsTable)
+          .where(
+            and(
+              eq(accountsTable.platform, platform),
+              eq(accountsTable.status, "available"),
+            ),
+          )
+          .orderBy(
+            sql`CASE WHEN COALESCE(${accountsTable.followers}, 0) = 0 THEN 1 ELSE 0 END`,
+            desc(accountsTable.followers),
+          );
+
+        const label =
+          platform === "tiktok"           ? "TikTok"
+        : platform === "tiktok_monetized" ? "TikTok Monetized"
+        : platform === "instagram"        ? "Instagram"
+        : "Facebook";
+
+        logger.info(
+          {
+            platform,
+            sortOrder:    "followers DESC (zeros last)",
+            totalVisible: rows.length,
+            top3: rows.slice(0, 3).map(r => ({
+              id:        r.id,
+              followers: Number(r.followers ?? 0),
+            })),
+          },
+          `Platform: ${label} — Sorted by followers DESC`,
+        );
+      }
+    } catch (sortLogErr) {
+      logger.warn({ sortLogErr }, "SORTING ACCOUNTS: خطأ أثناء كتابة سجل الترتيب");
+    }
+  }
 
   return { imported, skipped, total: accountPosts.length };
 }
