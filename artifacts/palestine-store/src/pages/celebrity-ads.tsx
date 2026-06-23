@@ -1,26 +1,18 @@
 import { PublicLayout } from "@/components/layout/PublicLayout";
 import { useListCelebrityAds, CelebrityAd } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
-import { Play, Video, CalendarDays, X } from "lucide-react";
+import { Play, Video, X } from "lucide-react";
 import { useState } from "react";
 import { VideoEmbed } from "@/components/VideoEmbed";
 import { useVideoThumbnail } from "@/hooks/useVideoThumbnail";
 
 type Ad = CelebrityAd;
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("ar-EG", {
-    year: "numeric", month: "long", day: "numeric",
-  });
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
-// VideoModal — opens the full video when a card is clicked
+// VideoModal
 // ─────────────────────────────────────────────────────────────────────────────
 function VideoModal({ ad, onClose }: { ad: Ad; onClose: () => void }) {
   const thumbnail = useVideoThumbnail(ad.videoUrl, ad.thumbnailUrl);
-
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-3"
@@ -51,27 +43,22 @@ function VideoModal({ ad, onClose }: { ad: Ad; onClose: () => void }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// AdCard
-// Fixed 4:3 thumbnail area — same proportion as AccountCard.
-// The thumbnail (any aspect ratio) sits inside with object-contain + blurred
-// background so vertical videos show without black bars and cards stay uniform.
+// AdCard — identical layout and dimensions to AccountCard
 // ─────────────────────────────────────────────────────────────────────────────
 function AdCard({ ad, onClick }: { ad: Ad; onClick: () => void }) {
   const thumbnail = useVideoThumbnail(ad.videoUrl, ad.thumbnailUrl);
 
   return (
     <div
+      onClick={onClick}
       className="group overflow-hidden rounded-xl border bg-card shadow-sm
                  transition-all hover:shadow-md hover:border-primary/40
                  flex flex-col h-full cursor-pointer"
-      onClick={onClick}
     >
-      {/* ── Thumbnail — fixed 4:3, same as AccountCard ─────────────────────── */}
-      <div
-        className="relative w-full shrink-0 overflow-hidden bg-zinc-900"
-        style={{ aspectRatio: "4/3" }}
-      >
-        {/* Blurred fill — same image stretched to cover, blurred heavily */}
+      {/* ── Thumbnail — same aspectRatio:"4/3" and bg-muted as AccountCard ─── */}
+      <div className="relative w-full shrink-0 bg-muted overflow-hidden" style={{ aspectRatio: "4/3" }}>
+
+        {/* Blurred fill behind contained image (fills gaps for vertical videos) */}
         {thumbnail && (
           <img
             src={thumbnail}
@@ -82,7 +69,7 @@ function AdCard({ ad, onClick }: { ad: Ad; onClick: () => void }) {
           />
         )}
 
-        {/* Contained thumbnail — never cropped, preserves original aspect ratio */}
+        {/* Contained thumbnail — never cropped */}
         {thumbnail ? (
           <img
             src={thumbnail}
@@ -93,50 +80,57 @@ function AdCard({ ad, onClick }: { ad: Ad; onClick: () => void }) {
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-9 h-9 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+            <div className="w-8 h-8 border-2 border-muted-foreground/20 border-t-muted-foreground/60 rounded-full animate-spin" />
           </div>
         )}
 
-        {/* Hover overlay */}
-        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200" />
+        {/* Hover overlay — same as AccountCard */}
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/15 transition-colors flex items-center justify-center">
+          {/* Play icon badge — shown on hover */}
+          <span className="opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="bg-white/90 rounded-full shadow-2xl p-2.5 sm:p-3">
+              <Play className="w-5 h-5 sm:w-7 sm:h-7 text-primary fill-primary" />
+            </div>
+          </span>
+        </div>
 
-        {/* Play button — centred, always visible, larger on hover */}
-        <div className="absolute inset-0 z-20 flex items-center justify-center">
-          <div
-            className="bg-white/90 group-hover:bg-white rounded-full shadow-2xl
-                       transition-all duration-200 group-hover:scale-110 group-active:scale-95
-                       p-3 sm:p-4"
-          >
-            <Play className="w-7 h-7 sm:w-9 sm:h-9 text-primary fill-primary" />
-          </div>
+        {/* Play badge — always visible (small, top-left like AccountCard's badges) */}
+        <div className="absolute top-2 right-2 z-20">
+          <span className="bg-black/60 text-white text-[10px] sm:text-[11px]
+                           px-2 py-0.5 rounded-full font-bold shadow-sm
+                           flex items-center gap-1 leading-none">
+            <Play className="w-2.5 h-2.5 fill-white" />
+            فيديو
+          </span>
         </div>
       </div>
 
-      {/* ── Info ─────────────────────────────────────────────────────────────── */}
+      {/* ── Body — same padding as AccountCard ──────────────────────────────── */}
       <div className="p-2.5 sm:p-3 flex flex-col gap-2 flex-1">
-        <h3 className="font-bold text-sm sm:text-base line-clamp-2 leading-snug">{ad.title}</h3>
+
+        {/* Title */}
+        <p className="font-bold text-[11px] sm:text-xs leading-tight line-clamp-2 text-foreground">
+          {ad.title}
+        </p>
+
+        {/* Description (if any) */}
         {ad.description && (
-          <p className="text-[11px] sm:text-xs text-muted-foreground line-clamp-2 flex-1 leading-relaxed">
+          <p className="text-[9px] sm:text-[10px] text-muted-foreground leading-relaxed line-clamp-2">
             {ad.description}
           </p>
         )}
 
         <div className="flex-1" />
 
-        <div className="flex items-center justify-between mt-auto pt-2 border-t border-border/50">
-          <span className="flex items-center gap-1 text-[10px] sm:text-xs text-muted-foreground">
-            <CalendarDays className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-            {formatDate(ad.createdAt)}
-          </span>
-          <Button
-            size="sm"
-            className="gap-1.5 h-7 sm:h-8 text-[11px] sm:text-xs"
-            onClick={(e) => { e.stopPropagation(); onClick(); }}
-          >
-            <Play className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-current" />
-            مشاهدة
-          </Button>
-        </div>
+        {/* Watch button — same style as AccountCard CTA */}
+        <button
+          onClick={(e) => { e.stopPropagation(); onClick(); }}
+          className="w-full rounded-lg py-2 sm:py-2.5 text-[11px] sm:text-xs font-bold
+                     bg-primary hover:bg-primary/90 text-primary-foreground
+                     transition-colors"
+        >
+          مشاهدة الفيديو
+        </button>
       </div>
     </div>
   );
@@ -153,41 +147,51 @@ export default function CelebrityAds() {
     <PublicLayout>
       {activeAd && <VideoModal ad={activeAd} onClose={() => setActiveAd(null)} />}
 
-      <div className="container mx-auto px-4 py-10 max-w-6xl space-y-8">
-        {/* Header */}
-        <div className="text-center space-y-3">
-          <span className="text-5xl">🎥</span>
-          <h1 className="text-3xl sm:text-4xl font-black">إعلانات المشاهير لمتجرنا</h1>
-          <p className="text-muted-foreground text-base max-w-2xl mx-auto leading-relaxed">
-            نفخر بتعاوننا مع العديد من صناع المحتوى والمشاهير، ويمكنكم مشاهدة بعض الإعلانات والتوصيات الخاصة بمتجر فلسطين للحسابات.
+      {/* Page Header — same style as accounts.tsx */}
+      <div className="bg-muted/30 border-b">
+        <div className="container mx-auto px-4 py-8 sm:py-12">
+          <h1 className="text-2xl sm:text-4xl font-black mb-2">إعلانات المشاهير</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">
+            شاهد توصيات وإعلانات صناع المحتوى والمشاهير لمتجر فلسطين للحسابات
           </p>
-          {!isLoading && ads && ads.length > 0 && (
-            <p className="text-sm text-muted-foreground">
-              {ads.length} {ads.length === 1 ? "فيديو" : "فيديوهات"}
-            </p>
-          )}
         </div>
+      </div>
 
-        {/* Loading */}
+      {/* Content — same container/padding as accounts.tsx */}
+      <div className="container mx-auto px-3 sm:px-4 py-5 sm:py-8">
+
+        {/* Count bar */}
+        {!isLoading && ads && ads.length > 0 && (
+          <p className="text-xs text-muted-foreground mb-5">
+            {ads.length} {ads.length === 1 ? "فيديو" : "فيديوهات"}
+          </p>
+        )}
+
+        {/* Loading — same grid + skeleton style as accounts.tsx */}
         {isLoading && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[...Array(6)].map((_, i) => (
-              <Skeleton key={i} className="rounded-xl" style={{ aspectRatio: "4/3" }} />
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="flex flex-col gap-2">
+                <Skeleton className="w-full rounded-xl" style={{ aspectRatio: "4/3" }} />
+                <Skeleton className="h-3.5 w-2/3" />
+                <Skeleton className="h-7 w-full mt-1" />
+              </div>
             ))}
           </div>
         )}
 
         {/* Empty */}
         {!isLoading && (!ads || ads.length === 0) && (
-          <div className="text-center py-24 text-muted-foreground">
-            <Video className="w-14 h-14 mx-auto mb-4 opacity-25" />
-            <p className="font-medium">لا يوجد فيديوهات حتى الآن.</p>
+          <div className="text-center py-20 bg-muted/20 rounded-xl border border-dashed">
+            <Video className="w-12 h-12 mx-auto mb-3 opacity-20" />
+            <p className="text-lg font-bold mb-1">لا يوجد فيديوهات</p>
+            <p className="text-muted-foreground text-sm">لا يتوفر إعلانات في الوقت الحالي.</p>
           </div>
         )}
 
-        {/* Grid — 3 columns, uniform card height */}
+        {/* Grid — exactly same as accounts.tsx */}
         {!isLoading && ads && ads.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
             {ads.map((ad) => (
               <AdCard key={ad.id} ad={ad} onClick={() => setActiveAd(ad)} />
             ))}
