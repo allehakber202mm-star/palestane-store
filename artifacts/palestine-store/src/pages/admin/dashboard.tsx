@@ -71,9 +71,10 @@ const EMPTY_FORM: FormState = {
 };
 
 const PLT: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
-  tiktok:    { label: "تيك توك",  icon: <SiTiktok />,   color: "text-foreground" },
-  instagram: { label: "انستغرام", icon: <SiInstagram />, color: "text-pink-500" },
-  facebook:  { label: "فيسبوك",   icon: <SiFacebook />,  color: "text-blue-500" },
+  tiktok:           { label: "تيك توك",      icon: <SiTiktok />,   color: "text-foreground" },
+  tiktok_monetized: { label: "تيك توك أرباح", icon: <SiTiktok />,   color: "text-green-600" },
+  instagram:        { label: "انستغرام",     icon: <SiInstagram />, color: "text-pink-500" },
+  facebook:         { label: "فيسبوك",       icon: <SiFacebook />,  color: "text-blue-500" },
 };
 
 function fmt(n: number) {
@@ -97,7 +98,8 @@ export default function AdminDashboard() {
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [fbSyncReport, setFbSyncReport] = useState<FacebookSyncReport | null>(null);
   const [fbSyncing, setFbSyncing]       = useState(false);
-  const [adminSort, setAdminSort] = useState<string>("followers_desc");
+  const [adminSort, setAdminSort]             = useState<string>("followers_desc");
+  const [adminPlatformFilter, setAdminPlatformFilter] = useState<string>("all");
   const fileRef = useRef<HTMLInputElement>(null);
   const imageAccountRef = useRef<AccountRow | null>(null);
 
@@ -188,7 +190,7 @@ export default function AdminDashboard() {
     }
     const payload = {
       name: form.name.trim(),
-      platform: form.platform as "tiktok" | "instagram" | "facebook",
+      platform: form.platform as "tiktok" | "tiktok_monetized" | "instagram" | "facebook",
       followers: Number(form.followers), price: Number(form.price),
       description: form.description || null,
       status: form.status as "available" | "sold",
@@ -661,7 +663,20 @@ export default function AdminDashboard() {
         <div>
           <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
             <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">جميع الحسابات</h2>
-            <div className="flex items-center gap-2 ms-auto">
+            <div className="flex items-center gap-2 ms-auto flex-wrap">
+              {/* Platform filter */}
+              <select
+                value={adminPlatformFilter}
+                onChange={(e) => setAdminPlatformFilter(e.target.value)}
+                className="text-xs border rounded-lg px-2 py-1.5 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer h-8"
+              >
+                <option value="all">كل المنصات</option>
+                <option value="tiktok">تيك توك</option>
+                <option value="tiktok_monetized">تيك توك أرباح</option>
+                <option value="instagram">انستغرام</option>
+                <option value="facebook">فيسبوك</option>
+              </select>
+              {/* Sort */}
               <select
                 value={adminSort}
                 onChange={(e) => setAdminSort(e.target.value)}
@@ -705,19 +720,21 @@ export default function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    {[...(accounts ?? [])].sort((a, b) => {
-                      const af = Number(a.followers ?? 0), bf = Number(b.followers ?? 0);
-                      const ap = Number(a.price ?? 0),     bp = Number(b.price ?? 0);
-                      const ad = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-                      const bd = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-                      if (adminSort === "followers_desc") return af === bf ? 0 : af === 0 ? 1 : bf === 0 ? -1 : bf - af;
-                      if (adminSort === "followers_asc")  return af === bf ? 0 : af === 0 ? 1 : bf === 0 ? -1 : af - bf;
-                      if (adminSort === "price_desc")     return bp - ap;
-                      if (adminSort === "price_asc")      return ap - bp;
-                      if (adminSort === "newest")         return bd - ad;
-                      if (adminSort === "oldest")         return ad - bd;
-                      return 0;
-                    }).map((acc) => {
+                    {[...(accounts ?? [])]
+                      .filter((a) => adminPlatformFilter === "all" || a.platform === adminPlatformFilter)
+                      .sort((a, b) => {
+                        const af = Number(a.followers ?? 0), bf = Number(b.followers ?? 0);
+                        const ap = Number(a.price ?? 0),     bp = Number(b.price ?? 0);
+                        const ad = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                        const bd = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                        if (adminSort === "followers_desc") return af === bf ? 0 : af === 0 ? 1 : bf === 0 ? -1 : bf - af;
+                        if (adminSort === "followers_asc")  return af === bf ? 0 : af === 0 ? 1 : bf === 0 ? -1 : af - bf;
+                        if (adminSort === "price_desc")     return bp - ap;
+                        if (adminSort === "price_asc")      return ap - bp;
+                        if (adminSort === "newest")         return bd - ad;
+                        if (adminSort === "oldest")         return ad - bd;
+                        return 0;
+                      }).map((acc) => {
                       const plt = PLT[acc.platform] ?? PLT.tiktok;
                       return (
                         <tr key={acc.id} className="hover:bg-muted/20 transition-colors group">
@@ -853,11 +870,15 @@ export default function AdminDashboard() {
                 {/* Platform */}
                 <div className="space-y-1.5">
                   <Label>المنصة</Label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {(["tiktok", "instagram", "facebook"] as const).map((p) => (
+                  <div className="grid grid-cols-2 gap-2">
+                    {(["tiktok", "tiktok_monetized", "instagram", "facebook"] as const).map((p) => (
                       <button key={p} type="button" onClick={() => setF("platform", p)}
                         className={`flex flex-col items-center gap-1 py-2.5 rounded-xl border text-xs font-bold transition-all ${
-                          form.platform === p ? "border-primary bg-primary/10 text-primary" : "border-border hover:border-primary/50"
+                          form.platform === p
+                            ? p === "tiktok_monetized"
+                              ? "border-green-500 bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400"
+                              : "border-primary bg-primary/10 text-primary"
+                            : "border-border hover:border-primary/50"
                         }`}>
                         <span className={`text-base ${PLT[p].color}`}>{PLT[p].icon}</span>
                         {PLT[p].label}
@@ -903,7 +924,7 @@ export default function AdminDashboard() {
                           ? "https://www.instagram.com/username"
                           : form.platform === "facebook"
                           ? "https://www.facebook.com/page"
-                          : "https://www.tiktok.com/@username"
+                          : "https://www.tiktok.com/@username"  // tiktok & tiktok_monetized
                       }
                     />
                     {form.accountUrl && (
