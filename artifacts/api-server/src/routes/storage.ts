@@ -1,12 +1,10 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { Readable } from "stream";
 import multer from "multer";
 import {
   RequestUploadUrlBody,
   RequestUploadUrlResponse,
 } from "@workspace/api-zod";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
-import { ObjectPermission } from "../lib/objectAcl";
 import { requireAuth } from "../middlewares/auth";
 
 const upload = multer({
@@ -20,9 +18,7 @@ const objectStorageService = new ObjectStorageService();
 /**
  * POST /storage/uploads/request-url
  *
- * Request a presigned URL for file upload.
- * The client sends JSON metadata (name, size, contentType) — NOT the file.
- * Then uploads the file directly to the returned presigned URL.
+ * Request a presigned URL for file upload (server-to-server flows).
  */
 router.post("/uploads/request-url", requireAuth, async (req: Request, res: Response) => {
   const parsed = RequestUploadUrlBody.safeParse(req.body);
@@ -33,10 +29,8 @@ router.post("/uploads/request-url", requireAuth, async (req: Request, res: Respo
 
   try {
     const { name, size, contentType } = parsed.data;
-
     const uploadURL = await objectStorageService.getObjectEntityUploadURL();
     const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
-
     res.json(
       RequestUploadUrlResponse.parse({
         uploadURL,
@@ -92,30 +86,17 @@ router.post(
  * GET /storage/public-objects/*
  *
  * Serve public assets from PUBLIC_OBJECT_SEARCH_PATHS.
- * These are unconditionally public — no authentication or ACL checks.
- * IMPORTANT: Always provide this endpoint when object storage is set up.
  */
 router.get("/public-objects/*filePath", async (req: Request, res: Response) => {
   try {
     const raw = req.params.filePath;
     const filePath = Array.isArray(raw) ? raw.join("/") : raw;
-    const file = await objectStorageService.searchPublicObject(filePath);
-    if (!file) {
+    const objectFile = await objectStorageService.searchPublicObject(filePath);
+    if (!objectFile) {
       res.status(404).json({ error: "File not found" });
       return;
     }
-
-    const response = await objectStorageService.downloadObject(file);
-
-    res.status(response.status);
-    response.headers.forEach((value, key) => res.setHeader(key, value));
-
-    if (response.body) {
-      const nodeStream = Readable.fromWeb(response.body as ReadableStream<Uint8Array>);
-      nodeStream.pipe(res);
-    } else {
-      res.end();
-    }
+    await streamObjectToResponse(req, res, objectFile);
   } catch (error) {
     req.log.error({ err: error }, "Error serving public object");
     res.status(500).json({ error: "Failed to serve public object" });
@@ -125,9 +106,8 @@ router.get("/public-objects/*filePath", async (req: Request, res: Response) => {
 /**
  * GET /storage/objects/*
  *
- * Serve object entities from PRIVATE_OBJECT_DIR.
- * These are served from a separate path from /public-objects and can optionally
- * be protected with authentication or ACL checks based on the use case.
+ * Serve private object entities with full HTTP Range support.
+ * Safari and iOS require Accept-Ranges + 206 Partial Content for video playback.
  */
 router.get("/objects/*path", async (req: Request, res: Response) => {
   try {
@@ -135,33 +115,7 @@ router.get("/objects/*path", async (req: Request, res: Response) => {
     const wildcardPath = Array.isArray(raw) ? raw.join("/") : raw;
     const objectPath = `/objects/${wildcardPath}`;
     const objectFile = await objectStorageService.getObjectEntityFile(objectPath);
-
-    // --- Protected route example (uncomment when using replit-auth) ---
-    // if (!req.isAuthenticated()) {
-    //   res.status(401).json({ error: "Unauthorized" });
-    //   return;
-    // }
-    // const canAccess = await objectStorageService.canAccessObjectEntity({
-    //   userId: req.user.id,
-    //   objectFile,
-    //   requestedPermission: ObjectPermission.READ,
-    // });
-    // if (!canAccess) {
-    //   res.status(403).json({ error: "Forbidden" });
-    //   return;
-    // }
-
-    const response = await objectStorageService.downloadObject(objectFile);
-
-    res.status(response.status);
-    response.headers.forEach((value, key) => res.setHeader(key, value));
-
-    if (response.body) {
-      const nodeStream = Readable.fromWeb(response.body as ReadableStream<Uint8Array>);
-      nodeStream.pipe(res);
-    } else {
-      res.end();
-    }
+    await streamObjectToResponse(req, res, objectFile);
   } catch (error) {
     if (error instanceof ObjectNotFoundError) {
       req.log.warn({ err: error }, "Object not found");
@@ -172,5 +126,65 @@ router.get("/objects/*path", async (req: Request, res: Response) => {
     res.status(500).json({ error: "Failed to serve object" });
   }
 });
+
+// ─── Shared streaming helper with Range support ───────────────────────────────
+import type { File as GCSFile } from "@google-cloud/storage";
+
+async function streamObjectToResponse(
+  req: Request,
+  res: Response,
+  objectFile: GCSFile,
+): Promise<void> {
+  const [metadata] = await objectFile.getMetadata();
+  const contentType = (metadata.contentType as string) || "application/octet-stream";
+  const totalSize = Number(metadata.size) || 0;
+
+  // Always advertise range support — required for Safari/iOS video
+  res.setHeader("Accept-Ranges", "bytes");
+  res.setHeader("Content-Type", contentType);
+  res.setHeader("Cache-Control", "private, max-age=3600");
+
+  const rangeHeader = req.headers.range;
+
+  if (rangeHeader && totalSize > 0) {
+    // Safari/iOS sends "Range: bytes=0-1" first, then the real range
+    const match = rangeHeader.match(/bytes=(\d*)-(\d*)/);
+    if (!match) {
+      res.setHeader("Content-Range", `bytes */${totalSize}`);
+      res.status(416).end();
+      return;
+    }
+
+    const startStr = match[1];
+    const endStr   = match[2];
+    const start    = startStr !== "" ? parseInt(startStr, 10) : totalSize - (endStr !== "" ? parseInt(endStr, 10) : 1);
+    const end      = endStr   !== "" ? Math.min(parseInt(endStr, 10), totalSize - 1) : totalSize - 1;
+
+    if (start > end || start >= totalSize) {
+      res.setHeader("Content-Range", `bytes */${totalSize}`);
+      res.status(416).end();
+      return;
+    }
+
+    const chunkSize = end - start + 1;
+    res.setHeader("Content-Range", `bytes ${start}-${end}/${totalSize}`);
+    res.setHeader("Content-Length", String(chunkSize));
+    res.status(206);
+
+    const readStream = objectFile.createReadStream({ start, end });
+    readStream.on("error", () => res.end());
+    readStream.pipe(res);
+  } else {
+    // Full file
+    if (totalSize > 0) {
+      res.setHeader("Content-Length", String(totalSize));
+    }
+    res.status(200);
+
+    const readStream = objectFile.createReadStream();
+    readStream.on("error", () => res.end());
+    readStream.pipe(res);
+  }
+}
 
 export default router;

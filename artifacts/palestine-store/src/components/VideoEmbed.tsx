@@ -1,5 +1,5 @@
-import { useEffect, useRef } from "react";
-import { ExternalLink, AlertTriangle, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ExternalLink, AlertTriangle, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -8,31 +8,35 @@ import { Button } from "@/components/ui/button";
 export type VideoType = "youtube" | "tiktok" | "instagram" | "facebook" | "mp4";
 
 export interface VideoInfo {
-  type:      VideoType;
-  embedUrl:  string;
-  canEmbed:  boolean;
-  label:     string;
+  type:     VideoType;
+  embedUrl: string;
+  canEmbed: boolean;
+  label:    string;
 }
 
 export function detectVideoType(rawUrl: string): VideoInfo {
   const url = (rawUrl ?? "").trim();
   if (!url) return { type: "mp4", embedUrl: "", canEmbed: false, label: "غير محدد" };
 
-  // Our own object-storage paths — always direct MP4
+  // Our own object-storage paths — always direct MP4/video
   if (url.startsWith("/api/storage/") || url.startsWith("/api/uploads/")) {
     return { type: "mp4", embedUrl: url, canEmbed: true, label: "فيديو مرفوع" };
   }
 
-  // ── YouTube ─────────────────────────────────────────────────────────────
+  // ── YouTube ────────────────────────────────────────────────────────────────
   const ytMatch = url.match(
     /(?:youtube\.com\/(?:watch\?(?:.*?&)?v=|shorts\/|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/,
   );
   if (ytMatch) {
-    const embedUrl = `https://www.youtube.com/embed/${ytMatch[1]}?autoplay=1&playsinline=1&rel=0`;
-    return { type: "youtube", embedUrl, canEmbed: true, label: "YouTube" };
+    return {
+      type: "youtube",
+      embedUrl: `https://www.youtube.com/embed/${ytMatch[1]}?autoplay=1&playsinline=1&rel=0`,
+      canEmbed: true,
+      label: "YouTube",
+    };
   }
 
-  // ── TikTok ───────────────────────────────────────────────────────────────
+  // ── TikTok ─────────────────────────────────────────────────────────────────
   if (/tiktok\.com/.test(url)) {
     const videoIdMatch = url.match(/\/video\/(\d+)/);
     if (videoIdMatch) {
@@ -43,11 +47,16 @@ export function detectVideoType(rawUrl: string): VideoInfo {
         label: "TikTok",
       };
     }
-    // Short URL / profile link — can't extract ID → open externally
+    // Short URL / profile — can't extract ID → open externally
     return { type: "tiktok", embedUrl: url, canEmbed: false, label: "TikTok" };
   }
 
-  // ── Instagram Reels ──────────────────────────────────────────────────────
+  // ── vm.tiktok.com short links ──────────────────────────────────────────────
+  if (/vm\.tiktok\.com/.test(url)) {
+    return { type: "tiktok", embedUrl: url, canEmbed: false, label: "TikTok" };
+  }
+
+  // ── Instagram Reels ────────────────────────────────────────────────────────
   const igReelMatch = url.match(/instagram\.com\/(?:reel|p)\/([A-Za-z0-9_-]+)/);
   if (igReelMatch) {
     return {
@@ -61,7 +70,7 @@ export function detectVideoType(rawUrl: string): VideoInfo {
     return { type: "instagram", embedUrl: url, canEmbed: false, label: "Instagram" };
   }
 
-  // ── Facebook Video ────────────────────────────────────────────────────────
+  // ── Facebook Video ─────────────────────────────────────────────────────────
   if (/facebook\.com|fb\.watch/.test(url)) {
     const fbEncoded = encodeURIComponent(url);
     return {
@@ -93,24 +102,29 @@ export function isValidVideoUrl(url: string): boolean {
 // ─────────────────────────────────────────────────────────────────────────────
 interface VideoEmbedProps {
   url: string;
-  /** Extra className applied to the player element */
   className?: string;
+  /** In modals the user clicked to open — autoPlay is fine */
+  autoPlay?: boolean;
 }
 
-export function VideoEmbed({ url, className }: VideoEmbedProps) {
+export function VideoEmbed({ url, className, autoPlay = true }: VideoEmbedProps) {
   const info = detectVideoType(url);
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const [videoError, setVideoError] = useState(false);
+  const [retryKey, setRetryKey]     = useState(0);
 
-  // ── Debug log ─────────────────────────────────────────────────────────────
+  // Reset error when URL changes
+  useEffect(() => { setVideoError(false); }, [url]);
+
+  // Debug log
   useEffect(() => {
     if (!url) return;
-    console.log("[CelebrityAd] 🎬 رابط الفيديو الأصلي:", url);
-    console.log("[CelebrityAd] 📺 نوع الفيديو:", info.type, `(${info.label})`);
-    console.log("[CelebrityAd] 🔗 رابط الإدراج:", info.embedUrl);
-    console.log("[CelebrityAd] ✅ يدعم الإدراج:", info.canEmbed);
+    console.log("[VideoEmbed] 🎬 URL:", url);
+    console.log("[VideoEmbed] 📺 type:", info.type, `(${info.label})`);
+    console.log("[VideoEmbed] 🔗 embedUrl:", info.embedUrl);
+    console.log("[VideoEmbed] ✅ canEmbed:", info.canEmbed);
   }, [url, info.type, info.label, info.embedUrl, info.canEmbed]);
 
-  // ── No URL ────────────────────────────────────────────────────────────────
+  // ── No URL ─────────────────────────────────────────────────────────────────
   if (!url) {
     return (
       <div className="w-full aspect-video bg-black flex flex-col items-center justify-center gap-3 text-white/50">
@@ -120,34 +134,13 @@ export function VideoEmbed({ url, className }: VideoEmbedProps) {
     );
   }
 
-  // ── Direct MP4 / storage ──────────────────────────────────────────────────
-  if (info.type === "mp4") {
-    return (
-      <video
-        key={url}
-        ref={videoRef}
-        src={info.embedUrl}
-        controls
-        autoPlay
-        playsInline
-        className={className ?? "w-full max-h-[70vh] object-contain bg-black"}
-        onLoadedData={() =>
-          console.log("[CelebrityAd] ✅ تم تحميل الفيديو بنجاح:", url)
-        }
-        onError={() =>
-          console.error("[CelebrityAd] ❌ فشل تحميل الفيديو:", url)
-        }
-      />
-    );
-  }
-
-  // ── Can't embed → external link ───────────────────────────────────────────
+  // ── Can't embed → external link button ────────────────────────────────────
   if (!info.canEmbed) {
-    console.warn("[CelebrityAd] ⚠️ الرابط لا يدعم الإدراج المباشر:", url);
+    console.warn("[VideoEmbed] ⚠️ لا يدعم الإدراج المباشر:", url);
     return (
       <div className="w-full aspect-video bg-black flex flex-col items-center justify-center gap-5 p-6">
         <div className="text-center space-y-2">
-          <p className="text-white font-semibold">
+          <p className="text-white font-semibold text-lg">
             {info.label === "TikTok" ? "🎵" : "📱"} {info.label}
           </p>
           <p className="text-white/60 text-sm">
@@ -164,24 +157,73 @@ export function VideoEmbed({ url, className }: VideoEmbedProps) {
     );
   }
 
-  // ── iframe embed (YouTube / TikTok / Instagram / Facebook) ───────────────
+  // ── Direct MP4 / storage ──────────────────────────────────────────────────
+  if (info.type === "mp4") {
+    if (videoError) {
+      return (
+        <div className="w-full aspect-video bg-black flex flex-col items-center justify-center gap-4 p-6">
+          <AlertTriangle className="w-12 h-12 text-red-400" />
+          <div className="text-center space-y-1">
+            <p className="text-white font-semibold">تعذّر تشغيل الفيديو</p>
+            <p className="text-white/50 text-xs break-all max-w-xs">{url}</p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={() => { setVideoError(false); setRetryKey((k) => k + 1); }}
+          >
+            <RefreshCw className="w-4 h-4" />
+            إعادة المحاولة
+          </Button>
+        </div>
+      );
+    }
+
+    return (
+      <video
+        key={`${url}-${retryKey}`}
+        src={info.embedUrl}
+        controls
+        playsInline
+        preload="metadata"
+        {...(autoPlay ? { autoPlay: true, muted: true } : {})}
+        className={className ?? "w-full max-h-[70vh] object-contain bg-black"}
+        onLoadedMetadata={() =>
+          console.log("[VideoEmbed] ✅ loadedmetadata:", url)
+        }
+        onCanPlay={() =>
+          console.log("[VideoEmbed] ▶️ canplay:", url)
+        }
+        onError={(e) => {
+          const v = e.currentTarget as HTMLVideoElement;
+          const code = v.error?.code;
+          const msg  = v.error?.message ?? "unknown";
+          console.error("[VideoEmbed] ❌ فشل التشغيل:", url, "code:", code, "msg:", msg);
+          setVideoError(true);
+        }}
+      />
+    );
+  }
+
+  // ── iframe embed (YouTube / TikTok / Instagram / Facebook) ─────────────────
   return (
     <iframe
-      key={info.embedUrl}
+      key={`${info.embedUrl}-${retryKey}`}
       src={info.embedUrl}
       className={className ?? "w-full aspect-video"}
       allow="autoplay; fullscreen; encrypted-media; picture-in-picture; web-share"
       allowFullScreen
       loading="lazy"
       onLoad={() =>
-        console.log("[CelebrityAd] ✅ تم تحميل الإطار:", info.embedUrl)
+        console.log("[VideoEmbed] ✅ iframe loaded:", info.embedUrl)
       }
     />
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// VideoTypeBadge — small hint shown next to the URL input
+// VideoTypeBadge
 // ─────────────────────────────────────────────────────────────────────────────
 const TYPE_COLORS: Record<VideoType, string> = {
   youtube:   "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300",
@@ -212,7 +254,6 @@ export function VideoTypeBadge({ url }: { url: string }) {
   );
 }
 
-// Re-export a simple loading placeholder
 export function VideoEmbedLoading() {
   return (
     <div className="w-full aspect-video bg-black flex items-center justify-center">
