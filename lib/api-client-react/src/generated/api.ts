@@ -40,8 +40,11 @@ import type {
   LoginResult,
   ReviewImage,
   ReviewImageInput,
+  SiteOverview,
   SiteSettings,
   SiteSettingsUpdate,
+  SiteVisitInput,
+  SiteVisitResult,
   UploadUrlRequest,
   UploadUrlResponse,
   VisitInput,
@@ -1109,6 +1112,154 @@ export const useFacebookSync = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getFacebookSyncMutationOptions(options));
     }
+
+export const getTrackSiteVisitUrl = () => {
+
+
+
+
+  return `/api/stats/site-visit`
+}
+
+/**
+ * @summary Record a site page visit (with bot filtering and dedup)
+ */
+export const trackSiteVisit = async (siteVisitInput: SiteVisitInput, options?: RequestInit): Promise<SiteVisitResult> => {
+
+  return customFetch<SiteVisitResult>(getTrackSiteVisitUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      siteVisitInput,)
+  }
+);}
+
+
+
+
+export const getTrackSiteVisitMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof trackSiteVisit>>, TError,{data: BodyType<SiteVisitInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof trackSiteVisit>>, TError,{data: BodyType<SiteVisitInput>}, TContext> => {
+
+const mutationKey = ['trackSiteVisit'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof trackSiteVisit>>, {data: BodyType<SiteVisitInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  trackSiteVisit(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type TrackSiteVisitMutationResult = NonNullable<Awaited<ReturnType<typeof trackSiteVisit>>>
+    export type TrackSiteVisitMutationBody = BodyType<SiteVisitInput>
+    export type TrackSiteVisitMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Record a site page visit (with bot filtering and dedup)
+ */
+export const useTrackSiteVisit = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof trackSiteVisit>>, TError,{data: BodyType<SiteVisitInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof trackSiteVisit>>,
+        TError,
+        {data: BodyType<SiteVisitInput>},
+        TContext
+      > => {
+      return useMutation(getTrackSiteVisitMutationOptions(options));
+    }
+
+export const getGetSiteOverviewUrl = () => {
+
+
+
+
+  return `/api/stats/site-overview`
+}
+
+/**
+ * @summary Get comprehensive site visit analytics (admin only)
+ */
+export const getSiteOverview = async ( options?: RequestInit): Promise<SiteOverview> => {
+
+  return customFetch<SiteOverview>(getGetSiteOverviewUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSiteOverviewQueryKey = () => {
+    return [
+    `/api/stats/site-overview`
+    ] as const;
+    }
+
+
+export const getGetSiteOverviewQueryOptions = <TData = Awaited<ReturnType<typeof getSiteOverview>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSiteOverview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSiteOverviewQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSiteOverview>>> = ({ signal }) => getSiteOverview({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSiteOverview>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSiteOverviewQueryResult = NonNullable<Awaited<ReturnType<typeof getSiteOverview>>>
+export type GetSiteOverviewQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get comprehensive site visit analytics (admin only)
+ */
+
+export function useGetSiteOverview<TData = Awaited<ReturnType<typeof getSiteOverview>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSiteOverview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSiteOverviewQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 
 export const getGetVisitStatsUrl = () => {
 

@@ -10,6 +10,7 @@ import {
   useGetSettings,
   useUpdateSettings,
   useGetVisitStats,
+  useGetSiteOverview,
   useFacebookSync,
   getAdminListAccountsQueryKey,
   getGetDashboardStatsQueryKey,
@@ -19,6 +20,10 @@ import {
   SiteSettingsUpdate,
   FacebookSyncReport,
 } from "@workspace/api-client-react";
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip,
+  ResponsiveContainer,
+} from "recharts";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,7 +48,7 @@ import {
   CheckCircle, XCircle, Settings, Package, MousePointerClick,
   MessageCircle, Loader2, UploadCloud, X, Check,
   ShoppingBag, TrendingUp, ExternalLink, FileText, Clock,
-  BarChart3, EyeOff, Eye,
+  BarChart3, EyeOff, Eye, Globe, Activity, Users2, Calendar,
 } from "lucide-react";
 import { SiTiktok, SiInstagram, SiFacebook } from "react-icons/si";
 
@@ -110,12 +115,16 @@ export default function AdminDashboard() {
   const { data: accounts, isLoading: accsLoading } = useAdminListAccounts({});
   const { data: settings } = useGetSettings();
   const { data: visitStats, isLoading: visitStatsLoading, refetch: refetchVisits } = useGetVisitStats();
+  const { data: siteOverview, isLoading: siteLoading, refetch: refetchSite } = useGetSiteOverview();
 
-  // Real-time: refetch visit stats every 30 seconds automatically
+  // Real-time: refetch every 30 seconds
   useEffect(() => {
-    const id = setInterval(() => { void refetchVisits(); }, 30_000);
+    const id = setInterval(() => {
+      void refetchVisits();
+      void refetchSite();
+    }, 30_000);
     return () => clearInterval(id);
-  }, [refetchVisits]);
+  }, [refetchVisits, refetchSite]);
 
   const createMut   = useCreateAccount();
   const updateMut   = useUpdateAccount();
@@ -421,6 +430,9 @@ export default function AdminDashboard() {
             ))}
           </div>
         </div>
+
+        {/* ── Site Analytics ─────────────────────────────────────────────── */}
+        <SiteAnalyticsSection siteOverview={siteOverview} siteLoading={siteLoading} />
 
         {/* ── Visit Stats ────────────────────────────────────────────────── */}
         <div>
@@ -1188,5 +1200,226 @@ export default function AdminDashboard() {
         </AlertDialogContent>
       </AlertDialog>
     </AdminLayout>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SiteAnalyticsSection — standalone component for cleanliness
+// ─────────────────────────────────────────────────────────────────────────────
+type SiteOverviewData = {
+  total: number; today: number; last7days: number; last30days: number;
+  uniqueVisitors: number; activeNow: number;
+  dailyChart: { date: string; count: number }[];
+  topPages: { page: string; count: number }[];
+};
+
+const PAGE_LABELS: Record<string, string> = {
+  "/":              "🏠 الصفحة الرئيسية",
+  "/accounts":      "📋 الحسابات",
+  "/about":         "ℹ️ من نحن",
+  "/feedback":      "💬 آراء العملاء",
+  "/contact":       "📞 تواصل معنا",
+  "/celebrity-ads": "🌟 إعلانات المشاهير",
+};
+
+function pageLabel(p: string): string {
+  if (PAGE_LABELS[p]) return PAGE_LABELS[p];
+  if (p.startsWith("/account/")) return `👤 تفاصيل حساب`;
+  return p;
+}
+
+function formatDate(dateStr: string): string {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString("ar-EG", { month: "short", day: "numeric" });
+}
+
+function SiteAnalyticsSection({
+  siteOverview, siteLoading,
+}: { siteOverview: SiteOverviewData | undefined; siteLoading: boolean }) {
+
+  const statCards = [
+    {
+      icon: <Globe className="w-5 h-5" />,
+      label: "إجمالي الزيارات",
+      val: siteOverview?.total,
+      color: "text-blue-600",
+      bg: "bg-blue-500/8",
+      border: "border-blue-500/20",
+    },
+    {
+      icon: <Calendar className="w-5 h-5" />,
+      label: "زيارات اليوم",
+      val: siteOverview?.today,
+      color: "text-emerald-600",
+      bg: "bg-emerald-500/8",
+      border: "border-emerald-500/20",
+    },
+    {
+      icon: <BarChart3 className="w-5 h-5" />,
+      label: "آخر 7 أيام",
+      val: siteOverview?.last7days,
+      color: "text-violet-600",
+      bg: "bg-violet-500/8",
+      border: "border-violet-500/20",
+    },
+    {
+      icon: <TrendingUp className="w-5 h-5" />,
+      label: "آخر 30 يوم",
+      val: siteOverview?.last30days,
+      color: "text-orange-600",
+      bg: "bg-orange-500/8",
+      border: "border-orange-500/20",
+    },
+    {
+      icon: <Users2 className="w-5 h-5" />,
+      label: "زوار فريدون",
+      val: siteOverview?.uniqueVisitors,
+      color: "text-pink-600",
+      bg: "bg-pink-500/8",
+      border: "border-pink-500/20",
+    },
+  ];
+
+  return (
+    <div>
+      {/* Header row */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Globe className="w-4 h-4 text-blue-500" />
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+            زيارات الموقع
+          </h2>
+        </div>
+        <div className="flex items-center gap-2">
+          {/* Active now badge */}
+          {!siteLoading && siteOverview !== undefined && (
+            <span className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-600 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-full">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+              </span>
+              الزوار الآن: {siteOverview.activeNow}
+            </span>
+          )}
+          <span className="text-[10px] text-muted-foreground bg-muted px-2 py-1 rounded-full">يتحدث كل 30 ثانية</span>
+        </div>
+      </div>
+
+      {/* Stat cards row */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        {statCards.map((s, i) => (
+          <div key={i} className={`${s.bg} border ${s.border} rounded-xl p-4 flex flex-col gap-2 shadow-sm`}>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-muted-foreground">{s.label}</span>
+              <span className={`${s.color} opacity-70`}>{s.icon}</span>
+            </div>
+            {siteLoading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <div className={`text-3xl font-black ${s.color}`}>
+                {(s.val ?? 0).toLocaleString("ar-EG")}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Chart + Top pages */}
+      <div className="mt-3 grid grid-cols-1 lg:grid-cols-3 gap-3">
+
+        {/* Area chart — spans 2 cols */}
+        <div className="lg:col-span-2 bg-card border rounded-xl p-4 shadow-sm">
+          <div className="flex items-center gap-2 mb-4">
+            <Activity className="w-4 h-4 text-blue-500" />
+            <span className="text-xs font-semibold text-muted-foreground">الزيارات اليومية — آخر 30 يوم</span>
+          </div>
+          {siteLoading ? (
+            <Skeleton className="h-40 w-full rounded-lg" />
+          ) : !siteOverview?.dailyChart.length ? (
+            <div className="h-40 flex items-center justify-center text-sm text-muted-foreground">
+              لا توجد بيانات بعد
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={160}>
+              <AreaChart data={siteOverview.dailyChart} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
+                <defs>
+                  <linearGradient id="visitGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%"  stopColor="#3b82f6" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="currentColor" strokeOpacity={0.06} />
+                <XAxis
+                  dataKey="date"
+                  tickFormatter={formatDate}
+                  tick={{ fontSize: 10, fill: "currentColor" }}
+                  tickLine={false}
+                  axisLine={false}
+                  interval="preserveStartEnd"
+                />
+                <YAxis
+                  tick={{ fontSize: 10, fill: "currentColor" }}
+                  tickLine={false}
+                  axisLine={false}
+                  allowDecimals={false}
+                />
+                <ReTooltip
+                  contentStyle={{ fontSize: 12, borderRadius: 8, direction: "rtl" }}
+                  formatter={(v: number) => [v.toLocaleString("ar-EG"), "زيارة"]}
+                  labelFormatter={formatDate}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="count"
+                  stroke="#3b82f6"
+                  strokeWidth={2}
+                  fill="url(#visitGrad)"
+                  dot={false}
+                  activeDot={{ r: 4, strokeWidth: 0 }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
+        {/* Top pages — spans 1 col */}
+        <div className="bg-card border rounded-xl p-4 shadow-sm">
+          <div className="flex items-center gap-2 mb-3">
+            <Eye className="w-4 h-4 text-blue-500" />
+            <span className="text-xs font-semibold text-muted-foreground">أكثر الصفحات زيارة</span>
+          </div>
+          {siteLoading ? (
+            <div className="space-y-2">
+              {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-8 w-full rounded" />)}
+            </div>
+          ) : !siteOverview?.topPages.length ? (
+            <div className="text-sm text-muted-foreground text-center py-4">لا توجد بيانات</div>
+          ) : (
+            <ol className="space-y-1.5">
+              {siteOverview.topPages.map((p, i) => {
+                const maxCount = siteOverview.topPages[0]?.count ?? 1;
+                const pct = Math.round((p.count / maxCount) * 100);
+                return (
+                  <li key={p.page} className="flex items-center gap-2 text-xs">
+                    <span className={`w-5 text-center font-black shrink-0 ${i === 0 ? "text-yellow-500" : i === 1 ? "text-muted-foreground" : i === 2 ? "text-amber-700" : "text-muted-foreground/40"}`}>
+                      {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}`}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-0.5">
+                        <span className="truncate text-[11px] font-medium" dir="ltr">{pageLabel(p.page)}</span>
+                        <span className="font-black text-blue-500 shrink-0 mr-1">{p.count.toLocaleString("ar-EG")}</span>
+                      </div>
+                      <div className="h-1 bg-muted rounded-full overflow-hidden">
+                        <div className="h-full bg-blue-400 rounded-full" style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

@@ -324,6 +324,38 @@ export interface FeedbackPost {
   updatedAt: string;
 }
 
+export interface SiteVisitInput {
+  visitorId: string;
+  sessionId: string;
+  page: string;
+}
+
+export interface SiteVisitResult {
+  counted: boolean;
+  reason?: string | null;
+}
+
+export interface SiteOverviewDayEntry {
+  date: string;
+  count: number;
+}
+
+export interface SiteOverviewPageEntry {
+  page: string;
+  count: number;
+}
+
+export interface SiteOverview {
+  total: number;
+  today: number;
+  last7days: number;
+  last30days: number;
+  uniqueVisitors: number;
+  activeNow: number;
+  dailyChart: SiteOverviewDayEntry[];
+  topPages: SiteOverviewPageEntry[];
+}
+
 export interface ErrorEnvelope {
   error: string;
 }

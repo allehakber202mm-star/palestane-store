@@ -316,6 +316,40 @@ paths:
               schema:
                 $ref: "#/components/schemas/FacebookSyncReport"
 
+  /stats/site-visit:
+    post:
+      operationId: trackSiteVisit
+      tags: [stats]
+      summary: Record a site page visit (with bot filtering and dedup)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SiteVisitInput"
+      responses:
+        "200":
+          description: Visit recorded or skipped
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SiteVisitResult"
+
+  /stats/site-overview:
+    get:
+      operationId: getSiteOverview
+      tags: [stats]
+      summary: Get comprehensive site visit analytics (admin only)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Site visit overview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SiteOverview"
+
   /admin/visits/stats:
     get:
       operationId: getVisitStats
@@ -1056,6 +1090,70 @@ components:
         updatedAt:
           type: string
           format: date-time
+
+    SiteVisitInput:
+      type: object
+      required: [visitorId, sessionId, page]
+      properties:
+        visitorId:
+          type: string
+        sessionId:
+          type: string
+        page:
+          type: string
+
+    SiteVisitResult:
+      type: object
+      required: [counted]
+      properties:
+        counted:
+          type: boolean
+        reason:
+          type: string
+          nullable: true
+
+    SiteOverviewDayEntry:
+      type: object
+      required: [date, count]
+      properties:
+        date:
+          type: string
+        count:
+          type: integer
+
+    SiteOverviewPageEntry:
+      type: object
+      required: [page, count]
+      properties:
+        page:
+          type: string
+        count:
+          type: integer
+
+    SiteOverview:
+      type: object
+      required: [total, today, last7days, last30days, uniqueVisitors, activeNow, dailyChart, topPages]
+      properties:
+        total:
+          type: integer
+        today:
+          type: integer
+        last7days:
+          type: integer
+        last30days:
+          type: integer
+        uniqueVisitors:
+          type: integer
+        activeNow:
+          type: integer
+        dailyChart:
+          type: array
+          items:
+            $ref: "#/components/schemas/SiteOverviewDayEntry"
+        topPages:
+          type: array
+          items:
+            $ref: "#/components/schemas/SiteOverviewPageEntry"
 
     ErrorEnvelope:
       type: object

@@ -335,6 +335,42 @@ export const FacebookSyncResponse = zod.object({
 
 
 /**
+ * @summary Record a site page visit (with bot filtering and dedup)
+ */
+export const TrackSiteVisitBody = zod.object({
+  "visitorId": zod.string(),
+  "sessionId": zod.string(),
+  "page": zod.string()
+})
+
+export const TrackSiteVisitResponse = zod.object({
+  "counted": zod.boolean(),
+  "reason": zod.string().nullish()
+})
+
+
+/**
+ * @summary Get comprehensive site visit analytics (admin only)
+ */
+export const GetSiteOverviewResponse = zod.object({
+  "total": zod.number(),
+  "today": zod.number(),
+  "last7days": zod.number(),
+  "last30days": zod.number(),
+  "uniqueVisitors": zod.number(),
+  "activeNow": zod.number(),
+  "dailyChart": zod.array(zod.object({
+  "date": zod.string(),
+  "count": zod.number()
+})),
+  "topPages": zod.array(zod.object({
+  "page": zod.string(),
+  "count": zod.number()
+}))
+})
+
+
+/**
  * @summary Get visit statistics for all accounts
  */
 export const GetVisitStatsResponse = zod.object({

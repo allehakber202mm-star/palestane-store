@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { useSiteTracking } from "@/hooks/useSiteTracking";
 import NotFound from "@/pages/not-found";
 
 // Public Pages
@@ -46,6 +47,7 @@ function AdminRedirect() {
 }
 
 function Router() {
+  useSiteTracking();
   return (
     <Switch>
       {/* Public Routes */}
