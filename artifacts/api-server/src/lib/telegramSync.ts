@@ -45,6 +45,8 @@ export interface ParsedAccount {
   price:      number;
   name:       string;
   description: string | null;
+  originalDescription: string | null;  // النص الأصلي من Telegram — لا يُعرض للزوار
+  categorySelected: string;            // القسم المختار تلقائياً
   parseLog: {
     username:   string;
     accountUrl: string;
@@ -270,20 +272,29 @@ export function parsePostText(rawText: string, messageId: number): ParsedAccount
   // Must run AFTER platform is determined and only for TikTok accounts
   if (platform === "tiktok") {
     const monetizedKeywords = [
-      "أرباح المشاهدات",
+      // ── كلمات المستخدم (الأولوية) ───────────────────────────────────────
+      "ارباح المشاهدات",      // بدون همزة  ←  الأكثر شيوعاً في القناة
+      "أرباح المشاهدات",      // بالهمزة
+      "الربح من المشاهدات",
+      "monetization",
+      "creator rewards",
+      "creativity program",
+      // ── كلمات إضافية (كانت موجودة سابقاً) ─────────────────────────────
       "فيه أرباح",
+      "فيه ارباح",
       "كل 10ك مشاهدات",
       "tiktok creativity",
       "creator fund",
       "صندوق المبدعين",
       "tiktok_monetized",
       "أرباح تيك توك",
+      "ارباح تيك توك",
     ];
     const lowerText = text.toLowerCase();
-    const isMonetized = monetizedKeywords.some(kw => lowerText.includes(kw.toLowerCase()));
-    if (isMonetized) {
+    const matchedKw = monetizedKeywords.find(kw => lowerText.includes(kw.toLowerCase()));
+    if (matchedKw) {
       platform = "tiktok_monetized";
-      platformLog = `المنصة: tiktok_monetized (اكتُشفت كلمات الأرباح)`;
+      platformLog = `المنصة: tiktok_monetized (اكتُشفت كلمة: "${matchedKw}")`;
     }
   }
 
@@ -352,7 +363,43 @@ export function parsePostText(rawText: string, messageId: number): ParsedAccount
   // ── 6. Name + Description ─────────────────────────────────────────────────
   const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
   const name  = (username ? `@${username}` : lines[0]?.slice(0, 120)) || `منشور #${messageId}`;
-  const description = text || null;
+
+  // الوصف الأصلي من Telegram — يُحفظ في originalDescription ولا يُعرض للزوار
+  const originalDescription = text || null;
+
+  // ── 7. Auto-description (TikTok only) ────────────────────────────────────
+  // استبدال الوصف الأصلي بوصف ثابت بناءً على فئة الحساب
+  const MONETIZED_DESC =
+    `فيه ارباح المشاهدات\n\nكل 10k مشاهدات على الفيديو بتربح 2.1$\n\n` +
+    `✓ متابعين حقيقيين 100%\n` +
+    `✓ جمهور نشط ومتفاعل\n` +
+    `✓ بدون متابعين وهميين أو بوتات\n` +
+    `✓ نمو طبيعي وآمن للحساب\n` +
+    `✓ مناسب للإعلانات والتسويق\n` +
+    `✓ جاهز للاستخدام مباشرة`;
+
+  const TIKTOK_DESC =
+    `✓ متابعين حقيقيين 100%\n` +
+    `✓ جمهور نشط ومتفاعل\n` +
+    `✓ بدون متابعين وهميين أو بوتات\n` +
+    `✓ نمو طبيعي وآمن للحساب\n` +
+    `✓ مناسب للإعلانات والتسويق\n` +
+    `✓ جاهز للاستخدام مباشرة`;
+
+  let description: string | null;
+  let categorySelected: string;
+
+  if (platform === "tiktok_monetized") {
+    description      = MONETIZED_DESC;
+    categorySelected = "أرباح المشاهدات (tiktok_monetized)";
+  } else if (platform === "tiktok") {
+    description      = TIKTOK_DESC;
+    categorySelected = "TikTok العادي";
+  } else {
+    // Instagram / Facebook — يحتفظ بالوصف الأصلي
+    description      = originalDescription;
+    categorySelected = platform;
+  }
 
   return {
     username,
@@ -362,6 +409,7 @@ export function parsePostText(rawText: string, messageId: number): ParsedAccount
     price,
     name,
     description,
+    originalDescription,
     parseLog: {
       username:   usernameLog,
       accountUrl: urlLog,
@@ -369,6 +417,7 @@ export function parsePostText(rawText: string, messageId: number): ParsedAccount
       followers:  followersLog,
       price:      priceLog,
     },
+    categorySelected,
   };
 }
 
@@ -745,6 +794,20 @@ export async function runTelegramSync(): Promise<SyncResult> {
     );
 
     // ══════════════════════════════════════════════════════════════════════
+    // [DIAG] AUTO_CATEGORIZE — القسم المختار والأوصاف المُولَّدة
+    // ══════════════════════════════════════════════════════════════════════
+    logger.info(
+      {
+        telegramMessageId:   post.message_id,
+        categorySelected:    p.categorySelected,
+        originalDescription: p.originalDescription?.slice(0, 200) ?? null,
+        finalDescription:    p.description?.slice(0, 200) ?? null,
+        descriptionReplaced: p.originalDescription !== p.description,
+      },
+      "[DIAG] AUTO_CATEGORIZE — Category Selected / Original Desc / Final Desc",
+    );
+
+    // ══════════════════════════════════════════════════════════════════════
     // [DIAG] VALIDATION — validatePostData()
     // دالة مسماة تُنفّذ خطوتين:
     //   1. إزالة القيم الوهمية (placeholder cleansing)
@@ -835,17 +898,18 @@ export async function runTelegramSync(): Promise<SyncResult> {
     // [DIAG] DATA_BEFORE_SAVE — البيانات الكاملة قبل الحفظ في DB
     // ══════════════════════════════════════════════════════════════════════
     const recordToSave = {
-      name:              p.name,
-      username:          p.username,
-      platform:          p.platform,
-      followers:         p.followers,
-      price:             String(p.price),
-      description:       p.description,
+      name:                p.name,
+      username:            p.username,
+      platform:            p.platform,
+      followers:           p.followers,
+      price:               String(p.price),
+      description:         p.description,
+      originalDescription: p.originalDescription,
       imageUrl,
-      accountUrl:        p.accountUrl,
-      status:            "available" as const,
-      featured:          false,
-      telegramMessageId: post.message_id,
+      accountUrl:          p.accountUrl,
+      status:              "available" as const,
+      featured:            false,
+      telegramMessageId:   post.message_id,
     };
 
     logger.info(

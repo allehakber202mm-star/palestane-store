@@ -23,6 +23,7 @@ export const accountsTable = pgTable("accounts", {
   avgEarningsPer10k: numeric("avg_earnings_per_10k"),
   followersUpdatedAt: timestamp("followers_updated_at", { withTimezone: true }),
   telegramMessageId: integer("telegram_message_id"),
+  originalDescription: text("original_description"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
