@@ -6,6 +6,7 @@ import { requireAuth } from "../middlewares/auth";
 import { formatAccount } from "./accounts";
 import { logger } from "../lib/logger";
 import { scrapeFacebookFollowers } from "../lib/facebookScraper";
+import { syncAccountUrls } from "../lib/accountUrlSync";
 
 // Auto-generate a profile URL from username when accountUrl is not provided
 function buildProfileUrl(
@@ -94,6 +95,7 @@ router.post("/accounts", async (req, res) => {
     })
     .returning();
   res.status(201).json(formatAccount(row as Record<string, unknown>));
+  syncAccountUrls("mutation").catch((e) => logger.error({ err: e }, "accountUrlSync failed after create"));
 });
 
 router.patch("/accounts/:id", async (req, res) => {
@@ -142,6 +144,7 @@ router.patch("/accounts/:id", async (req, res) => {
 
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
   res.json(formatAccount(row as Record<string, unknown>));
+  syncAccountUrls("mutation").catch((e) => logger.error({ err: e }, "accountUrlSync failed after update"));
 });
 
 router.delete("/accounts/:id", async (req, res) => {
@@ -228,6 +231,7 @@ router.post("/facebook/sync", async (req, res) => {
     failed:    results.filter(r => r.status === "failed").length,
     results,
   });
+  syncAccountUrls("sync").catch((e) => logger.error({ err: e }, "accountUrlSync failed after facebook/sync"));
 });
 
 // ── GET /admin/visits/stats ──────────────────────────────────────────────────
