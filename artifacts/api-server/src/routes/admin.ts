@@ -7,6 +7,21 @@ import { formatAccount } from "./accounts";
 import { logger } from "../lib/logger";
 import { scrapeFacebookFollowers } from "../lib/facebookScraper";
 
+// Auto-generate a profile URL from username when accountUrl is not provided
+function buildProfileUrl(
+  platform: string,
+  username: string | null | undefined,
+  accountUrl: string | null | undefined,
+): string | null {
+  if (accountUrl) return accountUrl;
+  if (!username) return null;
+  const u = username.replace(/^@/, "");
+  if (platform === "tiktok" || platform === "tiktok_monetized") return `https://www.tiktok.com/@${u}`;
+  if (platform === "instagram") return `https://www.instagram.com/${u}`;
+  if (platform === "facebook") return `https://www.facebook.com/${u}`;
+  return null;
+}
+
 const router = Router();
 router.use(requireAuth);
 
@@ -57,6 +72,7 @@ router.post("/accounts", async (req, res) => {
     return;
   }
   const data = parse.data;
+  const resolvedUrl = buildProfileUrl(data.platform, data.username, data.accountUrl);
   const [row] = await db
     .insert(accountsTable)
     .values({
@@ -65,8 +81,9 @@ router.post("/accounts", async (req, res) => {
       followers: data.followers,
       price: String(data.price),
       description: data.description ?? null,
+      username: data.username ?? null,
       imageUrl: data.imageUrl ?? null,
-      accountUrl: data.accountUrl ?? null,
+      accountUrl: resolvedUrl,
       status: data.status ?? "available",
       featured: data.featured ?? false,
       earningsStatus: data.earningsStatus ?? null,
@@ -96,8 +113,8 @@ router.patch("/accounts/:id", async (req, res) => {
   if (data.followers !== undefined) updateData.followers = data.followers;
   if (data.price !== undefined) updateData.price = String(data.price);
   if (data.description !== undefined) updateData.description = data.description;
+  if (data.username !== undefined) updateData.username = data.username ?? null;
   if (data.imageUrl !== undefined) updateData.imageUrl = data.imageUrl;
-  if (data.accountUrl !== undefined) updateData.accountUrl = data.accountUrl;
   if (data.status !== undefined) updateData.status = data.status;
   if (data.featured !== undefined) updateData.featured = data.featured;
   if (data.earningsStatus !== undefined) updateData.earningsStatus = data.earningsStatus ?? null;
@@ -105,6 +122,17 @@ router.patch("/accounts/:id", async (req, res) => {
   if (data.activationDate !== undefined) updateData.activationDate = data.activationDate ?? null;
   if (data.earningsNotes !== undefined) updateData.earningsNotes = data.earningsNotes ?? null;
   if (data.avgEarningsPer10k !== undefined) updateData.avgEarningsPer10k = data.avgEarningsPer10k != null ? String(data.avgEarningsPer10k) : null;
+
+  // Resolve accountUrl: explicit value wins; if username was set but no URL, auto-generate
+  if (data.accountUrl !== undefined) {
+    updateData.accountUrl = data.accountUrl;
+  } else if (data.username !== undefined) {
+    // username changed — re-derive the URL (use updated platform if provided, else keep current via DB read)
+    const platform = data.platform ?? (updateData.platform as string | undefined);
+    if (platform) {
+      updateData.accountUrl = buildProfileUrl(platform, data.username, undefined) ?? undefined;
+    }
+  }
 
   const [row] = await db
     .update(accountsTable)
