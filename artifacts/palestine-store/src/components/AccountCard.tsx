@@ -23,6 +23,21 @@ function getVisitorId(): string {
   return id;
 }
 
+// Build a profile URL from accountUrl (stored) or username (fallback)
+function buildProfileUrl(
+  platform: string,
+  username: string | null | undefined,
+  accountUrl: string | null | undefined,
+): string | null {
+  if (accountUrl) return accountUrl;
+  if (!username) return null;
+  const u = username.replace(/^@/, "");
+  if (platform === "tiktok" || platform === "tiktok_monetized") return `https://www.tiktok.com/@${u}`;
+  if (platform === "instagram") return `https://www.instagram.com/${u}`;
+  if (platform === "facebook") return `https://www.facebook.com/${u}`;
+  return null;
+}
+
 export function AccountCard({ account }: AccountCardProps) {
   const [, navigate] = useLocation();
 
@@ -55,13 +70,15 @@ export function AccountCard({ account }: AccountCardProps) {
 
   const goToDetails = () => navigate(`/account/${account.id}`);
 
+  // Effective URL: stored accountUrl takes priority, then auto-built from username
+  const effectiveUrl = buildProfileUrl(account.platform, account.username, account.accountUrl);
+
   // Track visit: POST to API first (fire-and-forget), then open the URL
   const handleVisitClick = async (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
     e.stopPropagation();
 
-    const url = account.accountUrl;
-    if (!url) return;
+    if (!effectiveUrl) return;
 
     try {
       await fetch(`/api/accounts/${account.id}/visit`, {
@@ -73,7 +90,7 @@ export function AccountCard({ account }: AccountCardProps) {
       // Don't block navigation on tracking failure
     }
 
-    window.open(url, "_blank", "noopener,noreferrer");
+    window.open(effectiveUrl, "_blank", "noopener,noreferrer");
   };
 
   return (
@@ -172,10 +189,10 @@ export function AccountCard({ account }: AccountCardProps) {
 
         {/* Buttons row */}
         <div className="flex gap-1.5 mt-auto">
-          {/* Visit account — prominent, always first if URL exists */}
-          {account.accountUrl && (
+          {/* Visit account — always shown when URL or username is available */}
+          {effectiveUrl && (
             <a
-              href={account.accountUrl}
+              href={effectiveUrl}
               onClick={handleVisitClick}
               className="flex-1 flex items-center justify-center gap-1 rounded-lg py-2 sm:py-2.5 text-[11px] sm:text-xs font-bold border-2 border-primary/40 hover:border-primary bg-primary/5 hover:bg-primary/10 transition-colors text-primary"
             >

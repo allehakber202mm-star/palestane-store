@@ -27,6 +27,21 @@ const MONETIZED_EARNINGS_LINES = [
   "💰 كل 10ك مشاهدات على الفيديو بتربح 2.1$",
 ];
 
+// Build a profile URL from accountUrl (stored) or username (fallback)
+function buildProfileUrl(
+  platform: string,
+  username: string | null | undefined,
+  accountUrl: string | null | undefined,
+): string | null {
+  if (accountUrl) return accountUrl;
+  if (!username) return null;
+  const u = username.replace(/^@/, "");
+  if (platform === "tiktok" || platform === "tiktok_monetized") return `https://www.tiktok.com/@${u}`;
+  if (platform === "instagram") return `https://www.instagram.com/${u}`;
+  if (platform === "facebook") return `https://www.facebook.com/${u}`;
+  return null;
+}
+
 function formatDate(dateStr: string) {
   try {
     return new Date(dateStr).toLocaleDateString("ar-EG", {
@@ -284,6 +299,7 @@ export default function AccountDetails() {
   const isMonetized       = account.platform === "tiktok_monetized";
   const hasActiveEarnings = isMonetized && account.earningsStatus === "active";
   const isSold            = account.status === "sold";
+  const effectiveUrl      = buildProfileUrl(account.platform, account.username, account.accountUrl);
 
   const PlatformIcon =
     (account.platform === "tiktok" || isMonetized) ? SiTiktok
@@ -419,9 +435,9 @@ export default function AccountDetails() {
         </div>
 
         {/* ── Visit Account — inline button (visible without scrolling) ── */}
-        {account.accountUrl ? (
+        {effectiveUrl && (
           <a
-            href={account.accountUrl}
+            href={effectiveUrl}
             target="_blank"
             rel="noopener noreferrer"
             onClick={() => trackEvent("account_url_click", account.id)}
@@ -437,11 +453,6 @@ export default function AccountDetails() {
             زيارة الحساب على {platformAr}
             <ExternalLink className="w-3.5 h-3.5 opacity-70" />
           </a>
-        ) : (
-          <div className="w-full flex items-center justify-center gap-2 rounded-xl py-3 mb-5 text-xs text-muted-foreground bg-muted/30 border border-dashed border-border">
-            <ExternalLink className="w-3.5 h-3.5 opacity-50" />
-            رابط الحساب غير متاح حالياً — تواصل عبر واتساب
-          </div>
         )}
 
         {/* ── Description block — all platforms ── */}
@@ -564,10 +575,10 @@ export default function AccountDetails() {
               <span className="text-xs text-muted-foreground">السعر النهائي</span>
               <span className="font-black text-xl text-primary">{account.price}₪</span>
             </div>
-            {/* Visit account — only when URL exists */}
-            {account.accountUrl && (
+            {/* Visit account — shown when URL or username is available */}
+            {effectiveUrl && (
               <a
-                href={account.accountUrl}
+                href={effectiveUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => trackEvent("account_url_click", account.id)}
