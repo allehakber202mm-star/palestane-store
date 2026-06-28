@@ -241,21 +241,6 @@ export default function AccountDetails() {
     if (!isNaN(id) && id > 0) trackEvent("page_view", id);
   }, [id]);
 
-  // Debug logging — shows account fields in browser console
-  useEffect(() => {
-    if (account) {
-      console.log("[AccountDetails] Debug:", {
-        "account.id":          account.id,
-        "account.price":       account.price,
-        "account.accountUrl":  account.accountUrl,
-        "account.description": account.description?.substring(0, 120),
-        "account.followers":   account.followers,
-        "account.platform":    account.platform,
-        "account.status":      account.status,
-      });
-    }
-  }, [account]);
-
   const handleBack = () => {
     if (window.history.length > 1) window.history.back();
     else window.location.href = "/accounts";

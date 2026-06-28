@@ -143,16 +143,21 @@ router.get("/site-overview", requireAuth, async (_req, res) => {
     })
     .from(siteVisitsTable);
 
-  // Daily chart — last 30 days
-  const dailyRows = await db
-    .select({
-      date:  sql<string>`to_char(date_trunc('day', ${siteVisitsTable.createdAt}), 'YYYY-MM-DD')`,
-      count: sql<number>`count(*)::int`,
-    })
-    .from(siteVisitsTable)
-    .where(gte(siteVisitsTable.createdAt, d30))
-    .groupBy(sql`date_trunc('day', ${siteVisitsTable.createdAt})`)
-    .orderBy(sql`date_trunc('day', ${siteVisitsTable.createdAt})`);
+  // Daily chart — last 30 days, fill gaps with 0 using generate_series
+  const dailyRows = await db.execute<{ date: string; count: number }>(sql`
+    SELECT
+      to_char(gs.day, 'YYYY-MM-DD') AS date,
+      COALESCE(COUNT(sv.id), 0)::int AS count
+    FROM generate_series(
+      date_trunc('day', now() AT TIME ZONE 'UTC') - INTERVAL '29 days',
+      date_trunc('day', now() AT TIME ZONE 'UTC'),
+      INTERVAL '1 day'
+    ) AS gs(day)
+    LEFT JOIN site_visits sv
+      ON date_trunc('day', sv.created_at AT TIME ZONE 'UTC') = gs.day
+    GROUP BY gs.day
+    ORDER BY gs.day
+  `);
 
   // Top pages — limit 10
   const topPages = await db
@@ -172,7 +177,7 @@ router.get("/site-overview", requireAuth, async (_req, res) => {
     last30days:     Number(totals.last30),
     uniqueVisitors: Number(totals.uniqueVisitors),
     activeNow:      Number(totals.activeNow),
-    dailyChart:     dailyRows.map(r => ({ date: r.date, count: Number(r.count) })),
+    dailyChart:     dailyRows.rows.map(r => ({ date: String(r.date), count: Number(r.count) })),
     topPages:       topPages.map(r => ({ page: r.page, count: Number(r.count) })),
   });
 });

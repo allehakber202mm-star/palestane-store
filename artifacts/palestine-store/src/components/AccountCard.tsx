@@ -90,6 +90,13 @@ export function AccountCard({ account }: AccountCardProps) {
       // Don't block navigation on tracking failure
     }
 
+    // Also record in stats table for analytics
+    fetch("/api/stats/track", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ eventType: "account_url_click", accountId: account.id }),
+    }).catch(() => {});
+
     window.open(effectiveUrl, "_blank", "noopener,noreferrer");
   };
 

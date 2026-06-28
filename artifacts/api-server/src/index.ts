@@ -2,6 +2,7 @@ import app from "./app";
 import { logger } from "./lib/logger";
 import { startTelegramAutoSync } from "./lib/telegramSync";
 import { syncAccountUrls } from "./lib/accountUrlSync";
+import { statsHealthCheck } from "./lib/statsHealthCheck";
 
 const rawPort = process.env["PORT"];
 
@@ -27,5 +28,8 @@ app.listen(port, (err) => {
   startTelegramAutoSync();
   syncAccountUrls("startup").catch((e) =>
     logger.error({ err: e }, "accountUrlSync failed on startup"),
+  );
+  statsHealthCheck().catch((e) =>
+    logger.error({ err: e }, "statsHealthCheck failed on startup"),
   );
 });
