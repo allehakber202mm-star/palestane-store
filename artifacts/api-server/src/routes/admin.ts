@@ -7,6 +7,7 @@ import { formatAccount } from "./accounts";
 import { logger } from "../lib/logger";
 import { scrapeFacebookFollowers } from "../lib/facebookScraper";
 import { syncAccountUrls } from "../lib/accountUrlSync";
+import { ocrScanExistingAccounts } from "../lib/ocrScanAccounts";
 
 // Auto-generate a profile URL from username when accountUrl is not provided
 function buildProfileUrl(
@@ -275,6 +276,18 @@ router.get("/visits/stats", async (_req, res) => {
         : (r.lastVisit ? String(r.lastVisit) : null),
     })),
   });
+});
+
+// ── POST /admin/ocr-scan — trigger a full OCR scan of accounts without URLs ──
+router.post("/ocr-scan", async (_req, res) => {
+  // Run synchronously so the caller gets the full report back
+  try {
+    const report = await ocrScanExistingAccounts();
+    res.json({ success: true, report });
+  } catch (err) {
+    logger.error({ err }, "POST /admin/ocr-scan فشل");
+    res.status(500).json({ success: false, error: String(err) });
+  }
 });
 
 export default router;

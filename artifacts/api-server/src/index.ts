@@ -3,6 +3,7 @@ import { logger } from "./lib/logger";
 import { startTelegramAutoSync } from "./lib/telegramSync";
 import { syncAccountUrls } from "./lib/accountUrlSync";
 import { statsHealthCheck } from "./lib/statsHealthCheck";
+import { ocrScanExistingAccounts } from "./lib/ocrScanAccounts";
 
 const rawPort = process.env["PORT"];
 
@@ -32,4 +33,10 @@ app.listen(port, (err) => {
   statsHealthCheck().catch((e) =>
     logger.error({ err: e }, "statsHealthCheck failed on startup"),
   );
+  // Delay OCR scan slightly so the server is fully up and OCR worker is warmed
+  setTimeout(() => {
+    ocrScanExistingAccounts().catch((e) =>
+      logger.error({ err: e }, "ocrScanExistingAccounts failed on startup"),
+    );
+  }, 15_000);
 });
