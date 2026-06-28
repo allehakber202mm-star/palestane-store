@@ -269,9 +269,26 @@ export default function AccountDetails() {
     const platformAr =
       account.platform === "tiktok_monetized" ? "تيك توك أرباح المشاهدات"
       : account.platform === "tiktok" ? "تيك توك"
-      : account.platform === "instagram" ? "انستغرام"
+      : account.platform === "instagram" ? "إنستغرام"
       : "فيسبوك";
-    const msg = `مرحبا، أود شراء حساب ${platformAr} باسم "${account.name}". السعر: ${account.price} شيكل. المتابعين: ${account.followers}.`;
+    const followersFormatted =
+      account.followers >= 1_000_000
+        ? `${(account.followers / 1_000_000).toFixed(1)}M`
+        : account.followers >= 1_000
+        ? `${(account.followers / 1_000).toFixed(0)}K`
+        : `${account.followers}`;
+    const pageUrl = window.location.href;
+    const username = account.username ? `@${account.username.replace(/^@/, "")}` : account.name;
+    const msg =
+`مرحباً، أرغب بشراء هذا الحساب:
+
+المنصة: ${platformAr}
+اسم الحساب: ${username}
+عدد المتابعين: ${followersFormatted}
+السعر: ${account.price}₪
+
+رابط الصفحة:
+${pageUrl}`;
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, "_blank");
   };
 
