@@ -3,6 +3,7 @@ import { eq, inArray, and, desc, sql } from "drizzle-orm";
 import { objectStorageClient } from "./objectStorage";
 import { randomUUID } from "crypto";
 import { logger } from "./logger";
+import { syncAccountUrls } from "./accountUrlSync";
 
 const BOT_TOKEN        = () => process.env.TELEGRAM_BOT_TOKEN ?? "";
 const CHANNEL          = () =>
@@ -29,9 +30,15 @@ export type TgPost   = {
 export type TgUpdate = { update_id: number; channel_post?: TgPost; edited_channel_post?: TgPost };
 
 export interface SyncResult {
-  imported: number;
-  skipped:  number;
-  total:    number;
+  imported:       number;
+  skipped:        number;
+  total:          number;
+  /** URLs that came directly from the Telegram post */
+  urlsFromPost:   number;
+  /** URLs auto-built from username (no URL in post) */
+  urlsGenerated:  number;
+  /** Accounts saved but with NO url and NO username — need manual review */
+  needsManual:    number;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -677,7 +684,7 @@ export async function runTelegramSync(): Promise<SyncResult> {
     "Telegram sync: RAW updates من Telegram",
   );
 
-  if (!updates.length) return { imported: 0, skipped: 0, total: 0 };
+  if (!updates.length) return { imported: 0, skipped: 0, total: 0, urlsFromPost: 0, urlsGenerated: 0, needsManual: 0 };
 
   // ── Separate by channel ───────────────────────────────────────────────────
   const accountPosts = updates
@@ -842,8 +849,11 @@ export async function runTelegramSync(): Promise<SyncResult> {
 
   const existingMsgIds = new Set(existingByMsgId.map(r => r.tgId));
 
-  let imported = 0;
-  let skipped  = 0;
+  let imported      = 0;
+  let skipped       = 0;
+  let urlsFromPost  = 0;
+  let urlsGenerated = 0;
+  let needsManual   = 0;
 
   for (const { post, parsed: p } of parsed) {
     // Skip if already imported by message ID
@@ -1063,7 +1073,29 @@ export async function runTelegramSync(): Promise<SyncResult> {
       "[DIAG] ✅ DATA_SAVED_IN_DB",
     );
 
+    // ── Track URL generation stats ─────────────────────────────────────────
+    if (p.accountUrl) {
+      if (p.parseLog.accountUrl.startsWith("وُجد رابط")) {
+        urlsFromPost++;
+      } else {
+        // URL was auto-built from username
+        urlsGenerated++;
+      }
+    } else {
+      needsManual++;
+    }
+
     imported++;
+  }
+
+  // ── Auto-fix any accounts that still lack a URL ────────────────────────────
+  // (Covers edge cases where URL construction was skipped for any reason)
+  if (imported > 0) {
+    try {
+      await syncAccountUrls("sync");
+    } catch (syncErr) {
+      logger.warn({ syncErr }, "runTelegramSync: syncAccountUrls() خطأ — تجاهل");
+    }
   }
 
   // Advance stored offset
@@ -1123,7 +1155,7 @@ export async function runTelegramSync(): Promise<SyncResult> {
     }
   }
 
-  return { imported, skipped, total: accountPosts.length };
+  return { imported, skipped, total: accountPosts.length, urlsFromPost, urlsGenerated, needsManual };
 }
 
 // ── Background auto-sync ───────────────────────────────────────────────────
@@ -1137,10 +1169,26 @@ async function tick() {
   try {
     const result = await runTelegramSync();
     if (result.imported > 0) {
-      logger.info(result, "Telegram auto-sync: ✅ حسابات جديدة أُضيفت");
+      logger.info(
+        {
+          "📥 حسابات جديدة":             result.imported,
+          "⏭️ تم تخطيها (مكررة/مرفوضة)": result.skipped,
+          "📨 منشورات فُحصت":            result.total,
+          "🔗 روابط من المنشور مباشرةً":  result.urlsFromPost,
+          "⚙️ روابط أُنشئت تلقائياً":     result.urlsGenerated,
+          "⚠️ تحتاج تدخلاً يدوياً":       result.needsManual,
+        },
+        "✅ Telegram sync — تقرير المزامنة",
+      );
+      if (result.needsManual > 0) {
+        logger.warn(
+          { count: result.needsManual },
+          `⚠️ [telegramSync] ${result.needsManual} حساب بدون رابط ولا username — راجعها يدوياً في لوحة التحكم`,
+        );
+      }
     } else {
       logger.info(
-        { total: result.total, skipped: result.skipped },
+        { "📨 منشورات فُحصت": result.total, "⏭️ مكررة/مرفوضة": result.skipped },
         "Telegram auto-sync: tick — لا منشورات جديدة",
       );
     }
