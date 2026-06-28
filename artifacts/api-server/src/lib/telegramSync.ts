@@ -4,6 +4,7 @@ import { objectStorageClient } from "./objectStorage";
 import { randomUUID } from "crypto";
 import { logger } from "./logger";
 import { syncAccountUrls } from "./accountUrlSync";
+import { extractUsernameFromImage, warmupOcr } from "./ocrExtract";
 
 const BOT_TOKEN        = () => process.env.TELEGRAM_BOT_TOKEN ?? "";
 const CHANNEL          = () =>
@@ -463,32 +464,45 @@ async function uploadBufferToGCS(buffer: Buffer, contentType: string): Promise<s
   return `/api/storage/objects/uploads/${uuid}`;
 }
 
-// ── Download photo from Telegram → upload to GCS ──────────────────────────
-async function importPhoto(fileId: string, token: string): Promise<string | null> {
+// ── Download raw buffer from Telegram (no upload) ──────────────────────────
+async function downloadTgBuffer(fileId: string, token: string): Promise<Buffer | null> {
   try {
-    logger.info({ fileId }, "importPhoto: بدء تحميل الصورة");
     const fileRes = await fetch(
       TG_API(`getFile?file_id=${encodeURIComponent(fileId)}`, token),
       { signal: AbortSignal.timeout(10_000) },
     );
     if (!fileRes.ok) {
-      logger.warn({ status: fileRes.status, fileId }, "importPhoto: getFile فشل");
+      logger.warn({ status: fileRes.status, fileId }, "downloadTgBuffer: getFile فشل");
       return null;
     }
     const fileData = await fileRes.json() as { ok: boolean; result?: { file_path: string } };
     if (!fileData.ok || !fileData.result?.file_path) {
-      logger.warn({ fileData, fileId }, "importPhoto: file_path غير موجود في الرد");
+      logger.warn({ fileData }, "downloadTgBuffer: file_path غير موجود");
       return null;
     }
-    logger.info({ filePath: fileData.result.file_path }, "importPhoto: جاري تحميل الملف");
     const imgRes = await fetch(TG_FILE(token, fileData.result.file_path), {
       signal: AbortSignal.timeout(30_000),
     });
     if (!imgRes.ok) {
-      logger.warn({ status: imgRes.status }, "importPhoto: تحميل الملف فشل");
+      logger.warn({ status: imgRes.status }, "downloadTgBuffer: تحميل الملف فشل");
       return null;
     }
-    const buffer = Buffer.from(await imgRes.arrayBuffer());
+    return Buffer.from(await imgRes.arrayBuffer());
+  } catch (err) {
+    logger.warn({ err, fileId }, "downloadTgBuffer: خطأ غير متوقع");
+    return null;
+  }
+}
+
+// ── Download photo from Telegram → upload to GCS ──────────────────────────
+async function importPhoto(fileId: string, token: string, existingBuffer?: Buffer): Promise<string | null> {
+  try {
+    logger.info({ fileId }, "importPhoto: بدء تحميل الصورة");
+    const buffer = existingBuffer ?? await downloadTgBuffer(fileId, token);
+    if (!buffer) {
+      logger.warn({ fileId }, "importPhoto: فشل تنزيل البافر");
+      return null;
+    }
     logger.info({ bytes: buffer.byteLength }, "importPhoto: جاري الرفع إلى GCS");
     const url = await uploadBufferToGCS(buffer, "image/jpeg");
     logger.info({ url }, "importPhoto: ✅ تم رفع الصورة");
@@ -992,13 +1006,43 @@ export async function runTelegramSync(): Promise<SyncResult> {
       );
     }
 
+    // ── OCR: try to extract username from image when text parsing found none ──
+    // Runs ONLY when both username and accountUrl are still null at this point.
+    let photoBuffer: Buffer | null = null;
+    if (!p.username && !p.accountUrl && post.photo?.length) {
+      const largest = post.photo.reduce((a, b) =>
+        a.width * a.height >= b.width * b.height ? a : b,
+      );
+      logger.info(
+        { telegramMessageId: post.message_id, platform: p.platform },
+        "[OCR] لا يوجد username في النص — جاري تحليل الصورة...",
+      );
+      photoBuffer = await downloadTgBuffer(largest.file_id, token);
+      if (photoBuffer) {
+        const ocrUsername = await extractUsernameFromImage(photoBuffer, p.platform);
+        if (ocrUsername) {
+          p.username = ocrUsername;
+          if      (p.platform === "instagram")        p.accountUrl = `https://www.instagram.com/${ocrUsername}`;
+          else if (p.platform === "facebook")         p.accountUrl = `https://www.facebook.com/${ocrUsername}`;
+          else                                        p.accountUrl = `https://www.tiktok.com/@${ocrUsername}`;
+          p.parseLog.username   = `[OCR] مُستخرج من الصورة: @${ocrUsername}`;
+          p.parseLog.accountUrl = `[OCR] بُني من الصورة (${p.platform}): ${p.accountUrl}`;
+          logger.info(
+            { telegramMessageId: post.message_id, ocrUsername, accountUrl: p.accountUrl },
+            "[OCR] ✅ username ورابط تم إنشاؤهما تلقائياً من الصورة",
+          );
+        }
+      }
+    }
+
     // ── Download photo ──────────────────────────────────────────────────────
     let imageUrl: string | null = null;
     if (post.photo?.length) {
       const largest = post.photo.reduce((a, b) =>
         a.width * a.height >= b.width * b.height ? a : b,
       );
-      imageUrl = await importPhoto(largest.file_id, token);
+      // Reuse already-downloaded buffer (from OCR step) to avoid double download
+      imageUrl = await importPhoto(largest.file_id, token, photoBuffer ?? undefined);
       if (!imageUrl) {
         logger.warn({ telegramMessageId: post.message_id }, "Telegram sync: فشل تحميل الصورة");
       }
@@ -1207,6 +1251,8 @@ export function startTelegramAutoSync() {
     return;
   }
   logger.info({ intervalMs: POLL_INTERVAL_MS }, "Telegram auto-sync: بدأ");
+  // Pre-warm OCR worker so language data is ready before first sync
+  warmupOcr();
   setTimeout(tick, 5_000);
   syncTimer = setInterval(tick, POLL_INTERVAL_MS);
 }
