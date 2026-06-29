@@ -107,7 +107,7 @@ router.get("/recent", async (_req, res) => {
     .select()
     .from(accountsTable)
     .where(eq(accountsTable.status, "available"))
-    .orderBy(...buildOrderBy("followers_desc"))
+    .orderBy(...buildOrderBy("newest"))
     .limit(8);
   res.json(rows.map(formatAccount));
 });

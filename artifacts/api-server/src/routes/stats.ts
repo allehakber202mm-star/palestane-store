@@ -183,18 +183,40 @@ router.get("/site-overview", requireAuth, async (_req, res) => {
 });
 
 // ── Unified event tracking ───────────────────────────────────────────────────
+// Body: { eventType, accountId?, visitorId? }
+// Dedup: page_view events — same visitorId + accountId within 30 min → skip
 router.post("/track", async (req, res) => {
-  const { eventType, accountId } = req.body as { eventType?: string; accountId?: number };
+  const { eventType, accountId, visitorId } = req.body as {
+    eventType?: string; accountId?: number; visitorId?: string;
+  };
   if (!eventType) { res.status(400).json({ error: "eventType required" }); return; }
   const allowed = ["page_view", "whatsapp_click", "account_url_click"] as const;
   if (!allowed.includes(eventType as typeof allowed[number])) {
     res.status(400).json({ error: "invalid eventType" }); return;
   }
+
+  // Server-side dedup for page_view: same visitorId + accountId within 30 min → skip
+  if (eventType === "page_view" && visitorId && accountId) {
+    const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000);
+    const [existing] = await db
+      .select({ id: statsTable.id })
+      .from(statsTable)
+      .where(
+        and(
+          eq(statsTable.eventType, "page_view"),
+          eq(statsTable.accountId, Number(accountId)),
+          sql`${statsTable.createdAt} >= ${thirtyMinAgo}`,
+        ),
+      )
+      .limit(1);
+    if (existing) { res.json({ success: true, counted: false, reason: "dedup" }); return; }
+  }
+
   await db.insert(statsTable).values({
     eventType,
     accountId: accountId ? Number(accountId) : null,
   });
-  res.json({ success: true });
+  res.json({ success: true, counted: true });
 });
 
 // ── Legacy whatsapp-click ────────────────────────────────────────────────────

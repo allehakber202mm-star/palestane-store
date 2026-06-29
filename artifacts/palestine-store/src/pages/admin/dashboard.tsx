@@ -111,20 +111,22 @@ export default function AdminDashboard() {
   const qc = useQueryClient();
   const { toast } = useToast();
 
-  const { data: stats, isLoading: statsLoading } = useGetDashboardStats();
-  const { data: accounts, isLoading: accsLoading } = useAdminListAccounts({});
+  const { data: stats, isLoading: statsLoading, refetch: refetchStats } = useGetDashboardStats();
+  const { data: accounts, isLoading: accsLoading, refetch: refetchAccounts } = useAdminListAccounts({});
   const { data: settings } = useGetSettings();
   const { data: visitStats, isLoading: visitStatsLoading, refetch: refetchVisits } = useGetVisitStats();
   const { data: siteOverview, isLoading: siteLoading, refetch: refetchSite } = useGetSiteOverview();
 
-  // Real-time: refetch every 30 seconds
+  // Real-time: refetch ALL dashboard data every 30 seconds
   useEffect(() => {
     const id = setInterval(() => {
+      void refetchStats();
+      void refetchAccounts();
       void refetchVisits();
       void refetchSite();
     }, 30_000);
     return () => clearInterval(id);
-  }, [refetchVisits, refetchSite]);
+  }, [refetchStats, refetchAccounts, refetchVisits, refetchSite]);
 
   const createMut   = useCreateAccount();
   const updateMut   = useUpdateAccount();
@@ -398,7 +400,7 @@ export default function AdminDashboard() {
             {[
               { label: "معروضة الآن",   val: accounts?.filter(a => a.status === "available").length, color: "text-green-600" },
               { label: "تم بيعها",      val: accounts?.filter(a => a.status === "sold").length,      color: "text-destructive" },
-              { label: "مخفية",         val: 0,                                                      color: "text-muted-foreground" },
+              { label: "مميزة ⭐",      val: accounts?.filter(a => a.featured).length,              color: "text-amber-500" },
               { label: "الإجمالي",      val: accounts?.length,                                       color: "text-foreground font-black" },
             ].map((c, i) => (
               <div key={i} className="flex flex-col items-center justify-center py-3 px-2 text-center">

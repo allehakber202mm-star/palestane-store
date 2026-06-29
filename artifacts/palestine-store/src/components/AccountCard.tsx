@@ -12,12 +12,12 @@ const TIKTOK_MONETIZED_FEATURES = ["💰 فيه أرباح المشاهدات", 
 const INSTAGRAM_FEATURES = ["متابعين حقيقيين 100%", "جمهور نشط ومتفاعل", "بدون بوتات", "جاهز للاستخدام"];
 const FACEBOOK_FEATURES = ["متابعين حقيقيين 100%", "جمهور نشط ومتفاعل", "بدون بوتات", "جاهز للاستخدام"];
 
-// Get or create a persistent visitor ID stored in localStorage
+// Get or create a persistent visitor ID — same key as useSiteTracking ("ps_vid")
 function getVisitorId(): string {
-  const KEY = "visitor_id";
+  const KEY = "ps_vid";
   let id = localStorage.getItem(KEY);
   if (!id) {
-    id = `v-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    id = crypto.randomUUID();
     localStorage.setItem(KEY, id);
   }
   return id;

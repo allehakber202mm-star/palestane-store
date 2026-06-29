@@ -219,11 +219,28 @@ function Lightbox({ src, alt, onClose }: { src: string; alt: string; onClose: ()
    ════════════════════════════════════════════════════════ */
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
+// ── Persistent visitor ID (same key as useSiteTracking) ─────────────────────
+function getVisitorId(): string {
+  const KEY = "ps_vid";
+  let id = sessionStorage.getItem(KEY) || localStorage.getItem(KEY);
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem(KEY, id);
+  }
+  return id;
+}
+
 function trackEvent(eventType: "page_view" | "whatsapp_click" | "account_url_click", accountId: number) {
+  // Client-side dedup for page_view: only once per account per session
+  if (eventType === "page_view") {
+    const SESS_KEY = `pv_${accountId}`;
+    if (sessionStorage.getItem(SESS_KEY)) return;
+    sessionStorage.setItem(SESS_KEY, "1");
+  }
   fetch(`${BASE}/api/stats/track`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ eventType, accountId }),
+    body: JSON.stringify({ eventType, accountId, visitorId: getVisitorId() }),
   }).catch(() => {});
 }
 
