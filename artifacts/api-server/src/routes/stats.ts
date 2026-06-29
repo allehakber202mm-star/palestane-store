@@ -8,42 +8,6 @@ const router = Router();
 // ── Bot UA patterns ──────────────────────────────────────────────────────────
 const BOT_RE = /bot|crawler|spider|scraper|slurp|curl|wget|python-requests|python\/|java\/|go-http|axios\/|node-fetch|node\.js|phantomjs|headless|facebookexternalhit|linkedinbot|twitterbot|whatsapp|discordbot|telegrambot|applebot|bingbot|googlebot|yandex|duckduck|baiduspider|sogou|exabot|ia_archiver|mediapartners|adsbot/i;
 
-// ── Helper: detect device ────────────────────────────────────────────────────
-function detectDevice(ua: string | null | undefined): string {
-  if (!ua) return "غير معروف";
-  const u = ua.toLowerCase();
-  if (/ipad|tablet|kindle|silk|playbook/.test(u)) return "لوحي";
-  if (/mobile|android|iphone|ipod|blackberry|iemobile|opera mini/.test(u)) return "هاتف";
-  return "كمبيوتر";
-}
-
-// ── Helper: detect browser ───────────────────────────────────────────────────
-function detectBrowser(ua: string | null | undefined): string {
-  if (!ua) return "غير معروف";
-  if (/Edg\//.test(ua)) return "Edge";
-  if (/OPR\/|Opera/.test(ua)) return "Opera";
-  if (/Firefox\//.test(ua)) return "Firefox";
-  if (/Chrome\//.test(ua)) return "Chrome";
-  if (/Safari\//.test(ua)) return "Safari";
-  if (/MSIE|Trident/.test(ua)) return "Internet Explorer";
-  return "أخرى";
-}
-
-// ── Helper: detect traffic source ───────────────────────────────────────────
-function detectSource(referrer: string | null | undefined): string {
-  if (!referrer) return "مباشر";
-  const r = referrer.toLowerCase();
-  if (r.includes("google")) return "Google";
-  if (r.includes("facebook") || r.includes("fb.com")) return "Facebook";
-  if (r.includes("tiktok")) return "TikTok";
-  if (r.includes("instagram")) return "Instagram";
-  if (r.includes("t.me") || r.includes("telegram")) return "Telegram";
-  if (r.includes("twitter.com") || r.includes("x.com")) return "X (Twitter)";
-  if (r.includes("whatsapp")) return "WhatsApp";
-  if (r.includes("youtube")) return "YouTube";
-  return "أخرى";
-}
-
 // ── Dashboard summary ─────────────────────────────────────────────────────────
 router.get("/dashboard", async (_req, res) => {
   const [totals] = await db
@@ -322,91 +286,22 @@ router.get("/advanced", requireAuth, async (req, res) => {
 
   const siteWhere = and(gte(siteVisitsTable.createdAt, from), lt(siteVisitsTable.createdAt, to));
 
-  // ── Visit totals (site_visits, date-filtered — platform not applicable here)
+  // ── Visit totals + avgSessionPages
   const [visitTotals] = await db
     .select({
       visitCount:     sql<number>`count(*)::int`,
       uniqueVisitors: sql<number>`count(distinct ${siteVisitsTable.visitorId})::int`,
+      uniqueSessions: sql<number>`count(distinct ${siteVisitsTable.sessionId})::int`,
     })
     .from(siteVisitsTable)
     .where(siteWhere);
 
-  // ── Daily chart (generate_series so every day shows even if 0 visits)
-  const dailyRows = await db.execute<{ date: string; count: number }>(sql`
-    SELECT
-      to_char(gs.day, 'YYYY-MM-DD') AS date,
-      COALESCE(COUNT(sv.id), 0)::int AS count
-    FROM generate_series(
-      date_trunc('day', ${from}::timestamptz AT TIME ZONE 'UTC'),
-      date_trunc('day', ${to}::timestamptz   AT TIME ZONE 'UTC'),
-      INTERVAL '1 day'
-    ) AS gs(day)
-    LEFT JOIN site_visits sv
-      ON date_trunc('day', sv.created_at AT TIME ZONE 'UTC') = gs.day
-      AND sv.created_at >= ${from} AND sv.created_at < ${to}
-    GROUP BY gs.day
-    ORDER BY gs.day
-    LIMIT 90
-  `);
+  const visitCount     = Number(visitTotals?.visitCount     ?? 0);
+  const uniqueVisitors = Number(visitTotals?.uniqueVisitors ?? 0);
+  const uniqueSessions = Number(visitTotals?.uniqueSessions ?? 0);
+  const avgSessionPages = uniqueSessions > 0 ? Math.round((visitCount / uniqueSessions) * 10) / 10 : 0;
 
-  // ── Top pages
-  const topPagesRows = await db
-    .select({ page: siteVisitsTable.page, count: sql<number>`count(*)::int` })
-    .from(siteVisitsTable)
-    .where(siteWhere)
-    .groupBy(siteVisitsTable.page)
-    .orderBy(desc(sql`count(*)`))
-    .limit(10);
-
-  // ── Fetch site visits for device/browser/source aggregation (cap 5000)
-  const visits = await db
-    .select({
-      userAgent: siteVisitsTable.userAgent,
-      referrer:  siteVisitsTable.referrer,
-      sessionId: siteVisitsTable.sessionId,
-      page:      siteVisitsTable.page,
-      createdAt: siteVisitsTable.createdAt,
-    })
-    .from(siteVisitsTable)
-    .where(siteWhere)
-    .limit(5000);
-
-  const deviceCounts:  Record<string, number> = {};
-  const browserCounts: Record<string, number> = {};
-  const sourceCounts:  Record<string, number> = {};
-
-  for (const v of visits) {
-    const device  = detectDevice(v.userAgent);
-    const browser = detectBrowser(v.userAgent);
-    const source  = detectSource(v.referrer);
-    deviceCounts[device]   = (deviceCounts[device]   ?? 0) + 1;
-    browserCounts[browser] = (browserCounts[browser] ?? 0) + 1;
-    sourceCounts[source]   = (sourceCounts[source]   ?? 0) + 1;
-  }
-
-  // ── Hourly chart (site_visits, date-only)
-  const hourlyRows = await db.execute<{ hour: string; count: string }>(sql`
-    SELECT EXTRACT(HOUR FROM created_at AT TIME ZONE 'UTC')::int AS hour,
-           COUNT(*)::int AS count
-    FROM site_visits
-    WHERE created_at >= ${from} AND created_at < ${to}
-    GROUP BY 1 ORDER BY 1
-  `);
-  const hourlyMap: Record<number, number> = {};
-  for (const r of hourlyRows.rows) hourlyMap[Number(r.hour)] = Number(r.count);
-  const hourlyChart = Array.from({ length: 24 }, (_, h) => ({ hour: h, count: hourlyMap[h] ?? 0 }));
-
-  // ── Heatmap (site_visits, date-only)
-  const heatmapRows = await db.execute<{ day: string; hour: string; count: string }>(sql`
-    SELECT EXTRACT(DOW  FROM created_at AT TIME ZONE 'UTC')::int AS day,
-           EXTRACT(HOUR FROM created_at AT TIME ZONE 'UTC')::int AS hour,
-           COUNT(*)::int AS count
-    FROM site_visits
-    WHERE created_at >= ${from} AND created_at < ${to}
-    GROUP BY 1, 2 ORDER BY 1, 2
-  `);
-
-  // ── Button clicks (filtered by platform when provided)
+  // ── Stats event counts (pageViews, waClicks, urlClicks) with optional platform filter
   const statDateWhere = and(gte(statsTable.createdAt, from), lt(statsTable.createdAt, to));
   let statEventRows: { eventType: string; count: number }[];
   if (hasPlatform) {
@@ -424,25 +319,13 @@ router.get("/advanced", requireAuth, async (req, res) => {
       .groupBy(statsTable.eventType);
   }
 
-  const BUTTON_LABELS: Record<string, string> = {
-    page_view:         "فتح صفحة حساب",
-    whatsapp_click:    "ضغط واتساب",
-    account_url_click: "زيارة الحساب",
-  };
-  const buttonClicks = statEventRows
-    .map(r => ({ button: r.eventType, label: BUTTON_LABELS[r.eventType] ?? r.eventType, count: Number(r.count) }))
-    .sort((a, b) => b.count - a.count);
+  const pvCount  = statEventRows.find(r => r.eventType === "page_view")?.count         ?? 0;
+  const waCount  = statEventRows.find(r => r.eventType === "whatsapp_click")?.count     ?? 0;
+  const urlCount = statEventRows.find(r => r.eventType === "account_url_click")?.count  ?? 0;
 
-  // Derived summary counts (filtered by platform)
-  const pvCount  = buttonClicks.find(b => b.button === "page_view")?.count         ?? 0;
-  const waCount  = buttonClicks.find(b => b.button === "whatsapp_click")?.count     ?? 0;
-  const urlCount = buttonClicks.find(b => b.button === "account_url_click")?.count  ?? 0;
-
-  // ── Platform breakdown from page_view events
-  let platformRows: { platform: string; count: string }[];
-  if (hasPlatform) {
-    platformRows = [];
-  } else {
+  // ── Platform breakdown (only when no platform filter)
+  let platformRows: { platform: string; count: string }[] = [];
+  if (!hasPlatform) {
     const r = await db.execute<{ platform: string; count: string }>(sql`
       SELECT a.platform, COUNT(*)::int AS count
       FROM stats s
@@ -454,126 +337,16 @@ router.get("/advanced", requireAuth, async (req, res) => {
     platformRows = r.rows;
   }
 
-  // ── Recent activity
-  const recentVisits = await db
-    .select({ id: siteVisitsTable.id, page: siteVisitsTable.page, createdAt: siteVisitsTable.createdAt, userAgent: siteVisitsTable.userAgent, referrer: siteVisitsTable.referrer })
-    .from(siteVisitsTable)
-    .where(siteWhere)
-    .orderBy(desc(siteVisitsTable.createdAt))
-    .limit(20);
-
-  let recentStats;
-  if (hasPlatform) {
-    recentStats = await db
-      .select({ id: statsTable.id, eventType: statsTable.eventType, accountId: statsTable.accountId, createdAt: statsTable.createdAt })
-      .from(statsTable)
-      .innerJoin(accountsTable, eq(statsTable.accountId, accountsTable.id))
-      .where(and(statDateWhere, isNotNull(statsTable.accountId), eq(accountsTable.platform, platformParam!)))
-      .orderBy(desc(statsTable.createdAt))
-      .limit(20);
-  } else {
-    recentStats = await db
-      .select({ id: statsTable.id, eventType: statsTable.eventType, accountId: statsTable.accountId, createdAt: statsTable.createdAt })
-      .from(statsTable)
-      .where(and(statDateWhere, isNotNull(statsTable.accountId)))
-      .orderBy(desc(statsTable.createdAt))
-      .limit(20);
-  }
-
-  const statAccIds = [...new Set(recentStats.map(r => r.accountId!).filter(Boolean))];
-  const statAccNames: Record<number, string> = {};
-  if (statAccIds.length) {
-    const rows = await db
-      .select({ id: accountsTable.id, name: accountsTable.name })
-      .from(accountsTable)
-      .where(inArray(accountsTable.id, statAccIds));
-    for (const r of rows) statAccNames[r.id] = r.name;
-  }
-
-  const recentActivity = [
-    ...recentVisits.map(v => ({
-      id: `sv-${v.id}`, type: "visit" as const,
-      page: v.page,
-      timestamp: (v.createdAt as Date).toISOString(),
-      device: detectDevice(v.userAgent),
-      source: detectSource(v.referrer),
-    })),
-    ...recentStats.map(s => ({
-      id: `st-${s.id}`, type: "event" as const,
-      eventType: s.eventType,
-      accountId: s.accountId ?? undefined,
-      accountName: s.accountId ? statAccNames[s.accountId] : undefined,
-      timestamp: (s.createdAt as Date).toISOString(),
-    })),
-  ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0, 30);
-
-  // ── User journeys — last 15 sessions
-  const sessionRows = await db.execute<{ session_id: string; start_time: string; page_count: string }>(sql`
-    SELECT session_id,
-           MIN(created_at) AS start_time,
-           COUNT(*)::int   AS page_count
-    FROM site_visits
-    WHERE created_at >= ${from} AND created_at < ${to}
-      AND session_id IS NOT NULL AND session_id != ''
-    GROUP BY session_id
-    ORDER BY start_time DESC
-    LIMIT 15
-  `);
-
-  const sessionIds = sessionRows.rows.map(r => String(r.session_id)).filter(Boolean);
-  let journeys: unknown[] = [];
-
-  if (sessionIds.length) {
-    const sv = await db
-      .select({ sessionId: siteVisitsTable.sessionId, page: siteVisitsTable.page, createdAt: siteVisitsTable.createdAt, userAgent: siteVisitsTable.userAgent, referrer: siteVisitsTable.referrer })
-      .from(siteVisitsTable)
-      .where(inArray(siteVisitsTable.sessionId, sessionIds))
-      .orderBy(siteVisitsTable.sessionId, siteVisitsTable.createdAt);
-
-    const grouped: Record<string, typeof sv> = {};
-    for (const v of sv) {
-      if (!grouped[v.sessionId]) grouped[v.sessionId] = [];
-      grouped[v.sessionId].push(v);
-    }
-
-    journeys = sessionRows.rows.map(r => {
-      const sid = String(r.session_id);
-      const vs  = grouped[sid] ?? [];
-      const first = vs[0];
-      return {
-        sessionId: sid.slice(0, 8) + "…",
-        pages: vs.map(v => ({ page: v.page, time: (v.createdAt as Date).toISOString() })),
-        startTime: String(r.start_time),
-        device: first ? detectDevice(first.userAgent) : "غير معروف",
-        source: first ? detectSource(first.referrer)  : "مباشر",
-        pageCount: Number(r.page_count),
-      };
-    });
-  }
-
-  const uniqueSessions = new Set(visits.map(v => v.sessionId)).size;
-  const avgSessionPages = uniqueSessions > 0 ? Math.round((visits.length / uniqueSessions) * 10) / 10 : 0;
-
   res.json({
-    from: from.toISOString(),
-    to:   to.toISOString(),
-    visitCount:    Number(visitTotals?.visitCount    ?? 0),
-    uniqueVisitors: Number(visitTotals?.uniqueVisitors ?? 0),
-    pageViews:     pvCount,
-    waClicks:      waCount,
-    urlClicks:     urlCount,
-    dailyChart:    dailyRows.rows.map(r => ({ date: String(r.date), count: Number(r.count) })),
-    topPages:      topPagesRows.map(r => ({ page: r.page, count: Number(r.count) })),
-    devices:       Object.entries(deviceCounts).map(([type, count]) => ({ type, count })).sort((a, b) => b.count - a.count),
-    browsers:      Object.entries(browserCounts).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count),
-    sources:       Object.entries(sourceCounts).map(([source, count]) => ({ source, count })).sort((a, b) => b.count - a.count),
-    platforms:     platformRows.map(r => ({ platform: String(r.platform), count: Number(r.count) })),
-    hourlyChart,
-    heatmap:       heatmapRows.rows.map(r => ({ day: Number(r.day), hour: Number(r.hour), count: Number(r.count) })),
-    buttonClicks,
-    recentActivity,
-    journeys,
+    from:           from.toISOString(),
+    to:             to.toISOString(),
+    visitCount,
+    uniqueVisitors,
+    pageViews:      Number(pvCount),
+    waClicks:       Number(waCount),
+    urlClicks:      Number(urlCount),
     avgSessionPages,
+    platforms:      platformRows.map(r => ({ platform: String(r.platform), count: Number(r.count) })),
   });
 });
 

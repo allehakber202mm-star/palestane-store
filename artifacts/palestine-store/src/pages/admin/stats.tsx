@@ -1,38 +1,32 @@
 import { AdminLayout } from "@/components/layout/AdminLayout";
-import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
+  Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  Eye, Phone, ExternalLink, BarChart2, Globe, Activity,
-  Users2, TrendingUp, BarChart3, Calendar, Smartphone,
-  Monitor, Tablet, Search, ArrowUpDown, ChevronUp, ChevronDown,
-  ChevronRight, ChevronLeft, Clock, Zap, MousePointer2, RefreshCw,
-  Route,
+  Eye, Phone, ExternalLink, BarChart2, Globe,
+  Users2, TrendingUp, BarChart3, Search, ArrowUpDown,
+  ChevronUp, ChevronDown, ChevronRight, ChevronLeft,
+  Zap, RefreshCw,
 } from "lucide-react";
 import { SiTiktok, SiInstagram, SiFacebook } from "react-icons/si";
 import {
-  AreaChart, Area, BarChart, Bar,
-  XAxis, YAxis, CartesianGrid,
-  Tooltip as ReTooltip, ResponsiveContainer,
-  Legend,
+  BarChart, Bar, XAxis, YAxis,
+  Tooltip as ReTooltip, ResponsiveContainer, Legend,
 } from "recharts";
 import { useGetSiteOverview } from "@workspace/api-client-react";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
-// ── Auth header helper ───────────────────────────────────────────────────────
+// ── Auth header ───────────────────────────────────────────────────────────────
 function authHeader() {
   const token = localStorage.getItem("admin_token") ?? "";
   return { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 }
 
-// ── Date helpers ─────────────────────────────────────────────────────────────
+// ── Date helpers ──────────────────────────────────────────────────────────────
 function startOfDay(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
@@ -59,21 +53,7 @@ function formatRelTime(iso: string) {
   return formatDateShort(iso);
 }
 
-// ── Page display names ───────────────────────────────────────────────────────
-const PAGE_LABELS: Record<string, string> = {
-  "/":              "🏠 الصفحة الرئيسية",
-  "/accounts":      "📋 الحسابات",
-  "/about":         "ℹ️ من نحن",
-  "/feedback":      "💬 آراء العملاء",
-  "/contact":       "📞 تواصل معنا",
-  "/celebrity-ads": "🌟 إعلانات المشاهير",
-};
-function pageLabel(p: string) {
-  if (PAGE_LABELS[p]) return PAGE_LABELS[p];
-  if (p.startsWith("/account/")) return `👤 حساب #${p.split("/")[2]}`;
-  return p;
-}
-
+// ── Platform helpers ──────────────────────────────────────────────────────────
 const PLT_ICON: Record<string, React.ReactNode> = {
   tiktok:           <SiTiktok className="w-3.5 h-3.5" />,
   tiktok_monetized: <SiTiktok className="w-3.5 h-3.5 text-green-600" />,
@@ -88,38 +68,15 @@ function platformAr(p: string) {
   return p;
 }
 
-// ── Types ────────────────────────────────────────────────────────────────────
-type ActivityItem =
-  | { id: string; type: "visit"; page: string; timestamp: string; device: string; source: string }
-  | { id: string; type: "event"; eventType: string; accountId?: number; accountName?: string; timestamp: string };
-
-type JourneyItem = {
-  sessionId: string;
-  pages: { page: string; time: string }[];
-  startTime: string;
-  device: string;
-  source: string;
-  pageCount: number;
-};
-
+// ── Types ─────────────────────────────────────────────────────────────────────
 type AdvancedData = {
-  visitCount:     number;
-  uniqueVisitors: number;
-  pageViews:      number;
-  waClicks:       number;
-  urlClicks:      number;
-  dailyChart:     { date: string; count: number }[];
-  topPages:       { page: string; count: number }[];
-  devices:        { type: string; count: number }[];
-  browsers:       { name: string; count: number }[];
-  sources:        { source: string; count: number }[];
-  platforms:      { platform: string; count: number }[];
-  hourlyChart:    { hour: number; count: number }[];
-  heatmap:        { day: number; hour: number; count: number }[];
-  buttonClicks:   { button: string; label: string; count: number }[];
-  recentActivity: ActivityItem[];
-  journeys:       JourneyItem[];
+  visitCount:      number;
+  uniqueVisitors:  number;
+  pageViews:       number;
+  waClicks:        number;
+  urlClicks:       number;
   avgSessionPages: number;
+  platforms:       { platform: string; count: number }[];
 };
 
 type EngagementRow = {
@@ -141,13 +98,12 @@ type DetailData = {
 
 type TopItem = { id: number; name: string; platform: string; imageUrl: string | null; count: number };
 type AdminDetailData = {
-  totals: { pageViews: number; whatsappClicks: number; accountUrlClicks: number };
-  topByPageViews: TopItem[];
-  topByWhatsapp: TopItem[];
+  topByPageViews:       TopItem[];
+  topByWhatsapp:        TopItem[];
   topByAccountUrlClick: TopItem[];
 };
 
-// ── Sub-components ───────────────────────────────────────────────────────────
+// ── Sub-components ────────────────────────────────────────────────────────────
 function SummaryCard({ icon, label, value, sub, color, bg }: {
   icon: React.ReactNode; label: string; value: string | number; sub?: string;
   color: string; bg: string;
@@ -238,107 +194,14 @@ function SortIcon({ active, dir }: { active: boolean; dir: "asc" | "desc" }) {
   return dir === "asc" ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />;
 }
 
-// ── Heatmap ──────────────────────────────────────────────────────────────────
-const DAYS_AR = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
-
-function Heatmap({ data }: { data: { day: number; hour: number; count: number }[] }) {
-  const map: Record<string, number> = {};
-  let maxVal = 0;
-  for (const d of data) {
-    const key = `${d.day}-${d.hour}`;
-    map[key] = (map[key] ?? 0) + d.count;
-    if (map[key] > maxVal) maxVal = map[key];
-  }
-
-  function cellColor(val: number): string {
-    if (!val) return "bg-muted/40";
-    const pct = val / maxVal;
-    if (pct > 0.75) return "bg-blue-600";
-    if (pct > 0.5)  return "bg-blue-500";
-    if (pct > 0.25) return "bg-blue-400";
-    if (pct > 0.1)  return "bg-blue-300";
-    return "bg-blue-200";
-  }
-
-  return (
-    <div className="overflow-x-auto">
-      <div className="min-w-[600px]">
-        {/* Hour labels */}
-        <div className="flex mb-1 gap-0.5 mr-16">
-          {Array.from({ length: 24 }, (_, h) => (
-            <div key={h} className="flex-1 text-center text-[9px] text-muted-foreground">
-              {h % 4 === 0 ? `${h}:00` : ""}
-            </div>
-          ))}
-        </div>
-        {/* Grid */}
-        {DAYS_AR.map((day, d) => (
-          <div key={d} className="flex items-center gap-0.5 mb-0.5">
-            <div className="w-16 text-[11px] text-muted-foreground shrink-0 text-left pl-1">{day}</div>
-            {Array.from({ length: 24 }, (_, h) => {
-              const val = map[`${d}-${h}`] ?? 0;
-              return (
-                <div
-                  key={h}
-                  title={`${day} ${h}:00 — ${val} زيارة`}
-                  className={`flex-1 h-5 rounded-sm ${cellColor(val)} transition-all`}
-                />
-              );
-            })}
-          </div>
-        ))}
-        <div className="flex items-center gap-2 mt-3 justify-end text-[10px] text-muted-foreground">
-          <span>أقل</span>
-          {["bg-muted/40", "bg-blue-200", "bg-blue-300", "bg-blue-400", "bg-blue-500", "bg-blue-600"].map((c, i) => (
-            <div key={i} className={`w-4 h-4 rounded-sm ${c}`} />
-          ))}
-          <span>أكثر</span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Activity feed item ───────────────────────────────────────────────────────
-function ActivityRow({ item }: { item: ActivityItem }) {
-  const isVisit = item.type === "visit";
-  const icon = isVisit ? "🌐"
-    : item.type === "event" && item.eventType === "whatsapp_click"   ? "💬"
-    : item.type === "event" && item.eventType === "account_url_click"? "🔗"
-    : item.type === "event" && item.eventType === "page_view"        ? "👁️"
-    : "📌";
-
-  const label = isVisit
-    ? `زيارة: ${pageLabel(item.page)}`
-    : item.type === "event" && item.eventType === "whatsapp_click"    ? `واتساب${item.accountName ? ` ← ${item.accountName}` : ""}`
-    : item.type === "event" && item.eventType === "account_url_click" ? `زيارة الحساب${item.accountName ? ` ← ${item.accountName}` : ""}`
-    : item.type === "event" && item.eventType === "page_view"         ? `فتح حساب${item.accountName ? `: ${item.accountName}` : ""}`
-    : item.type === "event" ? item.eventType : "";
-
-  const sub = isVisit
-    ? `${item.device} · ${item.source}`
-    : "";
-
-  return (
-    <div className="flex items-start gap-3 py-2.5 border-b last:border-0">
-      <span className="text-base mt-0.5 shrink-0">{icon}</span>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium leading-none">{label}</p>
-        {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
-      </div>
-      <span className="text-[10px] text-muted-foreground shrink-0 mt-0.5">{formatRelTime(item.timestamp)}</span>
-    </div>
-  );
-}
-
-// ── Main page ────────────────────────────────────────────────────────────────
+// ── Main page ─────────────────────────────────────────────────────────────────
 export default function AdminStats() {
-  // ── Time range state ──
+  // ── Time range ──
   const [timeRange, setTimeRange] = useState<"today" | "7d" | "30d" | "custom">("30d");
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo]   = useState("");
 
-  // ── Table state ──
+  // ── Platform + table ──
   const [platformFilter, setPlatformFilter] = useState("all");
   const [search, setSearch]   = useState("");
   const [sortBy, setSortBy]   = useState<SortKey>("pageViews");
@@ -346,7 +209,7 @@ export default function AdminStats() {
   const [tablePage, setTablePage] = useState(1);
   const PAGE_SIZE = 10;
 
-  // ── Data state ──
+  // ── Data ──
   const [advanced, setAdvanced]     = useState<AdvancedData | null>(null);
   const [advLoading, setAdvLoading] = useState(true);
   const [engagement, setEngagement] = useState<EngagementRow[]>([]);
@@ -355,7 +218,6 @@ export default function AdminStats() {
   const [selectedId, setSelectedId]   = useState<number | null>(null);
   const [detail, setDetail]           = useState<DetailData | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [expandedJourney, setExpandedJourney] = useState<string | null>(null);
 
   // ── Computed from/to ──
   const { from, to } = useMemo(
@@ -363,17 +225,13 @@ export default function AdminStats() {
     [timeRange, customFrom, customTo],
   );
 
-  // ── Site overview (auto-refreshed by hook) ──
+  // ── Site overview (activeNow only) ──
   const { data: siteOverview, isLoading: siteLoading, refetch: refetchSite } = useGetSiteOverview();
 
   // ── Fetch advanced ──
   const fetchAdvanced = useCallback(() => {
     setAdvLoading(true);
-    const params = new URLSearchParams({
-      from:     from,
-      to:       to,
-      platform: platformFilter,
-    });
+    const params = new URLSearchParams({ from, to, platform: platformFilter });
     fetch(`${BASE}/api/stats/advanced?${params}`, { headers: authHeader() })
       .then(r => r.json() as Promise<AdvancedData>)
       .then(d => { setAdvanced(d); setAdvLoading(false); })
@@ -383,31 +241,23 @@ export default function AdminStats() {
   // ── Fetch engagement ──
   const fetchEngagement = useCallback(() => {
     setEngLoading(true);
-    const params = new URLSearchParams({
-      from:     from,
-      to:       to,
-      platform: platformFilter,
-    });
+    const params = new URLSearchParams({ from, to, platform: platformFilter });
     fetch(`${BASE}/api/stats/accounts-engagement?${params}`, { headers: authHeader() })
       .then(r => r.json() as Promise<EngagementRow[]>)
       .then(d => { setEngagement(d); setEngLoading(false); })
       .catch(() => setEngLoading(false));
   }, [from, to, platformFilter]);
 
-  // ── Fetch admin detail (top lists) ──
+  // ── Fetch top lists ──
   const fetchAdminDetail = useCallback(() => {
-    const params = new URLSearchParams({
-      from:     from,
-      to:       to,
-      platform: platformFilter,
-    });
+    const params = new URLSearchParams({ from, to, platform: platformFilter });
     fetch(`${BASE}/api/stats/admin-detail?${params}`, { headers: authHeader() })
       .then(r => r.json() as Promise<AdminDetailData>)
       .then(setAdminDetail)
       .catch(() => {});
   }, [from, to, platformFilter]);
 
-  // ── Initial + refresh every 30s ──
+  // ── Initial load + auto-refresh 30s ──
   useEffect(() => {
     fetchAdvanced();
     fetchEngagement();
@@ -420,7 +270,7 @@ export default function AdminStats() {
     return () => clearInterval(id);
   }, [fetchAdvanced, fetchEngagement, fetchAdminDetail, refetchSite]);
 
-  // ── Account detail ──
+  // ── Account detail modal ──
   useEffect(() => {
     if (!selectedId) { setDetail(null); return; }
     setDetailLoading(true);
@@ -430,15 +280,16 @@ export default function AdminStats() {
       .catch(() => setDetailLoading(false));
   }, [selectedId]);
 
-  // ── Summary card values (all from advanced, filtered by from/to/platform) ──
+  // ── Summary values ──
   const visitsInRange  = advanced?.visitCount      ?? 0;
   const uniqueInRange  = advanced?.uniqueVisitors  ?? 0;
   const pvInRange      = advanced?.pageViews        ?? 0;
   const waInRange      = advanced?.waClicks         ?? 0;
   const urlInRange     = advanced?.urlClicks        ?? 0;
   const convRate       = pvInRange > 0 ? Math.round(((waInRange + urlInRange) / pvInRange) * 100) : 0;
+  const activeNow      = siteOverview?.activeNow ?? 0;
 
-  // ── Table filtering / sorting / pagination (platform already filtered server-side) ──
+  // ── Table ──
   const filteredRows = useMemo(() => {
     let rows = [...engagement];
     if (search.trim()) {
@@ -446,18 +297,17 @@ export default function AdminStats() {
       rows = rows.filter(r => r.name.toLowerCase().includes(q));
     }
     rows.sort((a, b) => {
-      let av: string | number = a[sortBy as keyof EngagementRow] as string | number;
-      let bv: string | number = b[sortBy as keyof EngagementRow] as string | number;
-      if (typeof av === "string" && typeof bv === "string") {
+      const av = a[sortBy as keyof EngagementRow] as string | number;
+      const bv = b[sortBy as keyof EngagementRow] as string | number;
+      if (typeof av === "string" && typeof bv === "string")
         return sortDir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
-      }
       return sortDir === "asc" ? (av as number) - (bv as number) : (bv as number) - (av as number);
     });
     return rows;
   }, [engagement, search, sortBy, sortDir]);
 
-  const totalPages  = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE));
-  const pagedRows   = filteredRows.slice((tablePage - 1) * PAGE_SIZE, tablePage * PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE));
+  const pagedRows  = filteredRows.slice((tablePage - 1) * PAGE_SIZE, tablePage * PAGE_SIZE);
 
   function handleSort(col: SortKey) {
     if (sortBy === col) setSortDir(d => d === "asc" ? "desc" : "asc");
@@ -466,16 +316,6 @@ export default function AdminStats() {
   }
 
   const selectedAcc = engagement.find(r => r.id === selectedId) ?? null;
-
-  // ── Active now pulse ──
-  const activeNow = siteOverview?.activeNow ?? 0;
-
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const [, forceUpdate] = useState(0);
-  useEffect(() => {
-    timerRef.current = setInterval(() => forceUpdate(n => n + 1), 10_000);
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, []);
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
@@ -517,9 +357,7 @@ export default function AdminStats() {
               key={r}
               onClick={() => { setTimeRange(r); setTablePage(1); }}
               className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
-                timeRange === r
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted/60 hover:bg-muted text-muted-foreground"
+                timeRange === r ? "bg-primary text-primary-foreground" : "bg-muted/60 hover:bg-muted text-muted-foreground"
               }`}
             >
               {r === "today" ? "اليوم" : r === "7d" ? "7 أيام" : r === "30d" ? "30 يوم" : "مخصص"}
@@ -547,9 +385,7 @@ export default function AdminStats() {
               key={v}
               onClick={() => { setPlatformFilter(v); setTablePage(1); }}
               className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
-                platformFilter === v
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted/60 hover:bg-muted text-muted-foreground"
+                platformFilter === v ? "bg-primary text-primary-foreground" : "bg-muted/60 hover:bg-muted text-muted-foreground"
               }`}
             >
               {label}
@@ -559,145 +395,18 @@ export default function AdminStats() {
 
         {/* ── Summary Cards ───────────────────────────────────────────── */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-          <SummaryCard icon={<Globe className="w-5 h-5" />}        label="إجمالي الزيارات"        value={advLoading ? "…" : visitsInRange}        color="text-blue-600"    bg="bg-blue-500/5 border-blue-500/20" />
-          <SummaryCard icon={<Users2 className="w-5 h-5" />}       label="زوار فريدون"            value={advLoading ? "…" : uniqueInRange}        color="text-violet-600"  bg="bg-violet-500/5 border-violet-500/20" />
-          <SummaryCard icon={<Eye className="w-5 h-5" />}          label="فتح صفحات الحسابات"     value={advLoading ? "…" : pvInRange}            color="text-sky-600"     bg="bg-sky-500/5 border-sky-500/20" />
-          <SummaryCard icon={<Phone className="w-5 h-5" />}        label="نقرات واتساب"           value={advLoading ? "…" : waInRange}            color="text-green-600"   bg="bg-green-500/5 border-green-500/20" />
-          <SummaryCard icon={<ExternalLink className="w-5 h-5" />} label="زيارات الحساب"          value={advLoading ? "…" : urlInRange}           color="text-purple-600"  bg="bg-purple-500/5 border-purple-500/20" />
-          <SummaryCard icon={<TrendingUp className="w-5 h-5" />}   label="معدل التحويل"           value={advLoading ? "…" : `${convRate}%`}       color="text-orange-600"  bg="bg-orange-500/5 border-orange-500/20" sub="(واتساب + زيارة) / فتح حساب" />
-          <SummaryCard icon={<BarChart3 className="w-5 h-5" />}    label="متوسط صفحات/جلسة"      value={advLoading ? "…" : (advanced?.avgSessionPages ?? 0)} color="text-teal-600" bg="bg-teal-500/5 border-teal-500/20" />
-          <SummaryCard icon={<Zap className="w-5 h-5" />}          label="نشطون الآن"             value={siteLoading ? "…" : activeNow}           color="text-emerald-600" bg="bg-emerald-500/5 border-emerald-500/20" sub="آخر 5 دقائق" />
+          <SummaryCard icon={<Globe className="w-5 h-5" />}        label="إجمالي الزيارات"       value={advLoading ? "…" : visitsInRange}        color="text-blue-600"    bg="bg-blue-500/5 border-blue-500/20" />
+          <SummaryCard icon={<Users2 className="w-5 h-5" />}       label="زوار فريدون"           value={advLoading ? "…" : uniqueInRange}        color="text-violet-600"  bg="bg-violet-500/5 border-violet-500/20" />
+          <SummaryCard icon={<Eye className="w-5 h-5" />}          label="فتح صفحات الحسابات"    value={advLoading ? "…" : pvInRange}            color="text-sky-600"     bg="bg-sky-500/5 border-sky-500/20" />
+          <SummaryCard icon={<Phone className="w-5 h-5" />}        label="نقرات واتساب"          value={advLoading ? "…" : waInRange}            color="text-green-600"   bg="bg-green-500/5 border-green-500/20" />
+          <SummaryCard icon={<ExternalLink className="w-5 h-5" />} label="زيارات الحساب"         value={advLoading ? "…" : urlInRange}           color="text-purple-600"  bg="bg-purple-500/5 border-purple-500/20" />
+          <SummaryCard icon={<TrendingUp className="w-5 h-5" />}   label="معدل التحويل"          value={advLoading ? "…" : `${convRate}%`}       color="text-orange-600"  bg="bg-orange-500/5 border-orange-500/20" sub="(واتساب + زيارة) / فتح حساب" />
+          <SummaryCard icon={<BarChart3 className="w-5 h-5" />}    label="متوسط صفحات/جلسة"     value={advLoading ? "…" : (advanced?.avgSessionPages ?? 0)} color="text-teal-600" bg="bg-teal-500/5 border-teal-500/20" />
+          <SummaryCard icon={<Zap className="w-5 h-5" />}          label="نشطون الآن"            value={siteLoading ? "…" : activeNow}           color="text-emerald-600" bg="bg-emerald-500/5 border-emerald-500/20" sub="آخر 5 دقائق" />
         </div>
 
-        {/* ── Daily + Hourly Charts ────────────────────────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-          {/* Daily */}
-          <div className="lg:col-span-3 bg-card border rounded-2xl p-5 shadow-sm">
-            <div className="flex items-center gap-2 mb-4">
-              <Activity className="w-4 h-4 text-blue-500" />
-              <span className="text-sm font-semibold">الزيارات اليومية — الفترة المحددة</span>
-            </div>
-            {advLoading ? <Skeleton className="h-44 w-full rounded-lg" /> :
-            (advanced?.dailyChart ?? []).length === 0 ? (
-              <p className="text-center text-muted-foreground text-sm h-44 flex items-center justify-center">لا توجد بيانات للفترة المحددة</p>
-            ) : (
-              <ResponsiveContainer width="100%" height={176}>
-                <AreaChart data={advanced?.dailyChart ?? []} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
-                  <defs>
-                    <linearGradient id="vg" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%"  stopColor="#3b82f6" stopOpacity={0.28} />
-                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="currentColor" strokeOpacity={0.06} />
-                  <XAxis dataKey="date" tickFormatter={formatDateShort} tick={{ fontSize: 10, fill: "currentColor" }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
-                  <YAxis tick={{ fontSize: 10, fill: "currentColor" }} tickLine={false} axisLine={false} allowDecimals={false} />
-                  <ReTooltip contentStyle={{ fontSize: 12, borderRadius: 8, direction: "rtl" }} formatter={(v: number) => [v.toLocaleString("ar-EG"), "زيارة"]} labelFormatter={formatDateShort} />
-                  <Area type="monotone" dataKey="count" stroke="#3b82f6" strokeWidth={2} fill="url(#vg)" dot={false} activeDot={{ r: 4, strokeWidth: 0 }} />
-                </AreaChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-
-          {/* Hourly */}
-          <div className="lg:col-span-2 bg-card border rounded-2xl p-5 shadow-sm">
-            <div className="flex items-center gap-2 mb-4">
-              <Clock className="w-4 h-4 text-violet-500" />
-              <span className="text-sm font-semibold">توزيع الزيارات بالساعة</span>
-            </div>
-            {advLoading ? <Skeleton className="h-44 w-full rounded-lg" /> : (
-              <ResponsiveContainer width="100%" height={176}>
-                <BarChart data={advanced?.hourlyChart ?? []} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="currentColor" strokeOpacity={0.06} />
-                  <XAxis dataKey="hour" tick={{ fontSize: 9, fill: "currentColor" }} tickLine={false} axisLine={false}
-                    tickFormatter={h => h % 6 === 0 ? `${h}:00` : ""} />
-                  <YAxis tick={{ fontSize: 9, fill: "currentColor" }} tickLine={false} axisLine={false} allowDecimals={false} />
-                  <ReTooltip contentStyle={{ fontSize: 12, borderRadius: 8, direction: "rtl" }}
-                    formatter={(v: number) => [v.toLocaleString("ar-EG"), "زيارة"]}
-                    labelFormatter={(h: number) => `الساعة ${h}:00`} />
-                  <Bar dataKey="count" fill="#8b5cf6" radius={[3, 3, 0, 0]} maxBarSize={20} />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        </div>
-
-        {/* ── Heatmap ─────────────────────────────────────────────────── */}
-        <div className="bg-card border rounded-2xl p-5 shadow-sm">
-          <div className="flex items-center gap-2 mb-4">
-            <Calendar className="w-4 h-4 text-blue-500" />
-            <span className="text-sm font-semibold">خريطة النشاط — أيام وساعات</span>
-          </div>
-          {advLoading ? <Skeleton className="h-36 w-full rounded-lg" /> : (
-            <Heatmap data={advanced?.heatmap ?? []} />
-          )}
-        </div>
-
-        {/* ── Sources / Devices / Browsers ────────────────────────────── */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {/* Sources */}
-          <Panel title="مصادر الزيارات" icon={<Globe className="w-4 h-4" />}>
-            {advLoading ? <Skeleton className="h-32 w-full" /> : (
-              <div className="space-y-2">
-                {(advanced?.sources ?? []).slice(0, 8).map(s => (
-                  <div key={s.source}>
-                    <div className="flex justify-between text-xs mb-0.5">
-                      <span className="font-medium">{s.source}</span>
-                    </div>
-                    <MiniBar value={s.count} max={advanced?.sources[0]?.count ?? 1} color="bg-blue-500" />
-                  </div>
-                ))}
-                {!advanced?.sources.length && <p className="text-sm text-muted-foreground text-center py-4">لا توجد بيانات</p>}
-              </div>
-            )}
-          </Panel>
-
-          {/* Devices */}
-          <Panel title="توزيع الأجهزة" icon={<Smartphone className="w-4 h-4" />}>
-            {advLoading ? <Skeleton className="h-32 w-full" /> : (
-              <div className="space-y-3">
-                {(advanced?.devices ?? []).map(d => {
-                  const Icon = d.type === "هاتف" ? Smartphone : d.type === "لوحي" ? Tablet : Monitor;
-                  const total = (advanced?.devices ?? []).reduce((s, x) => s + x.count, 0);
-                  const pct   = total > 0 ? Math.round((d.count / total) * 100) : 0;
-                  return (
-                    <div key={d.type} className="flex items-center gap-3">
-                      <Icon className="w-4 h-4 text-muted-foreground shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex justify-between text-xs mb-0.5">
-                          <span className="font-medium">{d.type}</span>
-                          <span className="text-muted-foreground">{pct}%</span>
-                        </div>
-                        <MiniBar value={d.count} max={advanced?.devices[0]?.count ?? 1} color="bg-violet-500" />
-                      </div>
-                    </div>
-                  );
-                })}
-                {!advanced?.devices.length && <p className="text-sm text-muted-foreground text-center py-4">لا توجد بيانات</p>}
-              </div>
-            )}
-          </Panel>
-
-          {/* Browsers */}
-          <Panel title="المتصفحات" icon={<MousePointer2 className="w-4 h-4" />}>
-            {advLoading ? <Skeleton className="h-32 w-full" /> : (
-              <div className="space-y-2">
-                {(advanced?.browsers ?? []).slice(0, 6).map(b => (
-                  <div key={b.name}>
-                    <div className="flex justify-between text-xs mb-0.5">
-                      <span className="font-medium">{b.name}</span>
-                    </div>
-                    <MiniBar value={b.count} max={advanced?.browsers[0]?.count ?? 1} color="bg-teal-500" />
-                  </div>
-                ))}
-                {!advanced?.browsers.length && <p className="text-sm text-muted-foreground text-center py-4">لا توجد بيانات</p>}
-              </div>
-            )}
-          </Panel>
-        </div>
-
-        {/* ── Platform + Buttons ──────────────────────────────────────── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* ── Platform breakdown ──────────────────────────────────────── */}
+        {platformFilter === "all" && (
           <Panel title="أكثر المنصات مشاهدة" icon={<SiTiktok className="w-4 h-4" />}>
             {advLoading ? <Skeleton className="h-24 w-full" /> : (
               <div className="space-y-2">
@@ -712,27 +421,11 @@ export default function AdminStats() {
                     </div>
                   </div>
                 ))}
-                {!advanced?.platforms.length && <p className="text-sm text-muted-foreground text-center py-4">لا توجد بيانات بعد</p>}
+                {!(advanced?.platforms?.length) && <p className="text-sm text-muted-foreground text-center py-4">لا توجد بيانات للفترة المحددة</p>}
               </div>
             )}
           </Panel>
-
-          <Panel title="أكثر الأزرار استخداماً" icon={<MousePointer2 className="w-4 h-4" />}>
-            {advLoading ? <Skeleton className="h-24 w-full" /> : (
-              <div className="space-y-2">
-                {(advanced?.buttonClicks ?? []).map(b => (
-                  <div key={b.button}>
-                    <div className="flex justify-between text-xs mb-0.5">
-                      <span className="font-medium">{b.label}</span>
-                    </div>
-                    <MiniBar value={b.count} max={advanced?.buttonClicks[0]?.count ?? 1} color="bg-orange-500" />
-                  </div>
-                ))}
-                {!advanced?.buttonClicks.length && <p className="text-sm text-muted-foreground text-center py-4">لا توجد بيانات بعد</p>}
-              </div>
-            )}
-          </Panel>
-        </div>
+        )}
 
         {/* ── Top Lists ───────────────────────────────────────────────── */}
         <div>
@@ -740,30 +433,14 @@ export default function AdminStats() {
             <TrendingUp className="w-4 h-4 text-primary" /> أكثر الحسابات تفاعلاً
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <TopList title="أكثر مشاهدة"          icon={<Eye className="w-4 h-4" />}          items={adminDetail?.topByPageViews ?? []}       emptyMsg="لا توجد بيانات" onSelect={setSelectedId} />
-            <TopList title="أكثر نقرات واتساب"    icon={<Phone className="w-4 h-4" />}         items={adminDetail?.topByWhatsapp ?? []}         emptyMsg="لا توجد بيانات" onSelect={setSelectedId} />
-            <TopList title="أكثر نقرات زيارة"    icon={<ExternalLink className="w-4 h-4" />}  items={adminDetail?.topByAccountUrlClick ?? []}  emptyMsg="لا توجد بيانات" onSelect={setSelectedId} />
+            <TopList title="أكثر مشاهدة"       icon={<Eye className="w-4 h-4" />}          items={adminDetail?.topByPageViews ?? []}       emptyMsg="لا توجد بيانات" onSelect={setSelectedId} />
+            <TopList title="أكثر نقرات واتساب"  icon={<Phone className="w-4 h-4" />}         items={adminDetail?.topByWhatsapp ?? []}         emptyMsg="لا توجد بيانات" onSelect={setSelectedId} />
+            <TopList title="أكثر نقرات زيارة"  icon={<ExternalLink className="w-4 h-4" />}  items={adminDetail?.topByAccountUrlClick ?? []}  emptyMsg="لا توجد بيانات" onSelect={setSelectedId} />
           </div>
         </div>
 
-        {/* ── Top Pages ───────────────────────────────────────────────── */}
-        <Panel title="أكثر الصفحات زيارة" icon={<Eye className="w-4 h-4" />}>
-          {advLoading ? <Skeleton className="h-24 w-full" /> : (
-            <div className="space-y-2">
-              {(advanced?.topPages ?? []).slice(0, 8).map(p => (
-                <div key={p.page} className="flex items-center gap-3 text-xs">
-                  <span className="flex-1 min-w-0 font-medium truncate">{pageLabel(p.page)}</span>
-                  <MiniBar value={p.count} max={advanced!.topPages[0]?.count ?? 1} color="bg-blue-400" />
-                </div>
-              ))}
-              {!(advanced?.topPages?.length) && <p className="text-sm text-muted-foreground text-center py-4">لا توجد بيانات للفترة المحددة</p>}
-            </div>
-          )}
-        </Panel>
-
         {/* ── Account Engagement Table ─────────────────────────────────── */}
         <div className="bg-card border rounded-2xl shadow-sm overflow-hidden">
-          {/* Table header */}
           <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b bg-muted/30">
             <div className="flex items-center gap-2">
               <BarChart2 className="w-4 h-4 text-muted-foreground" />
@@ -796,7 +473,11 @@ export default function AdminStats() {
                       { key: "conversionRate", label: "تحويل %" },
                       { key: "followers",      label: "متابعون" },
                     ] as { key: SortKey; label: string }[]).map(col => (
-                      <th key={col.key} className="text-center px-3 py-3 font-semibold cursor-pointer hover:text-foreground transition-colors" onClick={() => handleSort(col.key)}>
+                      <th
+                        key={col.key}
+                        className="text-center px-3 py-3 font-semibold cursor-pointer hover:text-foreground transition-colors"
+                        onClick={() => handleSort(col.key)}
+                      >
                         <div className="flex items-center justify-center gap-1">
                           {col.label}
                           <SortIcon active={sortBy === col.key} dir={sortDir} />
@@ -837,7 +518,11 @@ export default function AdminStats() {
                         </span>
                       </td>
                       <td className="text-center px-3 py-3 text-xs text-muted-foreground">
-                        {(row.followers >= 1_000_000 ? `${(row.followers / 1_000_000).toFixed(1)}M` : row.followers >= 1000 ? `${Math.round(row.followers / 1000)}K` : String(row.followers))}
+                        {row.followers >= 1_000_000
+                          ? `${(row.followers / 1_000_000).toFixed(1)}M`
+                          : row.followers >= 1000
+                          ? `${Math.round(row.followers / 1000)}K`
+                          : String(row.followers)}
                       </td>
                       <td className="text-center px-3 py-3 text-[10px] text-muted-foreground">
                         {row.lastActivity ? formatRelTime(row.lastActivity) : "—"}
@@ -854,7 +539,6 @@ export default function AdminStats() {
             </div>
           )}
 
-          {/* Pagination */}
           {totalPages > 1 && (
             <div className="flex items-center justify-between px-5 py-3 border-t bg-muted/10">
               <span className="text-xs text-muted-foreground">
@@ -873,65 +557,6 @@ export default function AdminStats() {
               </div>
             </div>
           )}
-        </div>
-
-        {/* ── User Journeys ────────────────────────────────────────────── */}
-        <div className="bg-card border rounded-2xl shadow-sm overflow-hidden">
-          <div className="flex items-center gap-2 px-5 py-4 border-b bg-muted/30">
-            <Route className="w-4 h-4 text-muted-foreground" />
-            <h3 className="font-bold text-sm">مسار المستخدم — آخر الجلسات</h3>
-          </div>
-          <div className="divide-y">
-            {advLoading ? (
-              <div className="p-5 space-y-3">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-12 w-full rounded" />)}</div>
-            ) : !(advanced?.journeys?.length) ? (
-              <p className="text-center text-muted-foreground text-sm py-8">لا توجد جلسات مسجّلة بعد</p>
-            ) : (advanced.journeys as JourneyItem[]).map((j, i) => (
-              <div key={i} className="px-5 py-3">
-                <button
-                  onClick={() => setExpandedJourney(expandedJourney === j.sessionId ? null : j.sessionId)}
-                  className="w-full flex items-center justify-between gap-3 text-right"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className="text-[10px] font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded shrink-0">{j.sessionId}</span>
-                    <span className="text-xs text-muted-foreground">{j.device} · {j.source} · {j.pageCount} صفحة</span>
-                    <span className="text-[10px] text-muted-foreground">{formatRelTime(j.startTime)}</span>
-                  </div>
-                  <ChevronDown className={`w-4 h-4 text-muted-foreground shrink-0 transition-transform ${expandedJourney === j.sessionId ? "rotate-180" : ""}`} />
-                </button>
-                {expandedJourney === j.sessionId && (
-                  <div className="mt-3 flex items-center gap-0 flex-wrap">
-                    {j.pages.map((p, pi) => (
-                      <div key={pi} className="flex items-center gap-0">
-                        <span className="text-[11px] bg-primary/10 text-primary px-2 py-1 rounded-lg font-medium">{pageLabel(p.page)}</span>
-                        {pi < j.pages.length - 1 && <ChevronLeft className="w-3 h-3 text-muted-foreground mx-1" />}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* ── Activity Feed ────────────────────────────────────────────── */}
-        <div className="bg-card border rounded-2xl shadow-sm overflow-hidden">
-          <div className="flex items-center gap-2 px-5 py-4 border-b bg-muted/30">
-            <span className="relative flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
-            </span>
-            <h3 className="font-bold text-sm">آخر النشاطات — Real-Time</h3>
-          </div>
-          <div className="divide-y max-h-96 overflow-y-auto px-5">
-            {advLoading ? (
-              <div className="py-5 space-y-3">{[...Array(6)].map((_, i) => <Skeleton key={i} className="h-10 w-full rounded" />)}</div>
-            ) : !(advanced?.recentActivity?.length) ? (
-              <p className="text-center text-muted-foreground text-sm py-8">لا توجد نشاطات بعد</p>
-            ) : (advanced.recentActivity as ActivityItem[]).map(item => (
-              <ActivityRow key={item.id} item={item} />
-            ))}
-          </div>
         </div>
 
       </div>
@@ -960,7 +585,6 @@ export default function AdminStats() {
             <div className="space-y-3 py-4">{[...Array(4)].map((_, i) => <Skeleton key={i} className="h-12 w-full rounded" />)}</div>
           ) : detail ? (
             <div className="space-y-4">
-              {/* Stat cards */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-blue-500/8 border border-blue-500/20 rounded-xl p-3 text-center">
                   <p className="text-2xl font-black text-blue-600">{detail.pageViews.toLocaleString("ar-EG")}</p>
@@ -984,6 +608,7 @@ export default function AdminStats() {
                 <span className="text-muted-foreground">معدل التحويل</span>
                 <span className="font-black text-lg">{detail.conversionRate}%</span>
               </div>
+
               {detail.lastSeen && (
                 <div className="flex items-center justify-between px-4 py-2 text-xs text-muted-foreground border rounded-xl">
                   <span>آخر زيارة</span>
@@ -991,7 +616,6 @@ export default function AdminStats() {
                 </div>
               )}
 
-              {/* Mini daily chart */}
               {detail.dailyChart.some(d => d.views > 0 || d.clicks > 0) && (
                 <div>
                   <p className="text-xs font-semibold text-muted-foreground mb-2">النشاط اليومي — آخر 30 يوم</p>
