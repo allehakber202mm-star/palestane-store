@@ -32,14 +32,28 @@ export function WhatsAppButton() {
         }
         .wa-btn { animation: wa-pulse 3.5s ease-out infinite; }
         .wa-btn:hover { animation: none; }
+
+        /* Desktop */
+        .wa-wrap {
+          position: fixed;
+          z-index: 9999;
+          right: 20px;
+          bottom: 20px;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+        /* Mobile — يرتفع فوق شريط المتصفح */
+        @media (max-width: 767px) {
+          .wa-wrap {
+            right: max(10px, env(safe-area-inset-right));
+            bottom: calc(90px + env(safe-area-inset-bottom));
+          }
+        }
       `}</style>
 
       <div
-        className="fixed z-50 flex items-center gap-3"
-        style={{
-          bottom: "max(18px, env(safe-area-inset-bottom, 18px))",
-          right:  "max(8px,  env(safe-area-inset-right,  8px))",
-        }}
+        className="wa-wrap"
         onMouseEnter={() => setShowTooltip(true)}
         onMouseLeave={() => setShowTooltip(false)}
       >
