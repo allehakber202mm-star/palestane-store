@@ -35,23 +35,27 @@ export function WhatsAppButton() {
       `}</style>
 
       <div
-        className="fixed bottom-5 right-5 z-50 flex flex-col items-end gap-2"
+        className="fixed z-50 flex items-center gap-3"
+        style={{
+          bottom: "max(18px, env(safe-area-inset-bottom, 18px))",
+          right:  "max(8px,  env(safe-area-inset-right,  8px))",
+        }}
         onMouseEnter={() => setShowTooltip(true)}
         onMouseLeave={() => setShowTooltip(false)}
       >
-        {/* Tooltip */}
+        {/* Tooltip — يظهر على يسار الزر */}
         <div
           className={`
             bg-gray-900/90 text-white text-xs font-medium px-3 py-1.5 rounded-lg
-            whitespace-nowrap shadow-lg backdrop-blur-sm
-            transition-all duration-200 origin-bottom-right
-            ${showTooltip ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-1 scale-95 pointer-events-none"}
+            whitespace-nowrap shadow-lg backdrop-blur-sm relative
+            transition-all duration-200 origin-right
+            ${showTooltip ? "opacity-100 translate-x-0 scale-100" : "opacity-0 translate-x-2 scale-95 pointer-events-none"}
           `}
           style={{ direction: "rtl" }}
         >
           تواصل معنا عبر واتساب
-          {/* Arrow */}
-          <span className="absolute -bottom-1.5 right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-900/90" />
+          {/* Arrow pointing right toward button */}
+          <span className="absolute top-1/2 -translate-y-1/2 -right-1.5 w-0 h-0 border-t-4 border-b-4 border-l-4 border-t-transparent border-b-transparent border-l-gray-900/90" />
         </div>
 
         {/* Button */}
