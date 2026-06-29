@@ -36,7 +36,7 @@ export function WhatsAppButton() {
         .wa-wrap {
           position: fixed;
           z-index: 50;
-          right: 8px;
+          left: 8px;
           bottom: 24px;
           display: flex;
           flex-direction: column;
