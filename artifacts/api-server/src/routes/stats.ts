@@ -243,24 +243,42 @@ router.post("/whatsapp-click", async (_req, res) => {
 });
 
 // ── Detailed admin stats ─────────────────────────────────────────────────────
-router.get("/admin-detail", requireAuth, async (_req, res) => {
-  const counts = await db
-    .select({ eventType: statsTable.eventType, count: sql<number>`count(*)::int` })
-    .from(statsTable)
-    .groupBy(statsTable.eventType);
+router.get("/admin-detail", requireAuth, async (req, res) => {
+  const now = new Date();
+  const fromParam     = req.query.from     as string | undefined;
+  const toParam       = req.query.to       as string | undefined;
+  const platformParam = req.query.platform as string | undefined;
+  const from = fromParam ? new Date(fromParam) : new Date(0);
+  const to   = toParam   ? new Date(toParam)   : now;
+  const hasPlatform = !!platformParam && platformParam !== "all";
 
-  const totals: Record<string, number> = {};
-  for (const row of counts) totals[row.eventType] = Number(row.count);
-
-  async function topByEvent(eventType: string, limit = 10) {
-    const rows = await db
-      .select({ accountId: statsTable.accountId, count: sql<number>`count(*)::int` })
-      .from(statsTable)
-      .where(and(eq(statsTable.eventType, eventType), isNotNull(statsTable.accountId)))
-      .groupBy(statsTable.accountId)
-      .orderBy(desc(sql`count(*)`))
-      .limit(limit);
-    return rows.filter(r => r.accountId != null) as { accountId: number; count: number }[];
+  async function topByEvent(eventType: string, limit = 10): Promise<{ accountId: number; count: number }[]> {
+    const baseWhere = and(
+      eq(statsTable.eventType, eventType),
+      isNotNull(statsTable.accountId),
+      gte(statsTable.createdAt, from),
+      lt(statsTable.createdAt, to),
+    );
+    if (hasPlatform) {
+      const rows = await db
+        .select({ accountId: statsTable.accountId, count: sql<number>`count(*)::int` })
+        .from(statsTable)
+        .innerJoin(accountsTable, eq(statsTable.accountId, accountsTable.id))
+        .where(and(baseWhere, eq(accountsTable.platform, platformParam!)))
+        .groupBy(statsTable.accountId)
+        .orderBy(desc(sql`count(*)`))
+        .limit(limit);
+      return rows.filter(r => r.accountId != null) as { accountId: number; count: number }[];
+    } else {
+      const rows = await db
+        .select({ accountId: statsTable.accountId, count: sql<number>`count(*)::int` })
+        .from(statsTable)
+        .where(baseWhere)
+        .groupBy(statsTable.accountId)
+        .orderBy(desc(sql`count(*)`))
+        .limit(limit);
+      return rows.filter(r => r.accountId != null) as { accountId: number; count: number }[];
+    }
   }
 
   const [pvTop, waTop, urlTop] = await Promise.all([
@@ -286,11 +304,6 @@ router.get("/admin-detail", requireAuth, async (_req, res) => {
     items.map(r => ({ ...accMap[r.accountId], count: Number(r.count) })).filter(r => r.id);
 
   res.json({
-    totals: {
-      pageViews:        Number(totals["page_view"] ?? 0),
-      whatsappClicks:   Number(totals["whatsapp_click"] ?? 0),
-      accountUrlClicks: Number(totals["account_url_click"] ?? 0),
-    },
     topByPageViews:       enrich(pvTop),
     topByWhatsapp:        enrich(waTop),
     topByAccountUrlClick: enrich(urlTop),
@@ -299,13 +312,53 @@ router.get("/admin-detail", requireAuth, async (_req, res) => {
 
 // ── Advanced analytics (admin only) ──────────────────────────────────────────
 router.get("/advanced", requireAuth, async (req, res) => {
-  const now      = new Date();
-  const fromParam = req.query.from as string | undefined;
-  const toParam   = req.query.to   as string | undefined;
+  const now           = new Date();
+  const fromParam     = req.query.from     as string | undefined;
+  const toParam       = req.query.to       as string | undefined;
+  const platformParam = req.query.platform as string | undefined;
   const from = fromParam ? new Date(fromParam) : new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
   const to   = toParam   ? new Date(toParam)   : now;
+  const hasPlatform = !!platformParam && platformParam !== "all";
 
-  // Fetch site visits in range (cap at 5000 for performance)
+  const siteWhere = and(gte(siteVisitsTable.createdAt, from), lt(siteVisitsTable.createdAt, to));
+
+  // ── Visit totals (site_visits, date-filtered — platform not applicable here)
+  const [visitTotals] = await db
+    .select({
+      visitCount:     sql<number>`count(*)::int`,
+      uniqueVisitors: sql<number>`count(distinct ${siteVisitsTable.visitorId})::int`,
+    })
+    .from(siteVisitsTable)
+    .where(siteWhere);
+
+  // ── Daily chart (generate_series so every day shows even if 0 visits)
+  const dailyRows = await db.execute<{ date: string; count: number }>(sql`
+    SELECT
+      to_char(gs.day, 'YYYY-MM-DD') AS date,
+      COALESCE(COUNT(sv.id), 0)::int AS count
+    FROM generate_series(
+      date_trunc('day', ${from}::timestamptz AT TIME ZONE 'UTC'),
+      date_trunc('day', ${to}::timestamptz   AT TIME ZONE 'UTC'),
+      INTERVAL '1 day'
+    ) AS gs(day)
+    LEFT JOIN site_visits sv
+      ON date_trunc('day', sv.created_at AT TIME ZONE 'UTC') = gs.day
+      AND sv.created_at >= ${from} AND sv.created_at < ${to}
+    GROUP BY gs.day
+    ORDER BY gs.day
+    LIMIT 90
+  `);
+
+  // ── Top pages
+  const topPagesRows = await db
+    .select({ page: siteVisitsTable.page, count: sql<number>`count(*)::int` })
+    .from(siteVisitsTable)
+    .where(siteWhere)
+    .groupBy(siteVisitsTable.page)
+    .orderBy(desc(sql`count(*)`))
+    .limit(10);
+
+  // ── Fetch site visits for device/browser/source aggregation (cap 5000)
   const visits = await db
     .select({
       userAgent: siteVisitsTable.userAgent,
@@ -315,10 +368,9 @@ router.get("/advanced", requireAuth, async (req, res) => {
       createdAt: siteVisitsTable.createdAt,
     })
     .from(siteVisitsTable)
-    .where(and(gte(siteVisitsTable.createdAt, from), lt(siteVisitsTable.createdAt, to)))
+    .where(siteWhere)
     .limit(5000);
 
-  // Aggregate devices, browsers, sources
   const deviceCounts:  Record<string, number> = {};
   const browserCounts: Record<string, number> = {};
   const sourceCounts:  Record<string, number> = {};
@@ -332,7 +384,7 @@ router.get("/advanced", requireAuth, async (req, res) => {
     sourceCounts[source]   = (sourceCounts[source]   ?? 0) + 1;
   }
 
-  // Hourly chart
+  // ── Hourly chart (site_visits, date-only)
   const hourlyRows = await db.execute<{ hour: string; count: string }>(sql`
     SELECT EXTRACT(HOUR FROM created_at AT TIME ZONE 'UTC')::int AS hour,
            COUNT(*)::int AS count
@@ -344,7 +396,7 @@ router.get("/advanced", requireAuth, async (req, res) => {
   for (const r of hourlyRows.rows) hourlyMap[Number(r.hour)] = Number(r.count);
   const hourlyChart = Array.from({ length: 24 }, (_, h) => ({ hour: h, count: hourlyMap[h] ?? 0 }));
 
-  // Heatmap (day 0=Sun...6=Sat × hour 0-23)
+  // ── Heatmap (site_visits, date-only)
   const heatmapRows = await db.execute<{ day: string; hour: string; count: string }>(sql`
     SELECT EXTRACT(DOW  FROM created_at AT TIME ZONE 'UTC')::int AS day,
            EXTRACT(HOUR FROM created_at AT TIME ZONE 'UTC')::int AS hour,
@@ -354,50 +406,79 @@ router.get("/advanced", requireAuth, async (req, res) => {
     GROUP BY 1, 2 ORDER BY 1, 2
   `);
 
-  // Button clicks
-  const statEventRows = await db
-    .select({ eventType: statsTable.eventType, count: sql<number>`count(*)::int` })
-    .from(statsTable)
-    .where(and(gte(statsTable.createdAt, from), lt(statsTable.createdAt, to)))
-    .groupBy(statsTable.eventType);
+  // ── Button clicks (filtered by platform when provided)
+  const statDateWhere = and(gte(statsTable.createdAt, from), lt(statsTable.createdAt, to));
+  let statEventRows: { eventType: string; count: number }[];
+  if (hasPlatform) {
+    statEventRows = await db
+      .select({ eventType: statsTable.eventType, count: sql<number>`count(*)::int` })
+      .from(statsTable)
+      .innerJoin(accountsTable, eq(statsTable.accountId, accountsTable.id))
+      .where(and(statDateWhere, eq(accountsTable.platform, platformParam!)))
+      .groupBy(statsTable.eventType);
+  } else {
+    statEventRows = await db
+      .select({ eventType: statsTable.eventType, count: sql<number>`count(*)::int` })
+      .from(statsTable)
+      .where(statDateWhere)
+      .groupBy(statsTable.eventType);
+  }
 
   const BUTTON_LABELS: Record<string, string> = {
-    page_view:        "فتح صفحة حساب",
-    whatsapp_click:   "ضغط واتساب",
-    account_url_click:"زيارة الحساب",
+    page_view:         "فتح صفحة حساب",
+    whatsapp_click:    "ضغط واتساب",
+    account_url_click: "زيارة الحساب",
   };
   const buttonClicks = statEventRows
     .map(r => ({ button: r.eventType, label: BUTTON_LABELS[r.eventType] ?? r.eventType, count: Number(r.count) }))
     .sort((a, b) => b.count - a.count);
 
-  // Platform breakdown from page_view events joined with accounts
-  const platformRows = await db.execute<{ platform: string; count: string }>(sql`
-    SELECT a.platform, COUNT(*)::int AS count
-    FROM stats s
-    JOIN accounts a ON a.id = s.account_id
-    WHERE s.event_type = 'page_view'
-      AND s.created_at >= ${from} AND s.created_at < ${to}
-    GROUP BY a.platform ORDER BY count DESC
-  `);
+  // Derived summary counts (filtered by platform)
+  const pvCount  = buttonClicks.find(b => b.button === "page_view")?.count         ?? 0;
+  const waCount  = buttonClicks.find(b => b.button === "whatsapp_click")?.count     ?? 0;
+  const urlCount = buttonClicks.find(b => b.button === "account_url_click")?.count  ?? 0;
 
-  // Recent activity
+  // ── Platform breakdown from page_view events
+  let platformRows: { platform: string; count: string }[];
+  if (hasPlatform) {
+    platformRows = [];
+  } else {
+    const r = await db.execute<{ platform: string; count: string }>(sql`
+      SELECT a.platform, COUNT(*)::int AS count
+      FROM stats s
+      JOIN accounts a ON a.id = s.account_id
+      WHERE s.event_type = 'page_view'
+        AND s.created_at >= ${from} AND s.created_at < ${to}
+      GROUP BY a.platform ORDER BY count DESC
+    `);
+    platformRows = r.rows;
+  }
+
+  // ── Recent activity
   const recentVisits = await db
-    .select({
-      id: siteVisitsTable.id, page: siteVisitsTable.page,
-      createdAt: siteVisitsTable.createdAt,
-      userAgent: siteVisitsTable.userAgent, referrer: siteVisitsTable.referrer,
-    })
+    .select({ id: siteVisitsTable.id, page: siteVisitsTable.page, createdAt: siteVisitsTable.createdAt, userAgent: siteVisitsTable.userAgent, referrer: siteVisitsTable.referrer })
     .from(siteVisitsTable)
-    .where(gte(siteVisitsTable.createdAt, from))
+    .where(siteWhere)
     .orderBy(desc(siteVisitsTable.createdAt))
     .limit(20);
 
-  const recentStats = await db
-    .select({ id: statsTable.id, eventType: statsTable.eventType, accountId: statsTable.accountId, createdAt: statsTable.createdAt })
-    .from(statsTable)
-    .where(and(gte(statsTable.createdAt, from), isNotNull(statsTable.accountId)))
-    .orderBy(desc(statsTable.createdAt))
-    .limit(20);
+  let recentStats;
+  if (hasPlatform) {
+    recentStats = await db
+      .select({ id: statsTable.id, eventType: statsTable.eventType, accountId: statsTable.accountId, createdAt: statsTable.createdAt })
+      .from(statsTable)
+      .innerJoin(accountsTable, eq(statsTable.accountId, accountsTable.id))
+      .where(and(statDateWhere, isNotNull(statsTable.accountId), eq(accountsTable.platform, platformParam!)))
+      .orderBy(desc(statsTable.createdAt))
+      .limit(20);
+  } else {
+    recentStats = await db
+      .select({ id: statsTable.id, eventType: statsTable.eventType, accountId: statsTable.accountId, createdAt: statsTable.createdAt })
+      .from(statsTable)
+      .where(and(statDateWhere, isNotNull(statsTable.accountId)))
+      .orderBy(desc(statsTable.createdAt))
+      .limit(20);
+  }
 
   const statAccIds = [...new Set(recentStats.map(r => r.accountId!).filter(Boolean))];
   const statAccNames: Record<number, string> = {};
@@ -426,7 +507,7 @@ router.get("/advanced", requireAuth, async (req, res) => {
     })),
   ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0, 30);
 
-  // User journeys — last 15 sessions
+  // ── User journeys — last 15 sessions
   const sessionRows = await db.execute<{ session_id: string; start_time: string; page_count: string }>(sql`
     SELECT session_id,
            MIN(created_at) AS start_time,
@@ -476,10 +557,17 @@ router.get("/advanced", requireAuth, async (req, res) => {
   res.json({
     from: from.toISOString(),
     to:   to.toISOString(),
+    visitCount:    Number(visitTotals?.visitCount    ?? 0),
+    uniqueVisitors: Number(visitTotals?.uniqueVisitors ?? 0),
+    pageViews:     pvCount,
+    waClicks:      waCount,
+    urlClicks:     urlCount,
+    dailyChart:    dailyRows.rows.map(r => ({ date: String(r.date), count: Number(r.count) })),
+    topPages:      topPagesRows.map(r => ({ page: r.page, count: Number(r.count) })),
     devices:       Object.entries(deviceCounts).map(([type, count]) => ({ type, count })).sort((a, b) => b.count - a.count),
     browsers:      Object.entries(browserCounts).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count),
     sources:       Object.entries(sourceCounts).map(([source, count]) => ({ source, count })).sort((a, b) => b.count - a.count),
-    platforms:     platformRows.rows.map(r => ({ platform: String(r.platform), count: Number(r.count) })),
+    platforms:     platformRows.map(r => ({ platform: String(r.platform), count: Number(r.count) })),
     hourlyChart,
     heatmap:       heatmapRows.rows.map(r => ({ day: Number(r.day), hour: Number(r.hour), count: Number(r.count) })),
     buttonClicks,
@@ -490,7 +578,16 @@ router.get("/advanced", requireAuth, async (req, res) => {
 });
 
 // ── All accounts engagement (admin only) ─────────────────────────────────────
-router.get("/accounts-engagement", requireAuth, async (_req, res) => {
+router.get("/accounts-engagement", requireAuth, async (req, res) => {
+  const now = new Date();
+  const fromParam     = req.query.from     as string | undefined;
+  const toParam       = req.query.to       as string | undefined;
+  const platformParam = req.query.platform as string | undefined;
+  const from = fromParam ? new Date(fromParam) : new Date(0);
+  const to   = toParam   ? new Date(toParam)   : now;
+  const hasPlatform = !!platformParam && platformParam !== "all";
+
+  const accWhere = hasPlatform ? eq(accountsTable.platform, platformParam!) : undefined;
   const accounts = await db
     .select({
       id: accountsTable.id, name: accountsTable.name, platform: accountsTable.platform,
@@ -498,13 +595,14 @@ router.get("/accounts-engagement", requireAuth, async (_req, res) => {
       followers: accountsTable.followers, price: accountsTable.price,
     })
     .from(accountsTable)
+    .where(accWhere)
     .orderBy(desc(accountsTable.createdAt));
 
   if (!accounts.length) { res.json([]); return; }
 
   const ids = accounts.map(a => a.id);
 
-  // Get stats counts per account per event type
+  // Stats counts per account filtered by date range
   const statRows = await db
     .select({
       accountId: statsTable.accountId,
@@ -512,14 +610,20 @@ router.get("/accounts-engagement", requireAuth, async (_req, res) => {
       count: sql<number>`count(*)::int`,
     })
     .from(statsTable)
-    .where(and(isNotNull(statsTable.accountId), inArray(statsTable.accountId, ids)))
+    .where(and(
+      isNotNull(statsTable.accountId),
+      inArray(statsTable.accountId, ids),
+      gte(statsTable.createdAt, from),
+      lt(statsTable.createdAt, to),
+    ))
     .groupBy(statsTable.accountId, statsTable.eventType);
 
-  // Get last activity per account
+  // Last activity per account (also date-filtered)
   const lastActivityRows = await db.execute<{ account_id: number; last_at: string }>(sql`
     SELECT account_id, MAX(created_at) AS last_at
     FROM stats
     WHERE account_id IS NOT NULL
+      AND created_at >= ${from} AND created_at < ${to}
     GROUP BY account_id
   `);
   const lastMap: Record<number, string> = {};

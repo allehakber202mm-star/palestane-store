@@ -103,15 +103,22 @@ type JourneyItem = {
 };
 
 type AdvancedData = {
-  devices:       { type: string; count: number }[];
-  browsers:      { name: string; count: number }[];
-  sources:       { source: string; count: number }[];
-  platforms:     { platform: string; count: number }[];
-  hourlyChart:   { hour: number; count: number }[];
-  heatmap:       { day: number; hour: number; count: number }[];
-  buttonClicks:  { button: string; label: string; count: number }[];
+  visitCount:     number;
+  uniqueVisitors: number;
+  pageViews:      number;
+  waClicks:       number;
+  urlClicks:      number;
+  dailyChart:     { date: string; count: number }[];
+  topPages:       { page: string; count: number }[];
+  devices:        { type: string; count: number }[];
+  browsers:       { name: string; count: number }[];
+  sources:        { source: string; count: number }[];
+  platforms:      { platform: string; count: number }[];
+  hourlyChart:    { hour: number; count: number }[];
+  heatmap:        { day: number; hour: number; count: number }[];
+  buttonClicks:   { button: string; label: string; count: number }[];
   recentActivity: ActivityItem[];
-  journeys:      JourneyItem[];
+  journeys:       JourneyItem[];
   avgSessionPages: number;
 };
 
@@ -362,29 +369,43 @@ export default function AdminStats() {
   // ── Fetch advanced ──
   const fetchAdvanced = useCallback(() => {
     setAdvLoading(true);
-    fetch(`${BASE}/api/stats/advanced?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, {
-      headers: authHeader(),
-    })
+    const params = new URLSearchParams({
+      from:     from,
+      to:       to,
+      platform: platformFilter,
+    });
+    fetch(`${BASE}/api/stats/advanced?${params}`, { headers: authHeader() })
       .then(r => r.json() as Promise<AdvancedData>)
       .then(d => { setAdvanced(d); setAdvLoading(false); })
       .catch(() => setAdvLoading(false));
-  }, [from, to]);
+  }, [from, to, platformFilter]);
 
   // ── Fetch engagement ──
   const fetchEngagement = useCallback(() => {
-    fetch(`${BASE}/api/stats/accounts-engagement`, { headers: authHeader() })
+    setEngLoading(true);
+    const params = new URLSearchParams({
+      from:     from,
+      to:       to,
+      platform: platformFilter,
+    });
+    fetch(`${BASE}/api/stats/accounts-engagement?${params}`, { headers: authHeader() })
       .then(r => r.json() as Promise<EngagementRow[]>)
       .then(d => { setEngagement(d); setEngLoading(false); })
       .catch(() => setEngLoading(false));
-  }, []);
+  }, [from, to, platformFilter]);
 
   // ── Fetch admin detail (top lists) ──
   const fetchAdminDetail = useCallback(() => {
-    fetch(`${BASE}/api/stats/admin-detail`, { headers: authHeader() })
+    const params = new URLSearchParams({
+      from:     from,
+      to:       to,
+      platform: platformFilter,
+    });
+    fetch(`${BASE}/api/stats/admin-detail?${params}`, { headers: authHeader() })
       .then(r => r.json() as Promise<AdminDetailData>)
       .then(setAdminDetail)
       .catch(() => {});
-  }, []);
+  }, [from, to, platformFilter]);
 
   // ── Initial + refresh every 30s ──
   useEffect(() => {
@@ -409,22 +430,17 @@ export default function AdminStats() {
       .catch(() => setDetailLoading(false));
   }, [selectedId]);
 
-  // ── Summary card values ──
-  const visitsInRange =
-    timeRange === "today" ? (siteOverview?.today ?? 0)
-    : timeRange === "7d"  ? (siteOverview?.last7days ?? 0)
-    : timeRange === "30d" ? (siteOverview?.last30days ?? 0)
-    : (siteOverview?.total ?? 0);
+  // ── Summary card values (all from advanced, filtered by from/to/platform) ──
+  const visitsInRange  = advanced?.visitCount      ?? 0;
+  const uniqueInRange  = advanced?.uniqueVisitors  ?? 0;
+  const pvInRange      = advanced?.pageViews        ?? 0;
+  const waInRange      = advanced?.waClicks         ?? 0;
+  const urlInRange     = advanced?.urlClicks        ?? 0;
+  const convRate       = pvInRange > 0 ? Math.round(((waInRange + urlInRange) / pvInRange) * 100) : 0;
 
-  const waInRange  = advanced?.buttonClicks.find(b => b.button === "whatsapp_click")?.count    ?? 0;
-  const urlInRange = advanced?.buttonClicks.find(b => b.button === "account_url_click")?.count  ?? 0;
-  const pvInRange  = advanced?.buttonClicks.find(b => b.button === "page_view")?.count          ?? 0;
-  const convRate   = pvInRange > 0 ? Math.round(((waInRange + urlInRange) / pvInRange) * 100) : 0;
-
-  // ── Table filtering / sorting / pagination ──
+  // ── Table filtering / sorting / pagination (platform already filtered server-side) ──
   const filteredRows = useMemo(() => {
     let rows = [...engagement];
-    if (platformFilter !== "all") rows = rows.filter(r => r.platform === platformFilter);
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       rows = rows.filter(r => r.name.toLowerCase().includes(q));
@@ -438,7 +454,7 @@ export default function AdminStats() {
       return sortDir === "asc" ? (av as number) - (bv as number) : (bv as number) - (av as number);
     });
     return rows;
-  }, [engagement, platformFilter, search, sortBy, sortDir]);
+  }, [engagement, search, sortBy, sortDir]);
 
   const totalPages  = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE));
   const pagedRows   = filteredRows.slice((tablePage - 1) * PAGE_SIZE, tablePage * PAGE_SIZE);
@@ -484,10 +500,10 @@ export default function AdminStats() {
               {activeNow} متصل الآن
             </span>
             <button
-              onClick={() => { fetchAdvanced(); fetchAdminDetail(); void refetchSite(); }}
+              onClick={() => { fetchAdvanced(); fetchAdminDetail(); fetchEngagement(); void refetchSite(); }}
               className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground border rounded-lg px-3 py-1.5 transition-colors hover:bg-muted/40"
             >
-              <RefreshCw className="w-3.5 h-3.5" />
+              <RefreshCw className={`w-3.5 h-3.5 ${advLoading ? "animate-spin" : ""}`} />
               تحديث
             </button>
           </div>
@@ -543,14 +559,14 @@ export default function AdminStats() {
 
         {/* ── Summary Cards ───────────────────────────────────────────── */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-          <SummaryCard icon={<Globe className="w-5 h-5" />}       label="إجمالي الزيارات"         value={siteLoading ? "…" : visitsInRange}       color="text-blue-600"   bg="bg-blue-500/5 border-blue-500/20" />
-          <SummaryCard icon={<Users2 className="w-5 h-5" />}      label="زوار فريدون"             value={siteLoading ? "…" : (siteOverview?.uniqueVisitors ?? 0)} color="text-violet-600" bg="bg-violet-500/5 border-violet-500/20" />
-          <SummaryCard icon={<Eye className="w-5 h-5" />}         label="فتح صفحات الحسابات"      value={advLoading ? "…" : pvInRange}            color="text-sky-600"    bg="bg-sky-500/5 border-sky-500/20" />
-          <SummaryCard icon={<Phone className="w-5 h-5" />}       label="نقرات واتساب"            value={advLoading ? "…" : waInRange}            color="text-green-600"  bg="bg-green-500/5 border-green-500/20" />
-          <SummaryCard icon={<ExternalLink className="w-5 h-5" />} label="زيارات الحساب"          value={advLoading ? "…" : urlInRange}           color="text-purple-600" bg="bg-purple-500/5 border-purple-500/20" />
-          <SummaryCard icon={<TrendingUp className="w-5 h-5" />}  label="معدل التحويل"            value={advLoading ? "…" : `${convRate}%`}       color="text-orange-600" bg="bg-orange-500/5 border-orange-500/20" sub="(واتساب + زيارة) / فتح حساب" />
-          <SummaryCard icon={<BarChart3 className="w-5 h-5" />}   label="متوسط صفحات/جلسة"       value={advLoading ? "…" : (advanced?.avgSessionPages ?? 0)} color="text-teal-600"   bg="bg-teal-500/5 border-teal-500/20" />
-          <SummaryCard icon={<Zap className="w-5 h-5" />}         label="نشطون الآن"             value={siteLoading ? "…" : activeNow}           color="text-emerald-600" bg="bg-emerald-500/5 border-emerald-500/20" sub="آخر 5 دقائق" />
+          <SummaryCard icon={<Globe className="w-5 h-5" />}        label="إجمالي الزيارات"        value={advLoading ? "…" : visitsInRange}        color="text-blue-600"    bg="bg-blue-500/5 border-blue-500/20" />
+          <SummaryCard icon={<Users2 className="w-5 h-5" />}       label="زوار فريدون"            value={advLoading ? "…" : uniqueInRange}        color="text-violet-600"  bg="bg-violet-500/5 border-violet-500/20" />
+          <SummaryCard icon={<Eye className="w-5 h-5" />}          label="فتح صفحات الحسابات"     value={advLoading ? "…" : pvInRange}            color="text-sky-600"     bg="bg-sky-500/5 border-sky-500/20" />
+          <SummaryCard icon={<Phone className="w-5 h-5" />}        label="نقرات واتساب"           value={advLoading ? "…" : waInRange}            color="text-green-600"   bg="bg-green-500/5 border-green-500/20" />
+          <SummaryCard icon={<ExternalLink className="w-5 h-5" />} label="زيارات الحساب"          value={advLoading ? "…" : urlInRange}           color="text-purple-600"  bg="bg-purple-500/5 border-purple-500/20" />
+          <SummaryCard icon={<TrendingUp className="w-5 h-5" />}   label="معدل التحويل"           value={advLoading ? "…" : `${convRate}%`}       color="text-orange-600"  bg="bg-orange-500/5 border-orange-500/20" sub="(واتساب + زيارة) / فتح حساب" />
+          <SummaryCard icon={<BarChart3 className="w-5 h-5" />}    label="متوسط صفحات/جلسة"      value={advLoading ? "…" : (advanced?.avgSessionPages ?? 0)} color="text-teal-600" bg="bg-teal-500/5 border-teal-500/20" />
+          <SummaryCard icon={<Zap className="w-5 h-5" />}          label="نشطون الآن"             value={siteLoading ? "…" : activeNow}           color="text-emerald-600" bg="bg-emerald-500/5 border-emerald-500/20" sub="آخر 5 دقائق" />
         </div>
 
         {/* ── Daily + Hourly Charts ────────────────────────────────────── */}
@@ -559,11 +575,14 @@ export default function AdminStats() {
           <div className="lg:col-span-3 bg-card border rounded-2xl p-5 shadow-sm">
             <div className="flex items-center gap-2 mb-4">
               <Activity className="w-4 h-4 text-blue-500" />
-              <span className="text-sm font-semibold">الزيارات اليومية — آخر 30 يوم</span>
+              <span className="text-sm font-semibold">الزيارات اليومية — الفترة المحددة</span>
             </div>
-            {siteLoading ? <Skeleton className="h-44 w-full rounded-lg" /> : (
+            {advLoading ? <Skeleton className="h-44 w-full rounded-lg" /> :
+            (advanced?.dailyChart ?? []).length === 0 ? (
+              <p className="text-center text-muted-foreground text-sm h-44 flex items-center justify-center">لا توجد بيانات للفترة المحددة</p>
+            ) : (
               <ResponsiveContainer width="100%" height={176}>
-                <AreaChart data={siteOverview?.dailyChart ?? []} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
+                <AreaChart data={advanced?.dailyChart ?? []} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
                   <defs>
                     <linearGradient id="vg" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%"  stopColor="#3b82f6" stopOpacity={0.28} />
@@ -729,15 +748,15 @@ export default function AdminStats() {
 
         {/* ── Top Pages ───────────────────────────────────────────────── */}
         <Panel title="أكثر الصفحات زيارة" icon={<Eye className="w-4 h-4" />}>
-          {siteLoading ? <Skeleton className="h-24 w-full" /> : (
+          {advLoading ? <Skeleton className="h-24 w-full" /> : (
             <div className="space-y-2">
-              {(siteOverview?.topPages ?? []).slice(0, 8).map(p => (
+              {(advanced?.topPages ?? []).slice(0, 8).map(p => (
                 <div key={p.page} className="flex items-center gap-3 text-xs">
                   <span className="flex-1 min-w-0 font-medium truncate">{pageLabel(p.page)}</span>
-                  <MiniBar value={p.count} max={siteOverview!.topPages[0]?.count ?? 1} color="bg-blue-400" />
+                  <MiniBar value={p.count} max={advanced!.topPages[0]?.count ?? 1} color="bg-blue-400" />
                 </div>
               ))}
-              {!siteOverview?.topPages.length && <p className="text-sm text-muted-foreground text-center py-4">لا توجد بيانات بعد</p>}
+              {!(advanced?.topPages?.length) && <p className="text-sm text-muted-foreground text-center py-4">لا توجد بيانات للفترة المحددة</p>}
             </div>
           )}
         </Panel>
