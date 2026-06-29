@@ -44,6 +44,11 @@ export function WhatsAppButton() {
           gap: 8px;
           direction: ltr;
         }
+        @media (max-width: 767px) {
+          .wa-wrap {
+            bottom: 16px;
+          }
+        }
       `}</style>
 
       <div
