@@ -1,8 +1,8 @@
 import { useEffect, useRef } from "react";
 import { useLocation } from "wouter";
-import { trackSiteVisit } from "@workspace/api-client-react";
 
-// ── Persistent visitor ID (survives sessions) ────────────────────────────────
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
 function getVisitorId(): string {
   const KEY = "ps_vid";
   let id = localStorage.getItem(KEY);
@@ -13,7 +13,6 @@ function getVisitorId(): string {
   return id;
 }
 
-// ── Per-session ID (resets each new browser session) ────────────────────────
 function getSessionId(): string {
   const KEY = "ps_sid";
   let id = sessionStorage.getItem(KEY);
@@ -24,25 +23,23 @@ function getSessionId(): string {
   return id;
 }
 
-// ── Hook: fires once per route change (client-side dedup + server dedup) ─────
 export function useSiteTracking() {
   const [location] = useLocation();
   const lastTracked = useRef<string | null>(null);
 
   useEffect(() => {
-    // Skip admin pages — we only track public visitors
     if (location.startsWith("/admin")) return;
-
-    // Client-side dedup: same path already sent in this effect cycle
     if (lastTracked.current === location) return;
     lastTracked.current = location;
 
     const visitorId = getVisitorId();
     const sessionId = getSessionId();
+    const referrer  = document.referrer || null;
 
-    // Fire-and-forget — don't block rendering
-    trackSiteVisit({ visitorId, sessionId, page: location }).catch(() => {
-      // Silently ignore network errors — analytics must never break the app
-    });
+    fetch(`${BASE}/api/stats/site-visit`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ visitorId, sessionId, page: location, referrer }),
+    }).catch(() => {});
   }, [location]);
 }

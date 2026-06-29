@@ -6,6 +6,7 @@ export const siteVisitsTable = pgTable("site_visits", {
   sessionId: text("session_id").notNull(),
   page:      text("page").notNull(),
   userAgent: text("user_agent"),
+  referrer:  text("referrer"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
