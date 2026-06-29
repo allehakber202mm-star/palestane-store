@@ -210,7 +210,7 @@ export function PublicLayout({ children }: { children: ReactNode }) {
     <div className="min-h-[100dvh] flex flex-col bg-background font-sans text-foreground" dir="rtl">
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <Navbar onMenuOpen={() => setSidebarOpen(true)} />
-      <main className="flex-1">{children}</main>
+      <main className="flex-1 pb-24 sm:pb-6">{children}</main>
       <Footer />
       <WhatsAppButton />
     </div>
