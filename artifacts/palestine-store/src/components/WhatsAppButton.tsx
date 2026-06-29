@@ -33,22 +33,14 @@ export function WhatsAppButton() {
         .wa-btn { animation: wa-pulse 3.5s ease-out infinite; }
         .wa-btn:hover { animation: none; }
 
-        /* Desktop */
         .wa-wrap {
           position: fixed;
-          z-index: 9999;
-          right: 20px;
-          bottom: 20px;
+          z-index: 50;
+          right: 24px;
+          bottom: 24px;
           display: flex;
           align-items: center;
           gap: 12px;
-        }
-        /* Mobile — يرتفع فوق شريط المتصفح */
-        @media (max-width: 767px) {
-          .wa-wrap {
-            right: max(10px, env(safe-area-inset-right));
-            bottom: calc(90px + env(safe-area-inset-bottom));
-          }
         }
       `}</style>
 
