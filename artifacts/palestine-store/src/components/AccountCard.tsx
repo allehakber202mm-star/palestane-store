@@ -1,6 +1,6 @@
 import { useLocation } from "wouter";
 import { Account } from "@workspace/api-client-react";
-import { CheckCircle2, DollarSign, Link2, Eye } from "lucide-react";
+import { CheckCircle2, DollarSign, Link2 } from "lucide-react";
 import { SiTiktok, SiInstagram, SiFacebook } from "react-icons/si";
 
 interface AccountCardProps {
@@ -148,15 +148,6 @@ export function AccountCard({ account }: AccountCardProps) {
           )}
         </div>
 
-        {/* Bottom-left: Visit count badge (if any) */}
-        {(account.visitCount ?? 0) > 0 && (
-          <div className="absolute bottom-2 left-2">
-            <span className="bg-black/60 text-white text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none flex items-center gap-0.5 shadow-sm">
-              <Eye className="w-2.5 h-2.5" />
-              {(account.visitCount ?? 0).toLocaleString("ar-EG")}
-            </span>
-          </div>
-        )}
       </div>
 
       {/* ── Body ── */}
