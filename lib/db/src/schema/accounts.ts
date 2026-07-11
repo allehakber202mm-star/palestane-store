@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, integer, boolean, numeric, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, integer, boolean, numeric, uniqueIndex, index } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -31,6 +31,12 @@ export const accountsTable = pgTable("accounts", {
   uniqueIndex("accounts_account_url_unique")
     .on(t.accountUrl)
     .where(sql`${t.accountUrl} IS NOT NULL`),
+  index("accounts_telegram_message_id_idx")
+    .on(t.telegramMessageId)
+    .where(sql`${t.telegramMessageId} IS NOT NULL`),
+  index("accounts_status_idx").on(t.status),
+  index("accounts_platform_idx").on(t.platform),
+  index("accounts_platform_status_idx").on(t.platform, t.status),
 ]);
 
 export const insertAccountSchema = createInsertSchema(accountsTable).omit({ id: true, createdAt: true, updatedAt: true });

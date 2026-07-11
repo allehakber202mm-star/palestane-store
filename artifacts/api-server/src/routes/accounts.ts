@@ -120,6 +120,23 @@ router.get("/:id", async (req, res) => {
   res.json(formatAccount(row as Record<string, unknown>));
 });
 
+// ── POST /accounts/:id/click ─────────────────────────────────────────────────
+// Increments clickCount on the account row. Called when a user clicks the
+// WhatsApp button on a specific account card. No rate-limiting — raw count.
+router.post("/:id/click", async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const [updated] = await db
+    .update(accountsTable)
+    .set({ clickCount: sql`${accountsTable.clickCount} + 1` })
+    .where(eq(accountsTable.id, id))
+    .returning({ clickCount: accountsTable.clickCount });
+
+  if (!updated) { res.status(404).json({ error: "Not found" }); return; }
+  res.json({ success: true, clickCount: Number(updated.clickCount ?? 0) });
+});
+
 // ── POST /accounts/:id/visit ─────────────────────────────────────────────────
 // Records a visit to an account's URL. Rate-limited: 1 visit per visitorId per
 // account per 30 minutes. Increments visitCount on the account row.

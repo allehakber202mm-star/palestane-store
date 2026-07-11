@@ -593,18 +593,6 @@ async function fixMisclassifiedAccounts(): Promise<{ checked: number; fixed: num
     const reparsed    = parsePostText(acc.originalDescription!, acc.telegramMessageId!);
     const detectedPlt = reparsed.platform;
 
-    logger.info(
-      {
-        accountId:        acc.id,
-        accountName:      acc.name,
-        storedPlatform:   acc.platform,
-        detectedPlatform: detectedPlt,
-        detectionReason:  reparsed.parseLog.platform,
-        needsFix:         detectedPlt !== acc.platform,
-      },
-      `[FIX_CHECK] "${acc.name}" | stored: ${acc.platform} | detected: ${detectedPlt}`,
-    );
-
     if (detectedPlt !== acc.platform) {
       await db
         .update(accountsTable)
