@@ -817,6 +817,19 @@ export async function runTelegramSync(): Promise<SyncResult> {
 
       const rawText = (post.caption ?? post.text ?? "").trim();
       const sold = isSoldPost(rawText);
+
+      // ── حماية الحالة اليدوية ──────────────────────────────────────────────
+      // إذا كان الحساب مباعاً يدوياً ولا يوجد كلمة "مباع" في المنشور المعدّل،
+      // لا نغير الحالة — فقط المزامنة تستطيع تعيين "مباع"، ولا تستطيع إرجاعه
+      // إلى "متاح" أبداً؛ ذلك حق الأدمن وحده.
+      if (account.status === "sold" && !sold) {
+        logger.info(
+          { telegramMessageId: post.message_id, accountId: account.id },
+          "Account edit sync: الحساب مباع يدوياً — تجاهل تحديث تلجرام لحماية الحالة",
+        );
+        continue;
+      }
+
       const newStatus = sold ? "sold" : "available";
 
       if (account.status === newStatus) {
