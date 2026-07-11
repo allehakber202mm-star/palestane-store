@@ -47,3 +47,6 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# User-uploaded images (stored in Object Storage, not git)
+artifacts/api-server/uploads/
