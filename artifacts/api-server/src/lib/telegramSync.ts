@@ -876,6 +876,40 @@ export async function runTelegramSync(): Promise<SyncResult> {
 
   const existingMsgIds = new Set(existingByMsgId.map(r => r.tgId));
 
+  // ── Duplicate detection by accountUrl ────────────────────────────────────
+  // Catches re-posts of the same account with a new Telegram message_id
+  const batchUrls = parsed
+    .map(({ parsed: p }) => p.accountUrl)
+    .filter((u): u is string => !!u && u.trim() !== "");
+
+  const existingByUrlRows = batchUrls.length
+    ? await db
+        .select({ accountUrl: accountsTable.accountUrl })
+        .from(accountsTable)
+        .where(inArray(accountsTable.accountUrl, batchUrls))
+    : [];
+
+  const existingUrls = new Set(
+    existingByUrlRows.map(r => (r.accountUrl ?? "").trim().toLowerCase()),
+  );
+
+  // ── Duplicate detection by username+platform ──────────────────────────────
+  // Fallback when URL is auto-generated from username
+  const batchUsernames = parsed
+    .map(({ parsed: p }) => p.username)
+    .filter((u): u is string => !!u && u.trim() !== "");
+
+  const existingByUsernameRows = batchUsernames.length
+    ? await db
+        .select({ username: accountsTable.username, platform: accountsTable.platform })
+        .from(accountsTable)
+        .where(inArray(accountsTable.username, batchUsernames))
+    : [];
+
+  const existingUsernamePlatformKeys = new Set(
+    existingByUsernameRows.map(r => `${r.platform}::${(r.username ?? "").toLowerCase()}`),
+  );
+
   let imported      = 0;
   let skipped       = 0;
   let urlsFromPost  = 0;
@@ -987,6 +1021,38 @@ export async function runTelegramSync(): Promise<SyncResult> {
           example:            "السعر : 450 شيكل\nعدد المتابعين 43 ألف\nhttps://www.facebook.com/yourpage",
         },
         "[DIAG] ❌ REJECTED — validatePostData() قررت الرفض",
+      );
+      skipped++;
+      continue;
+    }
+
+    // ── Duplicate detection by accountUrl ────────────────────────────────
+    // Catches re-posts (new message_id) of the same account URL
+    if (p.accountUrl && existingUrls.has(p.accountUrl.trim().toLowerCase())) {
+      logger.info(
+        {
+          telegramMessageId: post.message_id,
+          accountUrl: p.accountUrl,
+          reason: "account_url موجود مسبقاً في قاعدة البيانات",
+        },
+        "Telegram sync: 🔁 حساب مكرر (URL) — تم التخطي",
+      );
+      skipped++;
+      continue;
+    }
+
+    // ── Duplicate detection by username+platform ──────────────────────────
+    // Catches re-posts where the URL was auto-generated from the same username
+    const upKey = p.username ? `${p.platform}::${p.username.toLowerCase()}` : null;
+    if (upKey && existingUsernamePlatformKeys.has(upKey)) {
+      logger.info(
+        {
+          telegramMessageId: post.message_id,
+          username: p.username,
+          platform: p.platform,
+          reason: "username+platform موجود مسبقاً في قاعدة البيانات",
+        },
+        "Telegram sync: 🔁 حساب مكرر (username+platform) — تم التخطي",
       );
       skipped++;
       continue;

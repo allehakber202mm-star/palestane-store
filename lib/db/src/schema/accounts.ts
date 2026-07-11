@@ -1,4 +1,5 @@
-import { pgTable, text, serial, timestamp, integer, boolean, numeric } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, integer, boolean, numeric, uniqueIndex } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -26,7 +27,11 @@ export const accountsTable = pgTable("accounts", {
   originalDescription: text("original_description"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
-});
+}, (t) => [
+  uniqueIndex("accounts_account_url_unique")
+    .on(t.accountUrl)
+    .where(sql`${t.accountUrl} IS NOT NULL`),
+]);
 
 export const insertAccountSchema = createInsertSchema(accountsTable).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertAccount = z.infer<typeof insertAccountSchema>;
