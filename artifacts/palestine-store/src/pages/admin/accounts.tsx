@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Plus, Edit2, Trash2, Image as ImageIcon, DollarSign, Users,
-  Link2, Check, X, Loader2, UploadCloud, ExternalLink, TrendingUp, Send, Star,
+  Link2, Check, X, Loader2, UploadCloud, ExternalLink, TrendingUp, Send, Star, AlertTriangle,
 } from "lucide-react";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
@@ -93,6 +93,7 @@ export default function AdminAccounts() {
   const [quickSaving, setQuickSaving] = useState(false);
   const [urlVal, setUrlVal]   = useState("");
   const [urlError, setUrlError] = useState("");
+  const [confirmClearUrl, setConfirmClearUrl] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const formFileRef = useRef<HTMLInputElement>(null);
 
@@ -262,15 +263,19 @@ export default function AdminAccounts() {
   };
 
   // ── Link save ─────────────────────────────────────────────────────────────
-  const handleLinkSave = () => {
+  const handleLinkSave = (confirmed = false) => {
     if (!activeAcc) return;
     const raw = urlVal.trim();
     if (raw && !/^https?:\/\/.+/.test(raw)) {
       setUrlError("الرابط يجب أن يبدأ بـ https://");
       return;
     }
+    if (!raw && activeAcc.accountUrl && !confirmed) {
+      setConfirmClearUrl(true);
+      return;
+    }
     updateMut.mutate({ id: activeAcc.id, data: { accountUrl: raw || null } as AccountUpdate }, {
-      onSuccess: () => { toast({ title: "✅ تم حفظ الرابط" }); setSheetMode(null); invalidate(); },
+      onSuccess: () => { toast({ title: raw ? "✅ تم حفظ الرابط" : "تم إزالة الرابط" }); setSheetMode(null); invalidate(); },
       onError: () => toast({ variant: "destructive", title: "فشل الحفظ" }),
     });
   };
@@ -434,6 +439,16 @@ export default function AdminAccounts() {
                     {acc.featured && (
                       <div className="absolute top-2 right-2">
                         <Badge className="text-[10px] px-1.5 py-0 bg-yellow-500/90 text-white border-none leading-5">★</Badge>
+                      </div>
+                    )}
+
+                    {/* No-URL warning badge */}
+                    {!(acc as AccRow).accountUrl && !(acc as AccRow).username && (
+                      <div className="absolute bottom-2 right-2">
+                        <Badge className="text-[10px] px-1.5 py-0 bg-orange-500/90 text-white border-none leading-5 flex items-center gap-0.5">
+                          <AlertTriangle className="w-2.5 h-2.5" />
+                          بدون رابط
+                        </Badge>
                       </div>
                     )}
 
@@ -760,7 +775,7 @@ export default function AdminAccounts() {
 
                 <div className="flex gap-3">
                   <Button variant="outline" className="flex-1" onClick={() => setSheetMode(null)}>إلغاء</Button>
-                  <Button className="flex-1 gap-1.5 font-bold" onClick={handleLinkSave} disabled={updateMut.isPending}>
+                  <Button className="flex-1 gap-1.5 font-bold" onClick={() => handleLinkSave()} disabled={updateMut.isPending}>
                     {updateMut.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                     حفظ الرابط
                   </Button>
@@ -842,6 +857,27 @@ export default function AdminAccounts() {
             <AlertDialogAction onClick={handleDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               حذف
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ── Clear URL Confirm ─────────────────────────────────────────────── */}
+      <AlertDialog open={confirmClearUrl} onOpenChange={(o) => !o && setConfirmClearUrl(false)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>إزالة رابط الحساب؟</AlertDialogTitle>
+            <AlertDialogDescription>
+              سيتم حذف رابط الحساب الحالي وسيختفي زر "زيارة الحساب" من صفحة المتجر.
+              هل أنت متأكد؟
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setConfirmClearUrl(false)}>إلغاء</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => { setConfirmClearUrl(false); handleLinkSave(true); }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              إزالة الرابط
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
