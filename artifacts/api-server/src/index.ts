@@ -4,6 +4,7 @@ import { startTelegramAutoSync } from "./lib/telegramSync";
 import { syncAccountUrls } from "./lib/accountUrlSync";
 import { statsHealthCheck } from "./lib/statsHealthCheck";
 import { ocrScanExistingAccounts } from "./lib/ocrScanAccounts";
+import { startDataPruning } from "./lib/dataPruning";
 
 const rawPort = process.env["PORT"];
 
@@ -27,6 +28,7 @@ app.listen(port, (err) => {
 
   logger.info({ port }, "Server listening");
   startTelegramAutoSync();
+  startDataPruning();
   syncAccountUrls("startup").catch((e) =>
     logger.error({ err: e }, "accountUrlSync failed on startup"),
   );

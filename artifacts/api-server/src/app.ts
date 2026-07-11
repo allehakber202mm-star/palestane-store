@@ -46,4 +46,17 @@ app.use(
 
 app.use("/api", router);
 
+// ── Global JSON error handler ─────────────────────────────────────────────────
+// Catches any unhandled errors from route handlers (including async throws in
+// Express 5) and returns a consistent JSON body instead of the default HTML page.
+app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  const status = (err as { status?: number; statusCode?: number })?.status
+    ?? (err as { statusCode?: number })?.statusCode
+    ?? 500;
+  const message =
+    err instanceof Error ? err.message : "Internal server error";
+  logger.error({ err }, "Unhandled route error");
+  res.status(status).json({ error: message });
+});
+
 export default app;

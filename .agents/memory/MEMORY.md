@@ -1,1 +1,2 @@
 - [Object Storage image upload](object-storage-upload.md) — images stored in GCS via presigned URL; serving URL = `/api/storage` + objectPath; no multer in admin.ts
+- [Full Audit fixes](full-audit-fixes.md) — 7 bugs fixed in comprehensive audit; key: click endpoint was missing, DB indexes added, settings used SELECT+INSERT race condition

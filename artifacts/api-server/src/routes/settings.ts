@@ -68,12 +68,10 @@ router.patch("/", requireAuth, async (req, res) => {
   if (data.paymentNote !== undefined) updates.push({ key: "paymentNote", value: data.paymentNote });
 
   for (const { key, value } of updates) {
-    const existing = await db.select().from(settingsTable).where(eq(settingsTable.key, key));
-    if (existing.length > 0) {
-      await db.update(settingsTable).set({ value }).where(eq(settingsTable.key, key));
-    } else {
-      await db.insert(settingsTable).values({ key, value });
-    }
+    await db
+      .insert(settingsTable)
+      .values({ key, value })
+      .onConflictDoUpdate({ target: settingsTable.key, set: { value } });
   }
 
   const map = await getSettingsMap();
