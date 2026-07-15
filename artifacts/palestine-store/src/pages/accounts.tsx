@@ -3,16 +3,17 @@ import { PublicLayout } from "@/components/layout/PublicLayout";
 import { AccountCard } from "@/components/AccountCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useListAccounts, ListAccountsPlatform, ListAccountsSort } from "@workspace/api-client-react";
-import { SiTiktok, SiInstagram, SiFacebook } from "react-icons/si";
+import { SiTiktok, SiInstagram, SiFacebook, SiSnapchat } from "react-icons/si";
 import { DollarSign, ArrowUpDown } from "lucide-react";
 
-type Platform = "tiktok" | "instagram" | "facebook" | "tiktok_monetized";
+type Platform = "tiktok" | "instagram" | "facebook" | "tiktok_monetized" | "snapchat";
 
 const filters: { value: Platform; label: string; icon: React.ReactNode; color: string }[] = [
   { value: "tiktok",           label: "تيك توك",     icon: <SiTiktok className="w-4 h-4" />,                      color: "text-foreground" },
   { value: "tiktok_monetized", label: "تيك توك أرباح", icon: <DollarSign className="w-4 h-4 text-green-500" />,     color: "text-green-600" },
   { value: "instagram",        label: "انستغرام",     icon: <SiInstagram className="w-4 h-4 text-pink-500" />,     color: "text-pink-500" },
   { value: "facebook",         label: "فيسبوك",       icon: <SiFacebook className="w-4 h-4 text-blue-600" />,      color: "text-blue-600" },
+  { value: "snapchat",         label: "سناب شات",     icon: <SiSnapchat className="w-4 h-4 text-yellow-400" />,    color: "text-yellow-500" },
 ];
 
 type SortOption = {
@@ -32,7 +33,7 @@ const SORT_OPTIONS: SortOption[] = [
 export default function Accounts() {
   const params = new URLSearchParams(window.location.search);
   const urlPlatform = params.get("platform") as Platform | null;
-  const validPlatforms: Platform[] = ["tiktok", "instagram", "facebook", "tiktok_monetized"];
+  const validPlatforms: Platform[] = ["tiktok", "instagram", "facebook", "tiktok_monetized", "snapchat"];
   const initialPlatform: Platform = (urlPlatform && validPlatforms.includes(urlPlatform))
     ? urlPlatform
     : "tiktok";
@@ -66,7 +67,7 @@ export default function Accounts() {
 
       <div className="container mx-auto px-3 sm:px-4 py-5 sm:py-8">
         {/* Platform Tabs */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 mb-4">
           {filters.map((f) => (
             <button
               key={f.value}

@@ -34,14 +34,15 @@ import {
   AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { SiTiktok, SiInstagram, SiFacebook } from "react-icons/si";
+import { SiTiktok, SiInstagram, SiFacebook, SiSnapchat } from "react-icons/si";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const PLT: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
-  tiktok:            { label: "تيك توك",          icon: <SiTiktok />,   color: "text-foreground" },
-  tiktok_monetized:  { label: "تيك توك أرباح",    icon: <SiTiktok />,   color: "text-green-600" },
-  instagram:         { label: "انستغرام",          icon: <SiInstagram />, color: "text-pink-500" },
-  facebook:          { label: "فيسبوك",            icon: <SiFacebook />,  color: "text-blue-500" },
+  tiktok:            { label: "تيك توك",          icon: <SiTiktok />,     color: "text-foreground" },
+  tiktok_monetized:  { label: "تيك توك أرباح",    icon: <SiTiktok />,     color: "text-green-600" },
+  instagram:         { label: "انستغرام",          icon: <SiInstagram />,  color: "text-pink-500" },
+  facebook:          { label: "فيسبوك",            icon: <SiFacebook />,   color: "text-blue-500" },
+  snapchat:          { label: "سناب شات",          icon: <SiSnapchat />,   color: "text-yellow-400" },
 };
 
 const TABS = [
@@ -49,6 +50,7 @@ const TABS = [
   { key: "tiktok_monetized", label: "أرباح المشاهدات", icon: <SiTiktok className="w-3 h-3 text-green-600" /> },
   { key: "instagram",        label: "انستغرام",      icon: <SiInstagram className="w-3 h-3 text-pink-500" /> },
   { key: "facebook",         label: "فيسبوك",        icon: <SiFacebook className="w-3 h-3 text-blue-500" /> },
+  { key: "snapchat",         label: "سناب شات",      icon: <SiSnapchat className="w-3 h-3 text-yellow-400" /> },
 ];
 
 function fmt(n: number) {
@@ -224,7 +226,7 @@ export default function AdminAccounts() {
     if (!validate()) return;
     const payload = {
       name: form.name.trim(),
-      platform: form.platform as "tiktok" | "instagram" | "facebook" | "tiktok_monetized",
+      platform: form.platform as "tiktok" | "instagram" | "facebook" | "tiktok_monetized" | "snapchat",
       followers: Number(form.followers), price: Number(form.price),
       description: form.description || null,
       status: form.status as "available" | "sold",
@@ -360,7 +362,7 @@ export default function AdminAccounts() {
 
         {/* ── Platform Tabs — grid, no horizontal scroll ──────────────────── */}
         <div className="flex flex-col sm:flex-row gap-2">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 flex-1">
+          <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 flex-1">
             {TABS.map((t) => (
               <button
                 key={t.key}
@@ -587,8 +589,8 @@ export default function AdminAccounts() {
                 {/* Platform */}
                 <div className="space-y-1.5">
                   <Label>المنصة</Label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {(["tiktok","tiktok_monetized","instagram","facebook"] as const).map((p) => (
+                  <div className="grid grid-cols-3 gap-2">
+                    {(["tiktok","tiktok_monetized","instagram","facebook","snapchat"] as const).map((p) => (
                       <button key={p} type="button" onClick={() => setF("platform", p)}
                         className={`flex flex-col items-center gap-1 py-2.5 rounded-xl border text-xs font-bold transition-all ${
                           form.platform === p

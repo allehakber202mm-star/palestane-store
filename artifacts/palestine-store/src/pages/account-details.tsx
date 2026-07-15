@@ -11,7 +11,7 @@ import {
   DollarSign, Globe, Calendar, Tag, Info,
   ZoomIn, ZoomOut, X, Maximize2,
 } from "lucide-react";
-import { SiTiktok, SiInstagram, SiFacebook } from "react-icons/si";
+import { SiTiktok, SiInstagram, SiFacebook, SiSnapchat } from "react-icons/si";
 
 const TIKTOK_FEATURES = [
   "متابعين حقيقيين 100%",
@@ -39,6 +39,7 @@ function buildProfileUrl(
   if (platform === "tiktok" || platform === "tiktok_monetized") return `https://www.tiktok.com/@${u}`;
   if (platform === "instagram") return `https://www.instagram.com/${u}`;
   if (platform === "facebook") return `https://www.facebook.com/${u}`;
+  if (platform === "snapchat") return `https://www.snapchat.com/add/${u}`;
   return null;
 }
 
@@ -275,6 +276,7 @@ export default function AccountDetails() {
       account.platform === "tiktok_monetized" ? "تيك توك أرباح المشاهدات"
       : account.platform === "tiktok" ? "تيك توك"
       : account.platform === "instagram" ? "إنستغرام"
+      : account.platform === "snapchat" ? "سناب شات"
       : "فيسبوك";
     const followersFormatted =
       account.followers >= 1_000_000
@@ -326,17 +328,20 @@ ${pageUrl}`;
   const PlatformIcon =
     (account.platform === "tiktok" || isMonetized) ? SiTiktok
     : account.platform === "instagram" ? SiInstagram
+    : account.platform === "snapchat" ? SiSnapchat
     : SiFacebook;
 
   const platformColor =
     (account.platform === "tiktok" || isMonetized) ? "text-foreground"
     : account.platform === "instagram" ? "text-pink-500"
+    : account.platform === "snapchat" ? "text-yellow-400"
     : "text-blue-500";
 
   const platformAr =
     account.platform === "tiktok_monetized" ? "تيك توك أرباح المشاهدات"
     : account.platform === "tiktok" ? "تيك توك"
     : account.platform === "instagram" ? "انستغرام"
+    : account.platform === "snapchat" ? "سناب شات"
     : "فيسبوك";
 
   const followersLabel =

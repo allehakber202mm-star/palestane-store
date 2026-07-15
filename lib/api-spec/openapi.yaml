@@ -51,7 +51,7 @@ paths:
           in: query
           schema:
             type: string
-            enum: [tiktok, instagram, facebook, tiktok_monetized]
+            enum: [tiktok, instagram, facebook, tiktok_monetized, snapchat]
         - name: status
           in: query
           schema:
@@ -635,7 +635,7 @@ components:
           type: string
         platform:
           type: string
-          enum: [tiktok, instagram, facebook, tiktok_monetized]
+          enum: [tiktok, instagram, facebook, tiktok_monetized, snapchat]
         followers:
           type: integer
         price:
@@ -723,7 +723,7 @@ components:
           type: string
         platform:
           type: string
-          enum: [tiktok, instagram, facebook, tiktok_monetized]
+          enum: [tiktok, instagram, facebook, tiktok_monetized, snapchat]
         followers:
           type: integer
         price:
@@ -759,7 +759,7 @@ components:
           type: string
         platform:
           type: string
-          enum: [tiktok, instagram, facebook, tiktok_monetized]
+          enum: [tiktok, instagram, facebook, tiktok_monetized, snapchat]
         followers:
           type: integer
         price:
@@ -889,7 +889,7 @@ components:
 
     DashboardStats:
       type: object
-      required: [totalAccounts, soldAccounts, availableAccounts, totalClicks, whatsappClicks, topAccounts, monetizedAccounts, tiktokAccounts, instagramAccounts, facebookAccounts]
+      required: [totalAccounts, soldAccounts, availableAccounts, totalClicks, whatsappClicks, topAccounts, monetizedAccounts, tiktokAccounts, instagramAccounts, facebookAccounts, snapchatAccounts]
       properties:
         totalAccounts:
           type: integer
@@ -904,6 +904,8 @@ components:
         instagramAccounts:
           type: integer
         facebookAccounts:
+          type: integer
+        snapchatAccounts:
           type: integer
         totalClicks:
           type: integer

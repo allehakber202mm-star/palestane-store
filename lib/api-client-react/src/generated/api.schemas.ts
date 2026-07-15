@@ -17,6 +17,7 @@ export const AccountPlatform = {
   instagram: 'instagram',
   facebook: 'facebook',
   tiktok_monetized: 'tiktok_monetized',
+  snapchat: 'snapchat',
 } as const;
 
 export type AccountStatus = typeof AccountStatus[keyof typeof AccountStatus];
@@ -96,6 +97,7 @@ export const AccountInputPlatform = {
   instagram: 'instagram',
   facebook: 'facebook',
   tiktok_monetized: 'tiktok_monetized',
+  snapchat: 'snapchat',
 } as const;
 
 export type AccountInputStatus = typeof AccountInputStatus[keyof typeof AccountInputStatus];
@@ -132,6 +134,7 @@ export const AccountUpdatePlatform = {
   instagram: 'instagram',
   facebook: 'facebook',
   tiktok_monetized: 'tiktok_monetized',
+  snapchat: 'snapchat',
 } as const;
 
 export type AccountUpdateStatus = typeof AccountUpdateStatus[keyof typeof AccountUpdateStatus];
@@ -225,6 +228,7 @@ export interface DashboardStats {
   tiktokAccounts: number;
   instagramAccounts: number;
   facebookAccounts: number;
+  snapchatAccounts: number;
   totalClicks: number;
   whatsappClicks: number;
   feedbackPosts?: number;
@@ -377,6 +381,7 @@ export const ListAccountsPlatform = {
   instagram: 'instagram',
   facebook: 'facebook',
   tiktok_monetized: 'tiktok_monetized',
+  snapchat: 'snapchat',
 } as const;
 
 export type ListAccountsStatus = typeof ListAccountsStatus[keyof typeof ListAccountsStatus];

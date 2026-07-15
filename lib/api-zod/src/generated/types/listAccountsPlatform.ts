@@ -14,4 +14,5 @@ export const ListAccountsPlatform = {
   instagram: 'instagram',
   facebook: 'facebook',
   tiktok_monetized: 'tiktok_monetized',
+  snapchat: 'snapchat',
 } as const;

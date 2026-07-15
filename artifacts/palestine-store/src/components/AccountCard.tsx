@@ -1,7 +1,7 @@
 import { useLocation } from "wouter";
 import { Account } from "@workspace/api-client-react";
 import { CheckCircle2, DollarSign, Link2 } from "lucide-react";
-import { SiTiktok, SiInstagram, SiFacebook } from "react-icons/si";
+import { SiTiktok, SiInstagram, SiFacebook, SiSnapchat } from "react-icons/si";
 
 interface AccountCardProps {
   account: Account;
@@ -11,6 +11,7 @@ const TIKTOK_FEATURES = ["متابعين حقيقيين 100%", "جمهور نش�
 const TIKTOK_MONETIZED_FEATURES = ["💰 فيه أرباح المشاهدات", "متابعين حقيقيين 100%", "جمهور نشط ومتفاعل", "جاهز للاستخدام"];
 const INSTAGRAM_FEATURES = ["متابعين حقيقيين 100%", "جمهور نشط ومتفاعل", "بدون بوتات", "جاهز للاستخدام"];
 const FACEBOOK_FEATURES = ["متابعين حقيقيين 100%", "جمهور نشط ومتفاعل", "بدون بوتات", "جاهز للاستخدام"];
+const SNAPCHAT_FEATURES = ["متابعين حقيقيين 100%", "جمهور نشط ومتفاعل", "بدون بوتات", "جاهز للاستخدام"];
 
 // Get or create a persistent visitor ID — same key as useSiteTracking ("ps_vid")
 function getVisitorId(): string {
@@ -35,6 +36,7 @@ function buildProfileUrl(
   if (platform === "tiktok" || platform === "tiktok_monetized") return `https://www.tiktok.com/@${u}`;
   if (platform === "instagram") return `https://www.instagram.com/${u}`;
   if (platform === "facebook") return `https://www.facebook.com/${u}`;
+  if (platform === "snapchat") return `https://www.snapchat.com/add/${u}`;
   return null;
 }
 
@@ -47,16 +49,19 @@ export function AccountCard({ account }: AccountCardProps) {
     isMonetized ? TIKTOK_MONETIZED_FEATURES
     : account.platform === "tiktok" ? TIKTOK_FEATURES
     : account.platform === "instagram" ? INSTAGRAM_FEATURES
+    : account.platform === "snapchat" ? SNAPCHAT_FEATURES
     : FACEBOOK_FEATURES;
 
   const PlatformIcon =
     (account.platform === "tiktok" || isMonetized) ? SiTiktok
     : account.platform === "instagram" ? SiInstagram
+    : account.platform === "snapchat" ? SiSnapchat
     : SiFacebook;
 
   const platformColor =
     (account.platform === "tiktok" || isMonetized) ? "text-foreground"
     : account.platform === "instagram" ? "text-pink-600"
+    : account.platform === "snapchat" ? "text-yellow-400"
     : "text-blue-600";
 
   const isSold = account.status === "sold";

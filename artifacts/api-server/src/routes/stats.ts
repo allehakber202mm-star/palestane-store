@@ -19,6 +19,7 @@ router.get("/dashboard", async (_req, res) => {
       tiktok:    sql<number>`count(*) filter (where ${accountsTable.platform} = 'tiktok')`,
       instagram: sql<number>`count(*) filter (where ${accountsTable.platform} = 'instagram')`,
       facebook:  sql<number>`count(*) filter (where ${accountsTable.platform} = 'facebook')`,
+      snapchat:  sql<number>`count(*) filter (where ${accountsTable.platform} = 'snapchat')`,
       clicks:    sql<number>`coalesce(sum(${accountsTable.clickCount}), 0)`,
       featured:  sql<number>`count(*) filter (where ${accountsTable.featured} = true)`,
     })
@@ -64,6 +65,7 @@ router.get("/dashboard", async (_req, res) => {
     tiktokAccounts:    Number(totals.tiktok),
     instagramAccounts: Number(totals.instagram),
     facebookAccounts:  Number(totals.facebook),
+    snapchatAccounts:  Number(totals.snapchat),
     featuredAccounts:  Number(totals.featured),
     totalClicks:       Number(totals.clicks),
     whatsappClicks:    Number(waClicks.count),

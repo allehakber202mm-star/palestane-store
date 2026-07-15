@@ -13,7 +13,7 @@ import {
   Video,
   MessageCircle,
 } from "lucide-react";
-import { SiTiktok, SiInstagram, SiFacebook } from "react-icons/si";
+import { SiTiktok, SiInstagram, SiFacebook, SiSnapchat } from "react-icons/si";
 import {
   useGetSettings,
   useListAccounts,
@@ -148,6 +148,7 @@ export default function Home() {
   const { data: monetized, isLoading: isLoadingMonetized }  = useListAccounts({ platform: "tiktok_monetized",  sort: "followers_desc", limit: 8 });
   const { data: instagram, isLoading: isLoadingInstagram }  = useListAccounts({ platform: "instagram",         sort: "followers_desc", limit: 8 });
   const { data: facebook,  isLoading: isLoadingFacebook }   = useListAccounts({ platform: "facebook",          sort: "followers_desc", limit: 8 });
+  const { data: snapchat,  isLoading: isLoadingSnapchat }   = useListAccounts({ platform: "snapchat",          sort: "followers_desc", limit: 8 });
 
   const phone = settings?.whatsapp?.replace(/\D/g, "") || "972566112031";
 
@@ -165,7 +166,7 @@ export default function Home() {
               "حسابات موثوقة، تسليم فوري، ودعم فني على مدار الساعة."}
           </p>
           {/* ── Platform quick-access grid ── */}
-          <div className="grid grid-cols-2 gap-3 max-w-sm mx-auto mt-2 w-full">
+          <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 max-w-lg mx-auto mt-2 w-full">
             <Link href="/accounts?platform=tiktok"
               className="flex flex-col items-center gap-2 bg-background/80 hover:bg-background border border-border hover:border-foreground/20 rounded-2xl py-4 px-3 transition-all shadow-sm hover:shadow-md group">
               <SiTiktok className="w-8 h-8 text-foreground" />
@@ -188,6 +189,11 @@ export default function Home() {
               className="flex flex-col items-center gap-2 bg-background/80 hover:bg-background border border-border hover:border-blue-300 dark:hover:border-blue-700 rounded-2xl py-4 px-3 transition-all shadow-sm hover:shadow-md group">
               <SiFacebook className="w-8 h-8 text-blue-600 dark:text-blue-400" />
               <span className="font-bold text-sm text-blue-600 dark:text-blue-400">فيسبوك</span>
+            </Link>
+            <Link href="/accounts?platform=snapchat"
+              className="flex flex-col items-center gap-2 bg-background/80 hover:bg-background border border-border hover:border-yellow-300 dark:hover:border-yellow-600 rounded-2xl py-4 px-3 transition-all shadow-sm hover:shadow-md group">
+              <SiSnapchat className="w-8 h-8 text-yellow-400" />
+              <span className="font-bold text-sm text-yellow-500 dark:text-yellow-400">سناب شات</span>
             </Link>
           </div>
         </div>
@@ -241,6 +247,19 @@ export default function Home() {
           />
           <AccountGrid accounts={facebook} isLoading={isLoadingFacebook} />
         </Section>
+
+        {/* ── Snapchat ── */}
+        {(isLoadingSnapchat || (snapchat && snapchat.length > 0)) && (
+          <Section>
+            <SectionHeader
+              title="حسابات سناب شات"
+              icon={<SiSnapchat className="w-5 h-5 text-yellow-400" />}
+              linkHref="/accounts?platform=snapchat"
+              linkLabel="تصفح سناب شات"
+            />
+            <AccountGrid accounts={snapchat} isLoading={isLoadingSnapchat} />
+          </Section>
+        )}
 
         {/* ── Payment Methods ── */}
         <Section className="text-center">

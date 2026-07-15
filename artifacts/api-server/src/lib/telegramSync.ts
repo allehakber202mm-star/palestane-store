@@ -211,16 +211,17 @@ export function parsePostText(rawText: string, messageId: number): ParsedAccount
   let urlLog = "لم يُعثر على رابط";
 
   // Full platform URL patterns (vm.tiktok, tiktok, instagram, facebook)
-  const urlRx = /https?:\/\/(?:www\.)?((?:vm\.)?tiktok\.com|instagram\.com|(?:www\.)?facebook\.com|fb\.com)\/([^\s,)\]]+)/i;
+  const urlRx = /https?:\/\/(?:www\.)?((?:vm\.)?tiktok\.com|instagram\.com|(?:www\.)?facebook\.com|fb\.com|snapchat\.com)\/([^\s,)\]]+)/i;
   const urlM  = urlRx.exec(text);
   if (urlM) {
     accountUrl = cleanUrl(urlM[0]);
     const domain = urlM[1].toLowerCase();
     const pathPart = urlM[2];
 
-    if (domain.includes("instagram"))         platform = "instagram";
+    if (domain.includes("instagram"))                              platform = "instagram";
     else if (domain.includes("facebook") || domain === "fb.com") platform = "facebook";
-    else                                       platform = "tiktok";
+    else if (domain.includes("snapchat"))                        platform = "snapchat";
+    else                                                         platform = "tiktok";
 
     // Extract username from path
     const tikMatch = /^@?([^/?&\s]+)/.exec(pathPart.replace(/^@/, ""));
@@ -265,6 +266,7 @@ export function parsePostText(rawText: string, messageId: number): ParsedAccount
     if (instaRx.test(lower))                                  { platform = "instagram"; platformLog = `المنصة: instagram (كلمة مفتاحية)`; }
     else if (/facebook|فيسبوك|فيس\s*بوك/.test(lower))        { platform = "facebook";  platformLog = `المنصة: facebook (كلمة مفتاحية)`;  }
     else if (/tiktok|تيك\s*توك/.test(lower))                  { platform = "tiktok";    platformLog = `المنصة: tiktok (كلمة مفتاحية)`;    }
+    else if (/snapchat|سناب\s*شات|سناب/.test(lower))          { platform = "snapchat";  platformLog = `المنصة: snapchat (كلمة مفتاحية)`;  }
     else if (username) {
       // ── Fallback: infer platform from @handle itself ───────────────────
       // Catches cases where the post has no URL, no platform keyword,
@@ -289,6 +291,7 @@ export function parsePostText(rawText: string, messageId: number): ParsedAccount
   if (!accountUrl && username) {
     if      (platform === "instagram")         accountUrl = `https://www.instagram.com/${username}`;
     else if (platform === "facebook")          accountUrl = `https://www.facebook.com/${username}`;
+    else if (platform === "snapchat")          accountUrl = `https://www.snapchat.com/add/${username}`;
     else                                       accountUrl = `https://www.tiktok.com/@${username}`;
     urlLog = `بُني من اسم المستخدم (${platform}): ${accountUrl}`;
   }

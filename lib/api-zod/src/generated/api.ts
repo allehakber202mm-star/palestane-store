@@ -20,7 +20,7 @@ export const HealthCheckResponse = zod.object({
  * @summary List all available accounts
  */
 export const ListAccountsQueryParams = zod.object({
-  "platform": zod.enum(['tiktok', 'instagram', 'facebook', 'tiktok_monetized']).optional(),
+  "platform": zod.enum(['tiktok', 'instagram', 'facebook', 'tiktok_monetized', 'snapchat']).optional(),
   "status": zod.enum(['available', 'sold']).optional(),
   "featured": zod.coerce.boolean().optional(),
   "sort": zod.enum(['followers_desc', 'followers_asc', 'newest', 'oldest', 'price_desc', 'price_asc']).optional(),
@@ -31,7 +31,7 @@ export const ListAccountsQueryParams = zod.object({
 export const ListAccountsResponseItem = zod.object({
   "id": zod.number(),
   "name": zod.string(),
-  "platform": zod.enum(['tiktok', 'instagram', 'facebook', 'tiktok_monetized']),
+  "platform": zod.enum(['tiktok', 'instagram', 'facebook', 'tiktok_monetized', 'snapchat']),
   "followers": zod.number(),
   "price": zod.number(),
   "description": zod.string().nullish(),
@@ -60,7 +60,7 @@ export const ListAccountsResponse = zod.array(ListAccountsResponseItem)
 export const ListFeaturedAccountsResponseItem = zod.object({
   "id": zod.number(),
   "name": zod.string(),
-  "platform": zod.enum(['tiktok', 'instagram', 'facebook', 'tiktok_monetized']),
+  "platform": zod.enum(['tiktok', 'instagram', 'facebook', 'tiktok_monetized', 'snapchat']),
   "followers": zod.number(),
   "price": zod.number(),
   "description": zod.string().nullish(),
@@ -89,7 +89,7 @@ export const ListFeaturedAccountsResponse = zod.array(ListFeaturedAccountsRespon
 export const ListRecentAccountsResponseItem = zod.object({
   "id": zod.number(),
   "name": zod.string(),
-  "platform": zod.enum(['tiktok', 'instagram', 'facebook', 'tiktok_monetized']),
+  "platform": zod.enum(['tiktok', 'instagram', 'facebook', 'tiktok_monetized', 'snapchat']),
   "followers": zod.number(),
   "price": zod.number(),
   "description": zod.string().nullish(),
@@ -122,7 +122,7 @@ export const GetAccountParams = zod.object({
 export const GetAccountResponse = zod.object({
   "id": zod.number(),
   "name": zod.string(),
-  "platform": zod.enum(['tiktok', 'instagram', 'facebook', 'tiktok_monetized']),
+  "platform": zod.enum(['tiktok', 'instagram', 'facebook', 'tiktok_monetized', 'snapchat']),
   "followers": zod.number(),
   "price": zod.number(),
   "description": zod.string().nullish(),
@@ -207,7 +207,7 @@ export const AdminListAccountsQueryParams = zod.object({
 export const AdminListAccountsResponseItem = zod.object({
   "id": zod.number(),
   "name": zod.string(),
-  "platform": zod.enum(['tiktok', 'instagram', 'facebook', 'tiktok_monetized']),
+  "platform": zod.enum(['tiktok', 'instagram', 'facebook', 'tiktok_monetized', 'snapchat']),
   "followers": zod.number(),
   "price": zod.number(),
   "description": zod.string().nullish(),
@@ -235,7 +235,7 @@ export const AdminListAccountsResponse = zod.array(AdminListAccountsResponseItem
  */
 export const CreateAccountBody = zod.object({
   "name": zod.string(),
-  "platform": zod.enum(['tiktok', 'instagram', 'facebook', 'tiktok_monetized']),
+  "platform": zod.enum(['tiktok', 'instagram', 'facebook', 'tiktok_monetized', 'snapchat']),
   "followers": zod.number(),
   "price": zod.number(),
   "description": zod.string().optional(),
@@ -261,7 +261,7 @@ export const UpdateAccountParams = zod.object({
 
 export const UpdateAccountBody = zod.object({
   "name": zod.string().optional(),
-  "platform": zod.enum(['tiktok', 'instagram', 'facebook', 'tiktok_monetized']).optional(),
+  "platform": zod.enum(['tiktok', 'instagram', 'facebook', 'tiktok_monetized', 'snapchat']).optional(),
   "followers": zod.number().optional(),
   "price": zod.number().optional(),
   "description": zod.string().optional(),
@@ -280,7 +280,7 @@ export const UpdateAccountBody = zod.object({
 export const UpdateAccountResponse = zod.object({
   "id": zod.number(),
   "name": zod.string(),
-  "platform": zod.enum(['tiktok', 'instagram', 'facebook', 'tiktok_monetized']),
+  "platform": zod.enum(['tiktok', 'instagram', 'facebook', 'tiktok_monetized', 'snapchat']),
   "followers": zod.number(),
   "price": zod.number(),
   "description": zod.string().nullish(),
@@ -444,13 +444,14 @@ export const GetDashboardStatsResponse = zod.object({
   "tiktokAccounts": zod.number(),
   "instagramAccounts": zod.number(),
   "facebookAccounts": zod.number(),
+  "snapchatAccounts": zod.number(),
   "totalClicks": zod.number(),
   "whatsappClicks": zod.number(),
   "feedbackPosts": zod.number().optional(),
   "recentAccounts": zod.array(zod.object({
   "id": zod.number(),
   "name": zod.string(),
-  "platform": zod.enum(['tiktok', 'instagram', 'facebook', 'tiktok_monetized']),
+  "platform": zod.enum(['tiktok', 'instagram', 'facebook', 'tiktok_monetized', 'snapchat']),
   "followers": zod.number(),
   "price": zod.number(),
   "description": zod.string().nullish(),
@@ -473,7 +474,7 @@ export const GetDashboardStatsResponse = zod.object({
   "topAccounts": zod.array(zod.object({
   "id": zod.number(),
   "name": zod.string(),
-  "platform": zod.enum(['tiktok', 'instagram', 'facebook', 'tiktok_monetized']),
+  "platform": zod.enum(['tiktok', 'instagram', 'facebook', 'tiktok_monetized', 'snapchat']),
   "followers": zod.number(),
   "price": zod.number(),
   "description": zod.string().nullish(),

@@ -15,6 +15,7 @@ export interface DashboardStats {
   tiktokAccounts: number;
   instagramAccounts: number;
   facebookAccounts: number;
+  snapchatAccounts: number;
   totalClicks: number;
   whatsappClicks: number;
   feedbackPosts?: number;
