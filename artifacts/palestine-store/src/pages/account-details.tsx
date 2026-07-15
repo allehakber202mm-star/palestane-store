@@ -506,8 +506,22 @@ ${pageUrl}`;
             </div>
           )}
 
-          {/* Actual description from DB (if present) */}
-          {account.description ? (
+          {/* Description section:
+              - Snapchat: always show fixed website bullets (never show telegram description)
+              - Others: show stored description if present, else platform feature bullets */}
+          {account.platform === "snapchat" ? (
+            <div className="px-4 py-3">
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">مميزات الحساب</p>
+              <ul className="space-y-2">
+                {SNAPCHAT_FEATURES.map((feat) => (
+                  <li key={feat} className="flex items-center gap-2 text-sm font-medium">
+                    <span className="text-green-500 text-base leading-none shrink-0">✓</span>
+                    {feat}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : account.description ? (
             <div className="px-4 py-3">
               <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">وصف الحساب</p>
               <p className="text-sm leading-relaxed whitespace-pre-line text-foreground">
@@ -515,11 +529,10 @@ ${pageUrl}`;
               </p>
             </div>
           ) : (
-            /* Fallback: platform feature bullets */
             <div className="px-4 py-3">
               <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">مميزات الحساب</p>
               <ul className="space-y-2">
-                {(account.platform === "snapchat" ? SNAPCHAT_FEATURES : TIKTOK_FEATURES).map((feat) => (
+                {TIKTOK_FEATURES.map((feat) => (
                   <li key={feat} className="flex items-center gap-2 text-sm font-medium">
                     <span className="text-green-500 text-base leading-none shrink-0">✓</span>
                     {feat}

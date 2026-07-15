@@ -677,11 +677,40 @@ export default function AdminAccounts() {
                 </div>
 
                 {/* Description */}
-                <div className="space-y-1.5">
-                  <Label>وصف (اختياري)</Label>
-                  <Textarea rows={2} value={form.description}
-                    onChange={(e) => setF("description", e.target.value)} placeholder="وصف مختصر..." />
-                </div>
+                {form.platform === "snapchat" ? (
+                  <>
+                    {/* Telegram description — editable */}
+                    <div className="space-y-1.5">
+                      <Label className="flex items-center gap-1.5">
+                        <Send className="w-3.5 h-3.5 text-blue-500" />
+                        وصف تيليجرام (اختياري)
+                      </Label>
+                      <Textarea rows={3} value={form.description}
+                        onChange={(e) => setF("description", e.target.value)}
+                        placeholder={"سناب\n\nمتابعين حقيقيين\n\nب 700 شيكل..."} />
+                      <p className="text-[10px] text-muted-foreground">يُستخدم عند النشر على تيليجرام فقط</p>
+                    </div>
+                    {/* Website description — fixed, read-only preview */}
+                    <div className="space-y-1.5">
+                      <Label className="flex items-center gap-1.5">
+                        <Link2 className="w-3.5 h-3.5 text-green-600" />
+                        وصف الموقع (ثابت)
+                      </Label>
+                      <div className="rounded-lg border border-green-200 bg-green-50 dark:bg-green-950/20 dark:border-green-800 px-3 py-2.5 space-y-1">
+                        {SNAPCHAT_DEFAULT_DESC.split("\n").map((line, i) => (
+                          <p key={i} className="text-xs text-green-700 dark:text-green-400 font-medium">{line}</p>
+                        ))}
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">يظهر هذا الوصف للزوار في صفحة المنتج — لا يمكن تعديله</p>
+                    </div>
+                  </>
+                ) : (
+                  <div className="space-y-1.5">
+                    <Label>وصف (اختياري)</Label>
+                    <Textarea rows={2} value={form.description}
+                      onChange={(e) => setF("description", e.target.value)} placeholder="وصف مختصر..." />
+                  </div>
+                )}
 
                 {/* Account URL */}
                 <div className="space-y-1.5">
