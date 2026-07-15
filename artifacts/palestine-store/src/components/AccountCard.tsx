@@ -166,33 +166,39 @@ export function AccountCard({ account }: AccountCardProps) {
 
         {/* Buttons row */}
         <div className="flex gap-1.5 mt-auto">
-          {/* Visit account — only shown when an external URL exists */}
-          {effectiveUrl && (
-            <a
-              href={effectiveUrl}
-              onClick={(e) => {
-                e.stopPropagation();
-                // Track the visit
-                fetch(`/api/accounts/${account.id}/visit`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ visitorId: getVisitorId() }),
-                }).catch(() => {});
-                fetch("/api/stats/track", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ eventType: "account_url_click", accountId: account.id }),
-                }).catch(() => {});
-              }}
-              className={`flex-1 flex items-center justify-center gap-1 rounded-lg py-2 sm:py-2.5 text-[11px] sm:text-xs font-bold border-2 transition-colors ${
-                account.platform === "snapchat"
-                  ? "border-yellow-400/60 hover:border-yellow-400 bg-yellow-50/60 hover:bg-yellow-50 dark:bg-yellow-900/20 dark:hover:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400"
-                  : "border-primary/40 hover:border-primary bg-primary/5 hover:bg-primary/10 text-primary"
-              }`}
-            >
-              <Link2 className="w-3 h-3 shrink-0" />
-              زيارة الحساب
-            </a>
+          {/* Visit account — always shown for Snapchat; for others only when URL exists */}
+          {(account.platform === "snapchat" || effectiveUrl) && (
+            effectiveUrl ? (
+              <a
+                href={effectiveUrl}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  fetch(`/api/accounts/${account.id}/visit`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ visitorId: getVisitorId() }),
+                  }).catch(() => {});
+                  fetch("/api/stats/track", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ eventType: "account_url_click", accountId: account.id }),
+                  }).catch(() => {});
+                }}
+                className="flex-1 flex items-center justify-center gap-1 rounded-lg py-2 sm:py-2.5 text-[11px] sm:text-xs font-bold border-2 border-yellow-400/70 hover:border-yellow-500 bg-yellow-400/10 hover:bg-yellow-400/20 text-yellow-600 dark:text-yellow-400 transition-colors"
+              >
+                <Link2 className="w-3 h-3 shrink-0" />
+                زيارة الحساب
+              </a>
+            ) : (
+              /* Snapchat but no URL yet — show disabled */
+              <span
+                onClick={(e) => e.stopPropagation()}
+                className="flex-1 flex items-center justify-center gap-1 rounded-lg py-2 sm:py-2.5 text-[11px] sm:text-xs font-bold border-2 border-muted-foreground/20 bg-muted/30 text-muted-foreground/50 cursor-not-allowed select-none"
+              >
+                <Link2 className="w-3 h-3 shrink-0" />
+                زيارة الحساب
+              </span>
+            )
           )}
 
           {/* CTA — details */}
