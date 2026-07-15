@@ -192,8 +192,29 @@ export function AccountCard({ account }: AccountCardProps) {
 
         {/* Buttons row */}
         <div className="flex gap-1.5 mt-auto">
-          {/* Visit account — always shown when URL or username is available */}
-          {effectiveUrl && (
+          {/* Visit account — always shown for Snapchat, or when URL/username available */}
+          {(effectiveUrl || account.platform === "snapchat") && (
+            effectiveUrl ? (
+              <a
+                href={effectiveUrl}
+                onClick={handleVisitClick}
+                className="flex-1 flex items-center justify-center gap-1 rounded-lg py-2 sm:py-2.5 text-[11px] sm:text-xs font-bold border-2 border-yellow-400/60 hover:border-yellow-400 bg-yellow-50/60 hover:bg-yellow-50 dark:bg-yellow-900/20 dark:hover:bg-yellow-900/30 transition-colors text-yellow-600 dark:text-yellow-400"
+              >
+                <Link2 className="w-3 h-3 shrink-0" />
+                زيارة الحساب
+              </a>
+            ) : (
+              <button
+                onClick={goToDetails}
+                className="flex-1 flex items-center justify-center gap-1 rounded-lg py-2 sm:py-2.5 text-[11px] sm:text-xs font-bold border-2 border-yellow-400/60 hover:border-yellow-400 bg-yellow-50/60 hover:bg-yellow-50 dark:bg-yellow-900/20 dark:hover:bg-yellow-900/30 transition-colors text-yellow-600 dark:text-yellow-400"
+              >
+                <Link2 className="w-3 h-3 shrink-0" />
+                زيارة الحساب
+              </button>
+            )
+          )}
+          {/* Non-Snapchat visit button */}
+          {effectiveUrl && account.platform !== "snapchat" && (
             <a
               href={effectiveUrl}
               onClick={handleVisitClick}
