@@ -170,6 +170,8 @@ export function AccountCard({ account }: AccountCardProps) {
           {effectiveUrl ? (
             <a
               href={effectiveUrl}
+              target="_blank"
+              rel="noopener noreferrer"
               onClick={(e) => {
                 e.stopPropagation();
                 fetch(`/api/accounts/${account.id}/visit`, {
