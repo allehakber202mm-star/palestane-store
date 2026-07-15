@@ -22,6 +22,15 @@ const TIKTOK_FEATURES = [
   "جاهز للاستخدام مباشرة",
 ];
 
+const SNAPCHAT_FEATURES = [
+  "متابعين حقيقيين 100%",
+  "جمهور نشط ومتفاعل",
+  "بدون متابعين وهميين أو بوتات",
+  "نمو طبيعي وآمن للحساب",
+  "مناسب للتسويق والإعلانات",
+  "جاهز للاستخدام مباشرة",
+];
+
 const MONETIZED_EARNINGS_LINES = [
   "💰 فيه أرباح المشاهدات",
   "💰 كل 10ك مشاهدات على الفيديو بتربح 2.1$",
@@ -473,6 +482,8 @@ ${pageUrl}`;
                 ? "border-pink-300 text-pink-600 dark:text-pink-400 hover:bg-pink-50 dark:hover:bg-pink-950/30"
                 : account.platform === "facebook"
                 ? "border-blue-300 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30"
+                : account.platform === "snapchat"
+                ? "border-yellow-300 text-yellow-600 dark:text-yellow-400 hover:bg-yellow-50 dark:hover:bg-yellow-950/30"
                 : "border-border text-foreground hover:bg-muted/50"
             }`}
           >
@@ -508,7 +519,7 @@ ${pageUrl}`;
             <div className="px-4 py-3">
               <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">مميزات الحساب</p>
               <ul className="space-y-2">
-                {TIKTOK_FEATURES.map((feat) => (
+                {(account.platform === "snapchat" ? SNAPCHAT_FEATURES : TIKTOK_FEATURES).map((feat) => (
                   <li key={feat} className="flex items-center gap-2 text-sm font-medium">
                     <span className="text-green-500 text-base leading-none shrink-0">✓</span>
                     {feat}
@@ -527,6 +538,13 @@ ${pageUrl}`;
           </div>
           <div className="divide-y">
             <InfoRow label="اسم الحساب" value={account.name} ltr />
+            {account.platform === "snapchat" && account.username && (
+              <InfoRow
+                label="اسم المستخدم"
+                value={`@${account.username.replace(/^@/, "")}`}
+                ltr
+              />
+            )}
             <InfoRow label="نوع الحساب" value={platformAr} />
             <InfoRow
               label="الحالة"
@@ -614,6 +632,8 @@ ${pageUrl}`;
                     ? "border-pink-300 text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-950/30"
                     : account.platform === "facebook"
                     ? "border-blue-300 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30"
+                    : account.platform === "snapchat"
+                    ? "border-yellow-300 text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-950/30"
                     : "border-border text-foreground hover:bg-muted/50"
                 }`}
               >

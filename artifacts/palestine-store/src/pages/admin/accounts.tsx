@@ -581,9 +581,26 @@ export default function AdminAccounts() {
                   <div className="relative">
                     <span className="absolute top-1/2 -translate-y-1/2 right-3 text-muted-foreground text-sm select-none">@</span>
                     <Input dir="ltr" className="text-left pr-7" value={form.username}
-                      onChange={(e) => setF("username", e.target.value.replace(/^@/, ""))}
+                      onChange={(e) => {
+                        const uname = e.target.value.replace(/^@/, "");
+                        setForm((f) => {
+                          const snapUrl = uname ? `https://www.snapchat.com/add/${uname}` : "";
+                          const isAutoUrl = !f.accountUrl || /^https:\/\/www\.snapchat\.com\/add\//.test(f.accountUrl);
+                          return {
+                            ...f,
+                            username: uname,
+                            accountUrl: f.platform === "snapchat" && isAutoUrl ? snapUrl : f.accountUrl,
+                          };
+                        });
+                        setErrors((e2) => ({ ...e2, username: undefined, accountUrl: undefined }));
+                      }}
                       placeholder="username" />
                   </div>
+                  {form.platform === "snapchat" && form.username && (
+                    <p className="text-[10px] text-yellow-600 dark:text-yellow-400 font-medium">
+                      🔗 snapchat.com/add/{form.username}
+                    </p>
+                  )}
                 </div>
 
                 {/* Platform */}
@@ -591,7 +608,20 @@ export default function AdminAccounts() {
                   <Label>المنصة</Label>
                   <div className="grid grid-cols-3 gap-2">
                     {(["tiktok","tiktok_monetized","instagram","facebook","snapchat"] as const).map((p) => (
-                      <button key={p} type="button" onClick={() => setF("platform", p)}
+                      <button key={p} type="button" onClick={() => {
+                        setForm((f) => {
+                          if (p === "snapchat" && f.username) {
+                            const isAutoUrl = !f.accountUrl || /^https:\/\/www\.snapchat\.com\/add\//.test(f.accountUrl);
+                            return {
+                              ...f,
+                              platform: p,
+                              accountUrl: isAutoUrl ? `https://www.snapchat.com/add/${f.username}` : f.accountUrl,
+                            };
+                          }
+                          return { ...f, platform: p };
+                        });
+                        setErrors((e2) => ({ ...e2, platform: undefined }));
+                      }}
                         className={`flex flex-col items-center gap-1 py-2.5 rounded-xl border text-xs font-bold transition-all ${
                           form.platform === p
                             ? p === "tiktok_monetized"
@@ -641,6 +671,7 @@ export default function AdminAccounts() {
                       placeholder={
                         form.platform === "instagram" ? "https://www.instagram.com/username"
                         : form.platform === "facebook" ? "https://www.facebook.com/page"
+                        : form.platform === "snapchat" ? "https://www.snapchat.com/add/username"
                         : "https://www.tiktok.com/@username"
                       }
                     />
