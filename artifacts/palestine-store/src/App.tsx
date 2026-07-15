@@ -5,8 +5,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { useSiteTracking } from "@/hooks/useSiteTracking";
-import NotFound from "@/pages/not-found";
-
 // Public Pages
 import Home from "@/pages/home";
 import Accounts from "@/pages/accounts";
@@ -79,7 +77,7 @@ function Router() {
         <ProtectedRoute component={AdminFeedback} />
       </Route>
 
-      <Route component={NotFound} />
+      <Route><Redirect to="/" /></Route>
     </Switch>
   );
 }
