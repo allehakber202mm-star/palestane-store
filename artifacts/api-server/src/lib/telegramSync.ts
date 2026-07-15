@@ -1094,6 +1094,7 @@ export async function runTelegramSync(): Promise<SyncResult> {
           p.username = ocrUsername;
           if      (p.platform === "instagram")        p.accountUrl = `https://www.instagram.com/${ocrUsername}`;
           else if (p.platform === "facebook")         p.accountUrl = `https://www.facebook.com/${ocrUsername}`;
+          else if (p.platform === "snapchat")         p.accountUrl = `https://www.snapchat.com/add/${ocrUsername}`;
           else                                        p.accountUrl = `https://www.tiktok.com/@${ocrUsername}`;
           p.parseLog.username   = `[OCR] مُستخرج من الصورة: @${ocrUsername}`;
           p.parseLog.accountUrl = `[OCR] بُني من الصورة (${p.platform}): ${p.accountUrl}`;

@@ -74,6 +74,17 @@ function extractBestUsername(text: string, platform: string): string | null {
         candidates.push(h);
       }
     }
+  } else if (platform === "snapchat") {
+    // snapchat.com/add/USERNAME  or  add me: USERNAME
+    for (const m of text.matchAll(/snapchat\.com\/add\/([A-Za-z0-9._-]{3,30})/gi)) {
+      const h = m[1];
+      if (!NOISE_WORDS.has(h.toLowerCase())) candidates.push(h);
+    }
+    // Plain username line — often appears below the ghost avatar in profile screenshots
+    for (const m of text.matchAll(/^([A-Za-z0-9._-]{4,30})$/gm)) {
+      const h = m[1];
+      if (!NOISE_WORDS.has(h.toLowerCase()) && !/^\d+$/.test(h)) candidates.push(h);
+    }
   }
 
   if (candidates.length === 0) return null;
