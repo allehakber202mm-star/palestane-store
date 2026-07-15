@@ -146,12 +146,8 @@ export function AccountCard({ account }: AccountCardProps) {
           </span>
         </div>
 
-        {/* Description — real DB value if present, else platform features */}
-        {account.description ? (
-          <p className="text-[10px] sm:text-xs text-muted-foreground leading-relaxed line-clamp-3">
-            {account.description}
-          </p>
-        ) : (
+        {/* Description — Snapchat always shows fixed bullets (never Telegram desc) */}
+        {account.platform === "snapchat" || !account.description ? (
           <ul className="grid grid-cols-2 gap-x-1 gap-y-0.5">
             {cardFeatures.map((feat) => (
               <li key={feat} className="flex items-center gap-0.5 text-[9px] sm:text-[10px] text-muted-foreground">
@@ -160,6 +156,10 @@ export function AccountCard({ account }: AccountCardProps) {
               </li>
             ))}
           </ul>
+        ) : (
+          <p className="text-[10px] sm:text-xs text-muted-foreground leading-relaxed line-clamp-3">
+            {account.description}
+          </p>
         )}
 
         <div className="flex-1" />
