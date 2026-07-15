@@ -78,32 +78,6 @@ export function AccountCard({ account }: AccountCardProps) {
   // Effective URL: stored accountUrl takes priority, then auto-built from username
   const effectiveUrl = buildProfileUrl(account.platform, account.username, account.accountUrl);
 
-  // Track visit: POST to API first (fire-and-forget), then open the URL
-  const handleVisitClick = async (e: React.MouseEvent<HTMLAnchorElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    if (!effectiveUrl) return;
-
-    try {
-      await fetch(`/api/accounts/${account.id}/visit`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ visitorId: getVisitorId() }),
-      });
-    } catch {
-      // Don't block navigation on tracking failure
-    }
-
-    // Also record in stats table for analytics
-    fetch("/api/stats/track", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ eventType: "account_url_click", accountId: account.id }),
-    }).catch(() => {});
-
-    window.open(effectiveUrl, "_blank", "noopener,noreferrer");
-  };
 
   return (
     <div
@@ -192,33 +166,29 @@ export function AccountCard({ account }: AccountCardProps) {
 
         {/* Buttons row */}
         <div className="flex gap-1.5 mt-auto">
-          {/* Visit account — always shown for Snapchat, or when URL/username available */}
-          {(effectiveUrl || account.platform === "snapchat") && (
-            effectiveUrl ? (
-              <a
-                href={effectiveUrl}
-                onClick={handleVisitClick}
-                className="flex-1 flex items-center justify-center gap-1 rounded-lg py-2 sm:py-2.5 text-[11px] sm:text-xs font-bold border-2 border-yellow-400/60 hover:border-yellow-400 bg-yellow-50/60 hover:bg-yellow-50 dark:bg-yellow-900/20 dark:hover:bg-yellow-900/30 transition-colors text-yellow-600 dark:text-yellow-400"
-              >
-                <Link2 className="w-3 h-3 shrink-0" />
-                زيارة الحساب
-              </a>
-            ) : (
-              <button
-                onClick={goToDetails}
-                className="flex-1 flex items-center justify-center gap-1 rounded-lg py-2 sm:py-2.5 text-[11px] sm:text-xs font-bold border-2 border-yellow-400/60 hover:border-yellow-400 bg-yellow-50/60 hover:bg-yellow-50 dark:bg-yellow-900/20 dark:hover:bg-yellow-900/30 transition-colors text-yellow-600 dark:text-yellow-400"
-              >
-                <Link2 className="w-3 h-3 shrink-0" />
-                زيارة الحساب
-              </button>
-            )
-          )}
-          {/* Non-Snapchat visit button */}
-          {effectiveUrl && account.platform !== "snapchat" && (
+          {/* Visit account — only shown when an external URL exists */}
+          {effectiveUrl && (
             <a
               href={effectiveUrl}
-              onClick={handleVisitClick}
-              className="flex-1 flex items-center justify-center gap-1 rounded-lg py-2 sm:py-2.5 text-[11px] sm:text-xs font-bold border-2 border-primary/40 hover:border-primary bg-primary/5 hover:bg-primary/10 transition-colors text-primary"
+              onClick={(e) => {
+                e.stopPropagation();
+                // Track the visit
+                fetch(`/api/accounts/${account.id}/visit`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ visitorId: getVisitorId() }),
+                }).catch(() => {});
+                fetch("/api/stats/track", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ eventType: "account_url_click", accountId: account.id }),
+                }).catch(() => {});
+              }}
+              className={`flex-1 flex items-center justify-center gap-1 rounded-lg py-2 sm:py-2.5 text-[11px] sm:text-xs font-bold border-2 transition-colors ${
+                account.platform === "snapchat"
+                  ? "border-yellow-400/60 hover:border-yellow-400 bg-yellow-50/60 hover:bg-yellow-50 dark:bg-yellow-900/20 dark:hover:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400"
+                  : "border-primary/40 hover:border-primary bg-primary/5 hover:bg-primary/10 text-primary"
+              }`}
             >
               <Link2 className="w-3 h-3 shrink-0" />
               زيارة الحساب
