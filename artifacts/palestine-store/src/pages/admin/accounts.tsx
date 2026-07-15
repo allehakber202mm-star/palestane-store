@@ -464,12 +464,12 @@ export default function AdminAccounts() {
                       </div>
                     )}
 
-                    {/* No-URL warning badge */}
+                    {/* No-URL / No-username warning badge */}
                     {!(acc as AccRow).accountUrl && !(acc as AccRow).username && (
                       <div className="absolute bottom-2 right-2">
                         <Badge className="text-[10px] px-1.5 py-0 bg-orange-500/90 text-white border-none leading-5 flex items-center gap-0.5">
                           <AlertTriangle className="w-2.5 h-2.5" />
-                          بدون رابط
+                          {acc.platform === "snapchat" ? "بدون يوزرنيم" : "بدون رابط"}
                         </Badge>
                       </div>
                     )}
@@ -812,6 +812,15 @@ export default function AdminAccounts() {
                   </a>
                 )}
 
+                {activeAcc.platform === "snapchat" && !activeAcc.username && (
+                  <div className="flex items-start gap-2 rounded-lg border border-orange-300 bg-orange-50 dark:bg-orange-950/20 dark:border-orange-800 px-3 py-2.5">
+                    <AlertTriangle className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" />
+                    <p className="text-xs text-orange-700 dark:text-orange-400">
+                      هذا الحساب لا يحتوي على <strong>يوزرنيم</strong>. أدخل الرابط يدوياً هنا، أو افتح <strong>تعديل</strong> وأضف اليوزرنيم لتوليد الرابط تلقائياً.
+                    </p>
+                  </div>
+                )}
+
                 <div className="space-y-1.5">
                   <Label>رابط الحساب</Label>
                   <Input dir="ltr" className="text-left" value={urlVal}
@@ -819,6 +828,7 @@ export default function AdminAccounts() {
                     placeholder={
                       activeAcc.platform === "instagram" ? "https://www.instagram.com/username"
                       : activeAcc.platform === "facebook" ? "https://www.facebook.com/page"
+                      : activeAcc.platform === "snapchat" ? "https://www.snapchat.com/add/username"
                       : "https://www.tiktok.com/@username"
                     }
                   />
