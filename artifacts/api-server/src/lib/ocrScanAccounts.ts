@@ -4,13 +4,14 @@ import { objectStorageClient } from "./objectStorage";
 import { extractUsernameFromImage } from "./ocrExtract";
 import { logger } from "./logger";
 
-const SUPPORTED_PLATFORMS = ["tiktok", "tiktok_monetized", "instagram", "facebook"] as const;
+const SUPPORTED_PLATFORMS = ["tiktok", "tiktok_monetized", "instagram", "facebook", "snapchat"] as const;
 type SupportedPlatform = (typeof SUPPORTED_PLATFORMS)[number];
 
 function buildProfileUrl(platform: SupportedPlatform, username: string): string {
   const u = username.replace(/^@/, "");
   if (platform === "tiktok" || platform === "tiktok_monetized") return `https://www.tiktok.com/@${u}`;
   if (platform === "instagram") return `https://www.instagram.com/${u}`;
+  if (platform === "snapchat") return `https://www.snapchat.com/add/${u}`;
   return `https://www.facebook.com/${u}`;
 }
 
