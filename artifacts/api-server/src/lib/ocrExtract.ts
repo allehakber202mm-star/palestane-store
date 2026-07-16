@@ -67,6 +67,11 @@ function extractBestUsername(text: string, platform: string): string | null {
       const h = m[1].replace(/^@/, "");
       if (!NOISE_WORDS.has(h.toLowerCase())) candidates.push(h);
     }
+    // Instagram usernames appear at top of profile without @ — plain word lines
+    for (const m of text.matchAll(/^([A-Za-z0-9._]{4,30})$/gm)) {
+      const h = m[1];
+      if (!NOISE_WORDS.has(h.toLowerCase()) && !/^\d+$/.test(h)) candidates.push(h);
+    }
   } else if (platform === "facebook") {
     for (const m of text.matchAll(/(?:facebook|fb)\.com\/([A-Za-z0-9._]{3,30})/gi)) {
       const h = m[1].replace(/^@/, "");
