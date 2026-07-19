@@ -27,6 +27,7 @@ export type TgPost   = {
   caption?: string;
   photo?: TgPhoto[];
   video?: TgVideo;
+  media_group_id?: string;
 };
 export type TgUpdate = { update_id: number; channel_post?: TgPost; edited_channel_post?: TgPost };
 
@@ -855,6 +856,67 @@ export async function runTelegramSync(): Promise<SyncResult> {
     }
   }
 
+  // ── Group account posts by media_group_id ────────────────────────────────
+  // When user sends multiple photos in one Telegram post (album), each photo
+  // arrives as a separate message with the same media_group_id.
+  // We pick the "primary" post (the one with caption, else the first) and
+  // treat the others as extra photos for the same account.
+  const extraFileIds    = new Map<number, string[]>();  // primaryMsgId → extra photo file_ids
+  const extraMsgIdSet   = new Set<number>();            // message_ids to skip (extras)
+
+  {
+    const byGroup = new Map<string, Array<{ update_id: number; post: TgPost }>>();
+    const noGroup: Array<{ update_id: number; post: TgPost }> = [];
+
+    for (const item of accountPosts) {
+      const gid = item.post.media_group_id;
+      if (gid) {
+        if (!byGroup.has(gid)) byGroup.set(gid, []);
+        byGroup.get(gid)!.push(item);
+      } else {
+        noGroup.push(item);
+      }
+    }
+
+    for (const [, group] of byGroup) {
+      // Primary = first message that has a caption; fallback = first message overall
+      const primary = group.find(g => !!(g.post.caption ?? g.post.text)) ?? group[0];
+      const extras  = group.filter(g => g.post.message_id !== primary.post.message_id);
+
+      // Collect largest photo file_id from each extra
+      const extraIds: string[] = [];
+      for (const ex of extras) {
+        if (ex.post.photo?.length) {
+          const largest = ex.post.photo.reduce((a, b) =>
+            a.width * a.height >= b.width * b.height ? a : b,
+          );
+          extraIds.push(largest.file_id);
+        }
+        extraMsgIdSet.add(ex.post.message_id);
+      }
+
+      if (extraIds.length) extraFileIds.set(primary.post.message_id, extraIds);
+
+      logger.info(
+        {
+          mediaGroupId:   primary.post.media_group_id,
+          primaryMsgId:   primary.post.message_id,
+          extraCount:     extras.length,
+          extraMsgIds:    extras.map(e => e.post.message_id),
+        },
+        "[MediaGroup] تجميع منشور متعدد الصور",
+      );
+    }
+
+    // Rebuild accountPosts: keep all no-group items + only primaries from groups
+    // (This replaces the original accountPosts reference for the rest of the function)
+    const groupPrimaries = Array.from(byGroup.values()).map(
+      group => group.find(g => !!(g.post.caption ?? g.post.text)) ?? group[0],
+    );
+    accountPosts.length = 0;
+    for (const item of [...noGroup, ...groupPrimaries]) accountPosts.push(item);
+  }
+
   // ── Process account posts (new) ───────────────────────────────────────────
   const messageIds = accountPosts.map(p => p.post.message_id);
   const parsed     = accountPosts.map(p => ({
@@ -1122,6 +1184,24 @@ export async function runTelegramSync(): Promise<SyncResult> {
       }
     }
 
+    // ── Upload additional photos (media group extras) ────────────────────
+    let additionalImages: string[] | null = null;
+    const extraIds = extraFileIds.get(post.message_id);
+    if (extraIds?.length) {
+      const uploaded: string[] = [];
+      for (const fid of extraIds) {
+        const url = await importPhoto(fid, token);
+        if (url) uploaded.push(url);
+      }
+      if (uploaded.length) {
+        additionalImages = uploaded;
+        logger.info(
+          { telegramMessageId: post.message_id, count: uploaded.length },
+          "[MediaGroup] ✅ صور إضافية رُفعت",
+        );
+      }
+    }
+
     // ══════════════════════════════════════════════════════════════════════
     // [DIAG] DATA_BEFORE_SAVE — البيانات الكاملة قبل الحفظ في DB
     // ══════════════════════════════════════════════════════════════════════
@@ -1134,6 +1214,7 @@ export async function runTelegramSync(): Promise<SyncResult> {
       description:         p.description,
       originalDescription: p.originalDescription,
       imageUrl,
+      additionalImages,
       accountUrl:          p.accountUrl,
       status:              "available" as const,
       featured:            false,

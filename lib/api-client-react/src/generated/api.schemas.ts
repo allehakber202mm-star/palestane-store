@@ -60,6 +60,7 @@ export interface Account {
   avgEarningsPer10k?: number | null;
   /** @nullable */
   followersUpdatedAt?: string | null;
+  additionalImages?: string[] | null;
 }
 
 export type FacebookSyncResultItemStatus = typeof FacebookSyncResultItemStatus[keyof typeof FacebookSyncResultItemStatus];

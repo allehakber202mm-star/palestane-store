@@ -24,6 +24,7 @@ export const accountsTable = pgTable("accounts", {
   followersUpdatedAt: timestamp("followers_updated_at", { withTimezone: true }),
   telegramMessageId: integer("telegram_message_id"),
   originalDescription: text("original_description"),
+  additionalImages: text("additional_images").array(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

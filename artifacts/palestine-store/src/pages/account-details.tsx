@@ -260,7 +260,8 @@ function trackEvent(eventType: "page_view" | "whatsapp_click" | "account_url_cli
 export default function AccountDetails() {
   const params = useParams<{ id: string }>();
   const id = parseInt(params.id ?? "", 10);
-  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxOpen, setLightboxOpen]   = useState(false);
+  const [galleryIndex, setGalleryIndex]   = useState(0);
 
   const { data: account, isLoading, isError } = useGetAccount(id);
   const { data: settings } = useGetSettings();
@@ -360,11 +361,6 @@ ${pageUrl}`;
 
   return (
     <PublicLayout>
-      {/* Lightbox */}
-      {lightboxOpen && account.imageUrl && (
-        <Lightbox src={account.imageUrl} alt={account.name} onClose={() => setLightboxOpen(false)} />
-      )}
-
       <div className="max-w-2xl mx-auto px-4 py-5 pb-32 sm:pb-24">
 
         {/* Back */}
@@ -395,47 +391,81 @@ ${pageUrl}`;
           </div>
         )}
 
-        {/* ── Image — full natural size, zero crop ── */}
-        <div className="relative w-full rounded-2xl bg-muted mb-5 group">
-          {account.imageUrl ? (
+        {/* ── Image Gallery ── */}
+        {(() => {
+          const allImages = [
+            ...(account.imageUrl ? [account.imageUrl] : []),
+            ...(account.additionalImages ?? []),
+          ];
+          const activeImg = allImages[galleryIndex] ?? null;
+          return (
             <>
-              {/* Image: natural width/height, no clipping */}
-              <img
-                src={account.imageUrl}
-                alt={account.name}
-                onClick={() => setLightboxOpen(true)}
-                className="w-full h-auto block rounded-2xl cursor-zoom-in"
-                loading="eager"
-                decoding="sync"
-              />
-
-              {/* Zoom hint — appears on hover, centered */}
-              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none rounded-2xl">
-                <div className="bg-black/50 backdrop-blur-sm rounded-full px-3 py-1.5 flex items-center gap-1.5">
-                  <Maximize2 className="w-3.5 h-3.5 text-white" />
-                  <span className="text-white text-xs font-medium">عرض كامل</span>
+              {lightboxOpen && activeImg && (
+                <Lightbox src={activeImg} alt={account.name} onClose={() => setLightboxOpen(false)} />
+              )}
+              <div className="mb-5">
+                {/* Main image */}
+                <div className="relative w-full rounded-2xl bg-muted group">
+                  {activeImg ? (
+                    <>
+                      <img
+                        src={activeImg}
+                        alt={account.name}
+                        onClick={() => setLightboxOpen(true)}
+                        className="w-full h-auto block rounded-2xl cursor-zoom-in"
+                        loading="eager"
+                        decoding="sync"
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none rounded-2xl">
+                        <div className="bg-black/50 backdrop-blur-sm rounded-full px-3 py-1.5 flex items-center gap-1.5">
+                          <Maximize2 className="w-3.5 h-3.5 text-white" />
+                          <span className="text-white text-xs font-medium">عرض كامل</span>
+                        </div>
+                      </div>
+                      <span className={`absolute top-3 right-3 text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm ${
+                        isSold ? "bg-destructive" : "bg-green-500"
+                      }`}>
+                        {isSold ? "مباع" : "متاح للبيع"}
+                      </span>
+                      {allImages.length > 1 && (
+                        <span className="absolute bottom-3 left-3 bg-black/50 text-white text-xs px-2 py-1 rounded-full">
+                          {galleryIndex + 1} / {allImages.length}
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <div className="w-full flex items-center justify-center rounded-2xl border border-border" style={{ minHeight: "200px" }}>
+                      <PlatformIcon className="w-20 h-20 opacity-10" />
+                      <span className={`absolute top-3 right-3 text-white text-xs font-bold px-3 py-1 rounded-full ${
+                        isSold ? "bg-destructive" : "bg-green-500"
+                      }`}>
+                        {isSold ? "مباع" : "متاح للبيع"}
+                      </span>
+                    </div>
+                  )}
                 </div>
+                {/* Thumbnails */}
+                {allImages.length > 1 && (
+                  <div className="flex gap-2 mt-2 overflow-x-auto pb-1">
+                    {allImages.map((src, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setGalleryIndex(i)}
+                        className={`shrink-0 w-16 h-16 rounded-xl overflow-hidden border-2 transition-all ${
+                          i === galleryIndex
+                            ? "border-primary opacity-100"
+                            : "border-transparent opacity-50 hover:opacity-75"
+                        }`}
+                      >
+                        <img src={src} alt={`صورة ${i + 1}`} className="w-full h-full object-cover" />
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
-
-              {/* Badges — top corners, outside image flow */}
-              <span className={`absolute top-3 right-3 text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm ${
-                isSold ? "bg-destructive" : "bg-green-500"
-              }`}>
-                {isSold ? "مباع" : "متاح للبيع"}
-              </span>
             </>
-          ) : (
-            /* Placeholder when no image */
-            <div className="w-full flex items-center justify-center rounded-2xl border border-border" style={{ minHeight: "200px" }}>
-              <PlatformIcon className="w-20 h-20 opacity-10" />
-              <span className={`absolute top-3 right-3 text-white text-xs font-bold px-3 py-1 rounded-full ${
-                isSold ? "bg-destructive" : "bg-green-500"
-              }`}>
-                {isSold ? "مباع" : "متاح للبيع"}
-              </span>
-            </div>
-          )}
-        </div>
+          );
+        })()}
 
         {/* ── Name + Price ── */}
         <div className="flex items-start justify-between gap-3 mb-4">

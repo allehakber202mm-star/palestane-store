@@ -40,4 +40,5 @@ export interface Account {
   avgEarningsPer10k?: number | null;
   /** @nullable */
   followersUpdatedAt?: Date | null;
+  additionalImages?: string[] | null;
 }
