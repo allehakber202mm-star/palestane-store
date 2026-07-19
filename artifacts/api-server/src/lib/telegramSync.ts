@@ -339,9 +339,12 @@ export function parsePostText(rawText: string, messageId: number): ParsedAccount
   // BUG FIX #4: Use [ \\t]* (space/tab only) instead of \\s* between keyword and number
   // to prevent cross-line matching. Without this, "متابع\n400 شيكل" wrongly reads
   // the price (400) as followers count.
+  // Optional filler words that can appear between keyword and number:
+  // "متابعين قريبا : 64 الف" / "متابعين حوالي 50 ألف" / "متابعين تقريبا 30k"
+  const FILLER_WORDS = "(?:قريبا|قريباً|حوالي|تقريبا|تقريباً|يقارب|أكثر\\s+من|اكثر\\s+من|ما\\s+يقارب)?";
   const followerPatterns: RegExp[] = [
-    // "متابعين : 315 الف" / "followers: 1.5M" / "متابعين : 36ك"  (keyword BEFORE number)
-    new RegExp(`(?:followers?|متابع(?:ين|ون)?|مشترك(?:ين)?|معجب(?:ون|ين)?)[ \\t]*:?[ \\t]*([\\d,،]+(?:\\.\\d+)?)[ \\t]*(${UNIT_WORDS}|${UNIT_CHARS})?`, "i"),
+    // "متابعين : 315 الف" / "متابعين قريبا : 64 الف" / "followers: 1.5M"  (keyword BEFORE number)
+    new RegExp(`(?:followers?|متابع(?:ين|ون)?|مشترك(?:ين)?|معجب(?:ون|ين)?)[ \\t]*${FILLER_WORDS}[ \\t]*:?[ \\t]*${FILLER_WORDS}[ \\t]*([\\d,،]+(?:\\.\\d+)?)[ \\t]*(${UNIT_WORDS}|${UNIT_CHARS})?`, "i"),
     // "315 الف متابع" / "1.5M followers" / "36ك متابع"  (number BEFORE keyword)
     new RegExp(`([\\d,،]+(?:\\.\\d+)?)[ \\t]*(${UNIT_WORDS}|${UNIT_CHARS})?[ \\t]*(?:followers?|متابع(?:ين|ون)?|مشترك(?:ين)?|معجب(?:ون|ين)?)`, "i"),
     // "إعجابات : 50 ألف" (Facebook likes as follower proxy)
