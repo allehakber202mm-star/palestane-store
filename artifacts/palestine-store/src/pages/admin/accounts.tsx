@@ -478,28 +478,46 @@ export default function AdminAccounts() {
                   className="group relative bg-card border rounded-xl overflow-hidden shadow-sm hover:shadow-md hover:border-primary/30 transition-all flex flex-col"
                 >
                   {/* ── Image area — full image, no crop ── */}
-                  <div className="relative bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0" style={{ aspectRatio: "4/3" }}>
+                  <div className="relative flex items-center justify-center shrink-0 overflow-hidden" style={{ aspectRatio: "4/3" }}>
                     {acc.imageUrl ? (
-                      <img
-                        src={acc.imageUrl}
-                        alt={acc.name}
-                        className="w-full h-full object-contain cursor-zoom-in"
-                        loading="lazy"
-                        onClick={(e) => { e.stopPropagation(); setLightboxUrl(acc.imageUrl!); }}
-                        onError={(e) => {
-                          const t = e.currentTarget;
-                          t.style.display = "none";
-                          const fb = t.nextElementSibling as HTMLElement | null;
-                          if (fb) fb.style.display = "flex";
-                        }}
-                      />
-                    ) : null}
-                    <div
-                      className={`absolute inset-0 flex items-center justify-center text-2xl sm:text-3xl opacity-20 ${plt.color}`}
-                      style={{ display: acc.imageUrl ? "none" : "flex" }}
-                    >
-                      {plt.icon}
-                    </div>
+                      <>
+                        <div className="absolute inset-0 bg-gray-100 dark:bg-gray-800" />
+                        <img
+                          src={acc.imageUrl}
+                          alt={acc.name}
+                          className="relative w-full h-full object-contain cursor-zoom-in"
+                          loading="lazy"
+                          onClick={(e) => { e.stopPropagation(); setLightboxUrl(acc.imageUrl!); }}
+                          onError={(e) => {
+                            const t = e.currentTarget;
+                            t.style.display = "none";
+                          }}
+                        />
+                      </>
+                    ) : (
+                      /* ── Styled placeholder when no image ── */
+                      <div className={`absolute inset-0 flex flex-col items-center justify-center gap-1.5 px-3
+                        ${acc.platform === "tiktok" || acc.platform === "tiktok_monetized"
+                          ? "bg-gradient-to-br from-gray-900 to-gray-700"
+                          : acc.platform === "instagram"
+                          ? "bg-gradient-to-br from-purple-600 to-pink-500"
+                          : acc.platform === "facebook"
+                          ? "bg-gradient-to-br from-blue-700 to-blue-500"
+                          : "bg-gradient-to-br from-yellow-400 to-yellow-300"
+                        }`}>
+                        <span className={`text-3xl ${acc.platform === "snapchat" ? "text-gray-800" : "text-white/80"}`}>
+                          {plt.icon}
+                        </span>
+                        <p className={`text-[11px] font-bold text-center line-clamp-2 leading-tight
+                          ${acc.platform === "snapchat" ? "text-gray-800" : "text-white"}`} dir="ltr">
+                          {(acc as AccRow).username ? `@${(acc as AccRow).username}` : acc.name}
+                        </p>
+                        <p className={`text-[10px] font-semibold
+                          ${acc.platform === "snapchat" ? "text-gray-700" : "text-white/70"}`}>
+                          {fmt(acc.followers)} متابع
+                        </p>
+                      </div>
+                    )}
 
                     {/* Featured badge only */}
                     {acc.featured && (
