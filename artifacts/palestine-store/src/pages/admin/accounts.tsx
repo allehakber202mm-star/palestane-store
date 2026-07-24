@@ -120,6 +120,7 @@ export default function AdminAccounts() {
   const [urlVal, setUrlVal]   = useState("");
   const [urlError, setUrlError] = useState("");
   const [confirmClearUrl, setConfirmClearUrl] = useState(false);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const formFileRef = useRef<HTMLInputElement>(null);
 
@@ -368,6 +369,24 @@ export default function AdminAccounts() {
 
   return (
     <AdminLayout>
+      {/* ── Image Lightbox ── */}
+      {lightboxUrl && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+          onClick={() => setLightboxUrl(null)}
+        >
+          <button
+            className="absolute top-4 left-4 text-white bg-white/20 hover:bg-white/30 rounded-full w-10 h-10 flex items-center justify-center text-xl font-bold transition-colors"
+            onClick={() => setLightboxUrl(null)}
+          >×</button>
+          <img
+            src={lightboxUrl}
+            alt="عرض الصورة"
+            className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
       <div className="space-y-5">
 
         {/* ── Header ─────────────────────────────────────────────────────── */}
@@ -464,8 +483,9 @@ export default function AdminAccounts() {
                       <img
                         src={acc.imageUrl}
                         alt={acc.name}
-                        className="w-full h-full object-contain"
+                        className="w-full h-full object-contain cursor-zoom-in"
                         loading="lazy"
+                        onClick={(e) => { e.stopPropagation(); setLightboxUrl(acc.imageUrl!); }}
                         onError={(e) => {
                           const t = e.currentTarget;
                           t.style.display = "none";
