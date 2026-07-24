@@ -142,7 +142,7 @@ async function streamObjectToResponse(
   // Safari/iOS: Range support + explicit CORS for cross-origin canvas/video
   res.setHeader("Accept-Ranges", "bytes");
   res.setHeader("Content-Type", contentType);
-  res.setHeader("Cache-Control", "private, max-age=3600");
+  res.setHeader("Cache-Control", "public, max-age=86400, stale-while-revalidate=604800");
   res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");

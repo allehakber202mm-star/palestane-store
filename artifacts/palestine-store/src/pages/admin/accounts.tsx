@@ -10,7 +10,7 @@ import {
   AccountUpdate,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -102,6 +102,68 @@ type AccRow = { id: number; name: string; platform: string; followers: number;
   username?: string | null; imageUrl: string | null; accountUrl?: string | null;
   clickCount: number; createdAt: string; updatedAt?: string;
 };
+
+// ─── CardImage — handles loading skeleton + error fallback ────────────────────
+function CardImage({
+  src,
+  alt,
+  onZoom,
+}: {
+  src: string | null | undefined;
+  alt: string;
+  onZoom: (url: string) => void;
+}) {
+  const [status, setStatus] = useState<"loading" | "loaded" | "error">(
+    src ? "loading" : "error",
+  );
+
+  // Reset when src changes (e.g. after image upload)
+  useEffect(() => {
+    setStatus(src ? "loading" : "error");
+  }, [src]);
+
+  if (!src) {
+    return (
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-muted">
+        <div className="w-10 h-10 rounded-full bg-muted-foreground/20 flex items-center justify-center">
+          <ImageIcon className="w-5 h-5 text-muted-foreground/40" />
+        </div>
+        <p className="text-[10px] text-muted-foreground/50 font-medium">لا توجد صورة</p>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {/* Skeleton shown while loading */}
+      {status === "loading" && (
+        <div className="absolute inset-0 bg-muted animate-pulse" />
+      )}
+
+      {/* Placeholder shown on error */}
+      {status === "error" && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-muted">
+          <div className="w-10 h-10 rounded-full bg-muted-foreground/20 flex items-center justify-center">
+            <ImageIcon className="w-5 h-5 text-muted-foreground/40" />
+          </div>
+          <p className="text-[10px] text-muted-foreground/50 font-medium">لا توجد صورة</p>
+        </div>
+      )}
+
+      {/* Actual image — always mounted so browser can load it */}
+      <img
+        src={src}
+        alt={alt}
+        className="w-full h-full object-cover cursor-zoom-in transition-opacity duration-300"
+        style={{ opacity: status === "loaded" ? 1 : 0 }}
+        loading="lazy"
+        onLoad={() => setStatus("loaded")}
+        onError={() => setStatus("error")}
+        onClick={(e) => { e.stopPropagation(); onZoom(src); }}
+      />
+    </>
+  );
+}
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function AdminAccounts() {
@@ -479,24 +541,11 @@ export default function AdminAccounts() {
                 >
                   {/* ── Image area ── */}
                   <div className="relative flex items-center justify-center shrink-0 overflow-hidden bg-muted" style={{ aspectRatio: "4/3" }}>
-                    {acc.imageUrl ? (
-                      <img
-                        src={acc.imageUrl}
-                        alt={acc.name}
-                        className="w-full h-full object-cover cursor-zoom-in"
-                        loading="lazy"
-                        onClick={(e) => { e.stopPropagation(); setLightboxUrl(acc.imageUrl!); }}
-                        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-                      />
-                    ) : (
-                      /* ── Neutral placeholder — no logo, no dark bg ── */
-                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-muted">
-                        <div className="w-10 h-10 rounded-full bg-muted-foreground/20 flex items-center justify-center">
-                          <ImageIcon className="w-5 h-5 text-muted-foreground/40" />
-                        </div>
-                        <p className="text-[10px] text-muted-foreground/60 font-medium">لا توجد صورة</p>
-                      </div>
-                    )}
+                    <CardImage
+                      src={acc.imageUrl}
+                      alt={acc.name}
+                      onZoom={setLightboxUrl}
+                    />
 
                     {/* Featured badge only */}
                     {acc.featured && (
