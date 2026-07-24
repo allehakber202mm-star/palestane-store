@@ -46,6 +46,7 @@ const PLT: Record<string, { label: string; icon: React.ReactNode; color: string 
 };
 
 const TABS = [
+  { key: "all",              label: "الكل",           icon: <span className="w-3 h-3 text-[10px] font-black">★</span> },
   { key: "tiktok",           label: "تيك توك",       icon: <SiTiktok className="w-3 h-3" /> },
   { key: "tiktok_monetized", label: "أرباح المشاهدات", icon: <SiTiktok className="w-3 h-3 text-green-600" /> },
   { key: "instagram",        label: "انستغرام",      icon: <SiInstagram className="w-3 h-3 text-pink-500" /> },
@@ -125,10 +126,20 @@ export default function AdminAccounts() {
   const qc = useQueryClient();
   const { toast } = useToast();
 
-  const { data: accounts, isLoading } = useAdminListAccounts({
-    platform: tab,
+  const adminParams = {
+    platform: tab !== "all" ? tab : undefined,
     status:   statusFilter !== "all" ? statusFilter : undefined,
-  });
+  };
+  const { data: accounts, isLoading } = useAdminListAccounts(
+    adminParams,
+    {
+      query: {
+        queryKey: getAdminListAccountsQueryKey(adminParams),
+        retry: false,
+        staleTime: 15_000,
+      },
+    },
+  );
 
   // Sort: available first (by followers desc), then sold (by followers desc)
   const sortedAccounts = useMemo(() => {
@@ -364,7 +375,7 @@ export default function AdminAccounts() {
           <div>
             <h1 className="text-2xl font-black">إدارة الحسابات</h1>
             <p className="text-sm text-muted-foreground mt-0.5">
-              {isLoading ? "..." : totalCount} حساب في {PLT[tab]?.label}
+              {isLoading ? "..." : totalCount} حساب {tab === "all" ? "في كل المنصات" : `في ${PLT[tab]?.label}`}
             </p>
           </div>
           <Button
@@ -385,7 +396,7 @@ export default function AdminAccounts() {
 
         {/* ── Platform Tabs — grid, no horizontal scroll ──────────────────── */}
         <div className="flex flex-col sm:flex-row gap-2">
-          <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 flex-1">
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 flex-1">
             {TABS.map((t) => (
               <button
                 key={t.key}
@@ -434,7 +445,7 @@ export default function AdminAccounts() {
           <div className="text-center py-20 border border-dashed rounded-xl text-muted-foreground">
             <p className="text-lg mb-1">لا يوجد حسابات</p>
             <p className="text-sm opacity-60">
-              {`لا توجد حسابات ${PLT[tab]?.label} بعد`}
+              {tab === "all" ? "لا توجد حسابات بعد" : `لا توجد حسابات ${PLT[tab]?.label} بعد`}
             </p>
           </div>
         ) : (
