@@ -477,45 +477,24 @@ export default function AdminAccounts() {
                   key={acc.id}
                   className="group relative bg-card border rounded-xl overflow-hidden shadow-sm hover:shadow-md hover:border-primary/30 transition-all flex flex-col"
                 >
-                  {/* ── Image area — full image, no crop ── */}
-                  <div className="relative flex items-center justify-center shrink-0 overflow-hidden" style={{ aspectRatio: "4/3" }}>
+                  {/* ── Image area ── */}
+                  <div className="relative flex items-center justify-center shrink-0 overflow-hidden bg-muted" style={{ aspectRatio: "4/3" }}>
                     {acc.imageUrl ? (
-                      <>
-                        <div className="absolute inset-0 bg-gray-100 dark:bg-gray-800" />
-                        <img
-                          src={acc.imageUrl}
-                          alt={acc.name}
-                          className="relative w-full h-full object-contain cursor-zoom-in"
-                          loading="lazy"
-                          onClick={(e) => { e.stopPropagation(); setLightboxUrl(acc.imageUrl!); }}
-                          onError={(e) => {
-                            const t = e.currentTarget;
-                            t.style.display = "none";
-                          }}
-                        />
-                      </>
+                      <img
+                        src={acc.imageUrl}
+                        alt={acc.name}
+                        className="w-full h-full object-cover cursor-zoom-in"
+                        loading="lazy"
+                        onClick={(e) => { e.stopPropagation(); setLightboxUrl(acc.imageUrl!); }}
+                        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                      />
                     ) : (
-                      /* ── Styled placeholder when no image ── */
-                      <div className={`absolute inset-0 flex flex-col items-center justify-center gap-1.5 px-3
-                        ${acc.platform === "tiktok" || acc.platform === "tiktok_monetized"
-                          ? "bg-gradient-to-br from-gray-900 to-gray-700"
-                          : acc.platform === "instagram"
-                          ? "bg-gradient-to-br from-purple-600 to-pink-500"
-                          : acc.platform === "facebook"
-                          ? "bg-gradient-to-br from-blue-700 to-blue-500"
-                          : "bg-gradient-to-br from-yellow-400 to-yellow-300"
-                        }`}>
-                        <span className={`text-3xl ${acc.platform === "snapchat" ? "text-gray-800" : "text-white/80"}`}>
-                          {plt.icon}
-                        </span>
-                        <p className={`text-[11px] font-bold text-center line-clamp-2 leading-tight
-                          ${acc.platform === "snapchat" ? "text-gray-800" : "text-white"}`} dir="ltr">
-                          {(acc as AccRow).username ? `@${(acc as AccRow).username}` : acc.name}
-                        </p>
-                        <p className={`text-[10px] font-semibold
-                          ${acc.platform === "snapchat" ? "text-gray-700" : "text-white/70"}`}>
-                          {fmt(acc.followers)} متابع
-                        </p>
+                      /* ── Neutral placeholder — no logo, no dark bg ── */
+                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-muted">
+                        <div className="w-10 h-10 rounded-full bg-muted-foreground/20 flex items-center justify-center">
+                          <ImageIcon className="w-5 h-5 text-muted-foreground/40" />
+                        </div>
+                        <p className="text-[10px] text-muted-foreground/60 font-medium">لا توجد صورة</p>
                       </div>
                     )}
 
