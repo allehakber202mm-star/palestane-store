@@ -459,17 +459,27 @@ export default function AdminAccounts() {
                   className="group relative bg-card border rounded-xl overflow-hidden shadow-sm hover:shadow-md hover:border-primary/30 transition-all flex flex-col"
                 >
                   {/* ── Image area — full image, no crop ── */}
-                  <div className="relative bg-muted flex items-center justify-center shrink-0" style={{ aspectRatio: "4/3" }}>
+                  <div className="relative bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0" style={{ aspectRatio: "4/3" }}>
                     {acc.imageUrl ? (
                       <img
                         src={acc.imageUrl}
                         alt={acc.name}
                         className="w-full h-full object-contain"
                         loading="lazy"
+                        onError={(e) => {
+                          const t = e.currentTarget;
+                          t.style.display = "none";
+                          const fb = t.nextElementSibling as HTMLElement | null;
+                          if (fb) fb.style.display = "flex";
+                        }}
                       />
-                    ) : (
-                      <div className={`text-2xl sm:text-3xl opacity-20 ${plt.color}`}>{plt.icon}</div>
-                    )}
+                    ) : null}
+                    <div
+                      className={`absolute inset-0 flex items-center justify-center text-2xl sm:text-3xl opacity-20 ${plt.color}`}
+                      style={{ display: acc.imageUrl ? "none" : "flex" }}
+                    >
+                      {plt.icon}
+                    </div>
 
                     {/* Featured badge only */}
                     {acc.featured && (
