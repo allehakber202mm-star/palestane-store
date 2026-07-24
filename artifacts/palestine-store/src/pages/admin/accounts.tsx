@@ -105,7 +105,7 @@ type AccRow = { id: number; name: string; platform: string; followers: number;
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function AdminAccounts() {
-  const [tab, setTab]         = useState("tiktok");
+  const [tab, setTab]         = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sheetMode, setSheetMode] = useState<SheetMode>(null);
   const [activeAcc, setActiveAcc] = useState<AccRow | null>(null);
