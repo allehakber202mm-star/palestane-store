@@ -205,11 +205,12 @@ export default function AdminAccounts() {
     },
   );
 
-  // Sort: available first (by createdAt desc = newest first), then sold
+  // Sort: available first (followers desc), then sold (followers desc)
   const sortedAccounts = useMemo(() => {
     if (!accounts) return accounts;
-    const available = accounts.filter(a => a.status !== "sold");
-    const sold      = accounts.filter(a => a.status === "sold");
+    const byFollowers = (a: typeof accounts[0], b: typeof accounts[0]) => b.followers - a.followers;
+    const available = accounts.filter(a => a.status !== "sold").sort(byFollowers);
+    const sold      = accounts.filter(a => a.status === "sold").sort(byFollowers);
     return [...available, ...sold];
   }, [accounts]);
 
