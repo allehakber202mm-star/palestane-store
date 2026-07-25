@@ -46,7 +46,6 @@ const PLT: Record<string, { label: string; icon: React.ReactNode; color: string 
 };
 
 const TABS = [
-  { key: "all",              label: "الكل",           icon: <span className="w-3 h-3 text-[10px] font-black">★</span> },
   { key: "tiktok",           label: "تيك توك",       icon: <SiTiktok className="w-3 h-3" /> },
   { key: "tiktok_monetized", label: "أرباح المشاهدات", icon: <SiTiktok className="w-3 h-3 text-green-600" /> },
   { key: "instagram",        label: "انستغرام",      icon: <SiInstagram className="w-3 h-3 text-pink-500" /> },
@@ -167,7 +166,7 @@ function CardImage({
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function AdminAccounts() {
-  const [tab, setTab]         = useState("all");
+  const [tab, setTab]         = useState("tiktok");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sheetMode, setSheetMode] = useState<SheetMode>(null);
   const [activeAcc, setActiveAcc] = useState<AccRow | null>(null);
@@ -190,7 +189,7 @@ export default function AdminAccounts() {
   const { toast } = useToast();
 
   const adminParams = {
-    platform: tab !== "all" ? tab : undefined,
+    platform: tab,
     status:   statusFilter !== "all" ? statusFilter : undefined,
   };
   const { data: accounts, isLoading } = useAdminListAccounts(
@@ -471,7 +470,7 @@ export default function AdminAccounts() {
           <div>
             <h1 className="text-2xl font-black">إدارة الحسابات</h1>
             <p className="text-sm text-muted-foreground mt-0.5">
-              {isLoading ? "..." : totalCount} حساب {tab === "all" ? "في كل المنصات" : `في ${PLT[tab]?.label}`}
+              {isLoading ? "..." : totalCount} حساب في {PLT[tab]?.label}
             </p>
           </div>
           <Button
@@ -541,7 +540,7 @@ export default function AdminAccounts() {
           <div className="text-center py-20 border border-dashed rounded-xl text-muted-foreground">
             <p className="text-lg mb-1">لا يوجد حسابات</p>
             <p className="text-sm opacity-60">
-              {tab === "all" ? "لا توجد حسابات بعد" : `لا توجد حسابات ${PLT[tab]?.label} بعد`}
+              {`لا توجد حسابات ${PLT[tab]?.label} بعد`}
             </p>
           </div>
         ) : (
