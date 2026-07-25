@@ -153,7 +153,7 @@ function CardImage({
       <img
         src={src}
         alt={alt}
-        className="w-full h-full object-cover cursor-zoom-in transition-opacity duration-300"
+        className="w-full h-full object-contain cursor-zoom-in transition-opacity duration-300"
         style={{ opacity: status === "loaded" ? 1 : 0 }}
         loading="lazy"
         onLoad={() => setStatus("loaded")}
