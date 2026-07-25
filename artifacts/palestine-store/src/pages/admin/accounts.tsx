@@ -199,26 +199,41 @@ export default function AdminAccounts() {
       query: {
         queryKey: getAdminListAccountsQueryKey(adminParams),
         retry: false,
-        staleTime: 15_000,
+        staleTime: 0,            // دائماً أحضر بيانات جديدة عند كل mount
+        refetchOnMount: true,
+        refetchOnWindowFocus: true,
       },
     },
   );
 
-  // Sort: available first (by followers desc), then sold (by followers desc)
+  // Sort: available first (by createdAt desc = newest first), then sold
   const sortedAccounts = useMemo(() => {
     if (!accounts) return accounts;
-    const available = accounts.filter(a => a.status !== "sold").sort((a, b) => b.followers - a.followers);
-    const sold      = accounts.filter(a => a.status === "sold").sort((a, b) => b.followers - a.followers);
+    const available = accounts.filter(a => a.status !== "sold");
+    const sold      = accounts.filter(a => a.status === "sold");
     return [...available, ...sold];
+  }, [accounts]);
+
+  // Debug report in console
+  useEffect(() => {
+    if (!accounts) return;
+    const withImage  = accounts.filter(a => a.imageUrl);
+    const noImage    = accounts.filter(a => !a.imageUrl);
+    console.group("🛠️ Admin Debug Report");
+    console.log("📦 إجمالي الحسابات في API:", accounts.length);
+    console.log("🖼️ حسابات لديها صورة:", withImage.length);
+    console.log("🚫 حسابات بدون صورة:", noImage.length, noImage.map(a => `#${a.id} ${a.name}`));
+    console.log("📋 جميع الحسابات:", accounts.map(a => ({ id: a.id, name: a.name, platform: a.platform, status: a.status, hasImage: !!a.imageUrl })));
+    console.groupEnd();
   }, [accounts]);
 
   // Auto-refresh every 30 s to pick up Telegram-synced accounts
   useEffect(() => {
     const id = setInterval(() => {
-      qc.invalidateQueries({ queryKey: getAdminListAccountsQueryKey() });
+      qc.invalidateQueries({ queryKey: getAdminListAccountsQueryKey(adminParams) });
     }, 30_000);
     return () => clearInterval(id);
-  }, [qc]);
+  }, [qc, JSON.stringify(adminParams)]);
 
   const createMut = useCreateAccount();
   const updateMut = useUpdateAccount();
