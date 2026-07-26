@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Plus, Edit2, Trash2, Image as ImageIcon, DollarSign, Users,
-  Link2, Check, X, Loader2, UploadCloud, ExternalLink, TrendingUp, Send, Star, AlertTriangle,
+  Link2, Check, X, Loader2, UploadCloud, ExternalLink, TrendingUp, Send, Star, AlertTriangle, LayoutGrid,
 } from "lucide-react";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
@@ -46,11 +46,12 @@ const PLT: Record<string, { label: string; icon: React.ReactNode; color: string 
 };
 
 const TABS = [
-  { key: "tiktok",           label: "تيك توك",       icon: <SiTiktok className="w-3 h-3" /> },
-  { key: "tiktok_monetized", label: "أرباح المشاهدات", icon: <SiTiktok className="w-3 h-3 text-green-600" /> },
-  { key: "instagram",        label: "انستغرام",      icon: <SiInstagram className="w-3 h-3 text-pink-500" /> },
-  { key: "facebook",         label: "فيسبوك",        icon: <SiFacebook className="w-3 h-3 text-blue-500" /> },
-  { key: "snapchat",         label: "سناب شات",      icon: <SiSnapchat className="w-3 h-3 text-yellow-400" /> },
+  { key: "all",              label: "الكل",           icon: <LayoutGrid className="w-3 h-3" /> },
+  { key: "tiktok",           label: "تيك توك",        icon: <SiTiktok className="w-3 h-3" /> },
+  { key: "tiktok_monetized", label: "أرباح",          icon: <SiTiktok className="w-3 h-3 text-green-600" /> },
+  { key: "instagram",        label: "انستغرام",       icon: <SiInstagram className="w-3 h-3 text-pink-500" /> },
+  { key: "facebook",         label: "فيسبوك",         icon: <SiFacebook className="w-3 h-3 text-blue-500" /> },
+  { key: "snapchat",         label: "سناب شات",       icon: <SiSnapchat className="w-3 h-3 text-yellow-400" /> },
 ];
 
 function fmt(n: number) {
@@ -166,7 +167,7 @@ function CardImage({
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function AdminAccounts() {
-  const [tab, setTab]         = useState("tiktok");
+  const [tab, setTab]         = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sheetMode, setSheetMode] = useState<SheetMode>(null);
   const [activeAcc, setActiveAcc] = useState<AccRow | null>(null);
@@ -492,7 +493,7 @@ export default function AdminAccounts() {
 
         {/* ── Platform Tabs — grid, no horizontal scroll ──────────────────── */}
         <div className="flex flex-col sm:flex-row gap-2">
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 flex-1">
+          <div className="grid grid-cols-3 sm:grid-cols-6 lg:grid-cols-6 gap-2 flex-1">
             {TABS.map((t) => (
               <button
                 key={t.key}
