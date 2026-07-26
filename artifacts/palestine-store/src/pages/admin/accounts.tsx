@@ -167,7 +167,7 @@ function CardImage({
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function AdminAccounts() {
-  const [tab, setTab]         = useState("tiktok");
+  const [tab, setTab]         = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sheetMode, setSheetMode] = useState<SheetMode>(null);
   const [activeAcc, setActiveAcc] = useState<AccRow | null>(null);
