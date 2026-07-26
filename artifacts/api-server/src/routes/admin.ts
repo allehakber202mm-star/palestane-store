@@ -27,6 +27,11 @@ function buildProfileUrl(
 const router = Router();
 router.use(requireAuth);
 
+// ── GET /admin/me — alias for /auth/me (some clients call this path) ─────────
+router.get("/me", (req, res) => {
+  res.json({ email: (req as any).admin.email });
+});
+
 router.get("/accounts", async (req, res) => {
   const parse = AdminListAccountsQueryParams.safeParse(req.query);
   const params = parse.success ? parse.data : {};
