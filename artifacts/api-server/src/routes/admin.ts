@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, accountsTable, accountVisitsTable } from "@workspace/db";
+import { db, accountsTable, accountVisitsTable, settingsTable } from "@workspace/db";
 import { eq, desc, and, ilike, sql, inArray, max, isNotNull } from "drizzle-orm";
 import { CreateAccountBody, UpdateAccountBody, AdminListAccountsQueryParams } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/auth";
@@ -156,11 +156,47 @@ router.patch("/accounts/:id", async (req, res) => {
 router.delete("/accounts/:id", async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
-  const [deleted] = await db
-    .delete(accountsTable)
+
+  // Fetch telegramMessageId before deleting so we can blocklist it
+  const [row] = await db
+    .select({ id: accountsTable.id, telegramMessageId: accountsTable.telegramMessageId })
+    .from(accountsTable)
     .where(eq(accountsTable.id, id))
-    .returning({ id: accountsTable.id });
-  if (!deleted) { res.status(404).json({ error: "Not found" }); return; }
+    .limit(1);
+  if (!row) { res.status(404).json({ error: "Not found" }); return; }
+
+  // If account came from Telegram, add its message_id to the blocklist
+  // so that the auto-sync never re-imports it
+  if (row.telegramMessageId) {
+    const [existing] = await db
+      .select({ value: settingsTable.value })
+      .from(settingsTable)
+      .where(eq(settingsTable.key, "deleted_telegram_ids"))
+      .limit(1);
+
+    const blocked: number[] = existing
+      ? JSON.parse(existing.value || "[]")
+      : [];
+
+    if (!blocked.includes(row.telegramMessageId)) {
+      blocked.push(row.telegramMessageId);
+    }
+
+    await db
+      .insert(settingsTable)
+      .values({ key: "deleted_telegram_ids", value: JSON.stringify(blocked) })
+      .onConflictDoUpdate({
+        target: settingsTable.key,
+        set: { value: JSON.stringify(blocked) },
+      });
+
+    logger.info(
+      { accountId: id, telegramMessageId: row.telegramMessageId, totalBlocked: blocked.length },
+      "🚫 أُضيف telegram_message_id إلى قائمة الحظر"
+    );
+  }
+
+  await db.delete(accountsTable).where(eq(accountsTable.id, id));
   res.json({ success: true });
 });
 

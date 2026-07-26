@@ -932,6 +932,17 @@ export async function runTelegramSync(): Promise<SyncResult> {
 
   const existingMsgIds = new Set(existingByMsgId.map(r => r.tgId));
 
+  // ── Load deleted-accounts blocklist ──────────────────────────────────────
+  // Accounts deleted by admin should never be re-imported by Telegram sync
+  const [blocklistRow] = await db
+    .select({ value: settingsTable.value })
+    .from(settingsTable)
+    .where(eq(settingsTable.key, "deleted_telegram_ids"))
+    .limit(1);
+  const deletedTelegramIds = new Set<number>(
+    blocklistRow ? JSON.parse(blocklistRow.value || "[]") : []
+  );
+
   // ── Duplicate detection by accountUrl ────────────────────────────────────
   // Catches re-posts of the same account with a new Telegram message_id
   const batchUrls = parsed
@@ -973,6 +984,16 @@ export async function runTelegramSync(): Promise<SyncResult> {
   let needsManual   = 0;
 
   for (const { post, parsed: p } of parsed) {
+    // Skip if admin manually deleted this account (blocklisted)
+    if (deletedTelegramIds.has(post.message_id)) {
+      logger.info(
+        { telegramMessageId: post.message_id, reason: "محذوف يدوياً من لوحة التحكم" },
+        "Telegram sync: منشور محظور — تم التخطي",
+      );
+      skipped++;
+      continue;
+    }
+
     // Skip if already imported by message ID
     if (existingMsgIds.has(post.message_id)) {
       logger.info(

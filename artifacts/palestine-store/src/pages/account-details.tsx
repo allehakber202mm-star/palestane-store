@@ -501,7 +501,7 @@ ${pageUrl}`;
         </div>
 
         {/* ── Visit Account — inline button (visible without scrolling) ── */}
-        {effectiveUrl && (
+        {effectiveUrl ? (
           <a
             href={effectiveUrl}
             target="_blank"
@@ -521,6 +521,11 @@ ${pageUrl}`;
             زيارة الحساب على {platformAr}
             <ExternalLink className="w-3.5 h-3.5 opacity-70" />
           </a>
+        ) : (
+          <div className="w-full flex items-center justify-center gap-2 rounded-xl py-3.5 mb-5 text-sm font-bold border-2 border-dashed border-border bg-muted/30 text-muted-foreground cursor-not-allowed select-none">
+            <PlatformIcon className="w-4 h-4 opacity-40" />
+            رابط الحساب سيُضاف قريباً
+          </div>
         )}
 
         {/* ── Description block — all platforms ── */}
@@ -663,8 +668,8 @@ ${pageUrl}`;
               <span className="text-xs text-muted-foreground">السعر النهائي</span>
               <span className="font-black text-xl text-primary">{account.price}₪</span>
             </div>
-            {/* Visit account — shown when URL or username is available */}
-            {effectiveUrl && (
+            {/* Visit account — always shown; disabled when URL is missing */}
+            {effectiveUrl ? (
               <a
                 href={effectiveUrl}
                 target="_blank"
@@ -684,6 +689,11 @@ ${pageUrl}`;
                 زيارة الحساب
                 <ExternalLink className="w-3.5 h-3.5 opacity-70" />
               </a>
+            ) : (
+              <div className="w-full flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-bold border-2 border-dashed border-border bg-muted/30 text-muted-foreground cursor-not-allowed">
+                <PlatformIcon className="w-4 h-4 opacity-40" />
+                رابط الحساب سيُضاف قريباً
+              </div>
             )}
             <button
               onClick={isSold ? undefined : handleBuy}
