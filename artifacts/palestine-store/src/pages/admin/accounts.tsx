@@ -46,7 +46,6 @@ const PLT: Record<string, { label: string; icon: React.ReactNode; color: string 
 };
 
 const TABS = [
-  { key: "all",              label: "الكل",           icon: <span className="text-[10px] font-black">◈</span> },
   { key: "tiktok",           label: "تيك توك",       icon: <SiTiktok className="w-3 h-3" /> },
   { key: "tiktok_monetized", label: "أرباح المشاهدات", icon: <SiTiktok className="w-3 h-3 text-green-600" /> },
   { key: "instagram",        label: "انستغرام",      icon: <SiInstagram className="w-3 h-3 text-pink-500" /> },
@@ -167,7 +166,7 @@ function CardImage({
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function AdminAccounts() {
-  const [tab, setTab]         = useState("all");
+  const [tab, setTab]         = useState("tiktok");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sheetMode, setSheetMode] = useState<SheetMode>(null);
   const [activeAcc, setActiveAcc] = useState<AccRow | null>(null);
