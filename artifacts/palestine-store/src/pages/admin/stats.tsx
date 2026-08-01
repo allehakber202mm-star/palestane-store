@@ -9,9 +9,9 @@ import {
   Eye, Phone, ExternalLink, BarChart2, Globe,
   Users2, TrendingUp, BarChart3, Search, ArrowUpDown,
   ChevronUp, ChevronDown, ChevronRight, ChevronLeft,
-  Zap, RefreshCw,
+  Zap, RefreshCw, Calendar,
 } from "lucide-react";
-import { SiTiktok, SiInstagram, SiFacebook } from "react-icons/si";
+import { SiTiktok, SiInstagram, SiFacebook, SiSnapchat } from "react-icons/si";
 import {
   BarChart, Bar, XAxis, YAxis,
   Tooltip as ReTooltip, ResponsiveContainer, Legend,
@@ -59,6 +59,7 @@ const PLT_ICON: Record<string, React.ReactNode> = {
   tiktok_monetized: <SiTiktok className="w-3.5 h-3.5 text-green-600" />,
   instagram:        <SiInstagram className="w-3.5 h-3.5 text-pink-500" />,
   facebook:         <SiFacebook className="w-3.5 h-3.5 text-blue-500" />,
+  snapchat:         <SiSnapchat className="w-3.5 h-3.5 text-yellow-500" />,
 };
 function platformAr(p: string) {
   if (p === "tiktok_monetized") return "تيك توك أرباح";
@@ -101,6 +102,15 @@ type AdminDetailData = {
   topByPageViews:       TopItem[];
   topByWhatsapp:        TopItem[];
   topByAccountUrlClick: TopItem[];
+};
+
+type PeriodStats = { siteVisits: number; pageViews: number; urlClicks: number; waClicks: number };
+type PlatformSummaryRow = {
+  platform: string;
+  accounts: number;
+  today: PeriodStats;
+  week:  PeriodStats;
+  month: PeriodStats;
 };
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -218,6 +228,8 @@ export default function AdminStats() {
   const [selectedId, setSelectedId]   = useState<number | null>(null);
   const [detail, setDetail]           = useState<DetailData | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [platformSummary, setPlatformSummary] = useState<PlatformSummaryRow[]>([]);
+  const [pltLoading, setPltLoading] = useState(true);
 
   // ── Computed from/to ──
   const { from, to } = useMemo(
@@ -257,18 +269,29 @@ export default function AdminStats() {
       .catch(() => {});
   }, [from, to, platformFilter]);
 
+  // ── Fetch platform summary ──
+  const fetchPlatformSummary = useCallback(() => {
+    setPltLoading(true);
+    fetch(`${BASE}/api/stats/platform-summary`, { headers: authHeader() })
+      .then(r => r.json() as Promise<PlatformSummaryRow[]>)
+      .then(d => { setPlatformSummary(d); setPltLoading(false); })
+      .catch(() => setPltLoading(false));
+  }, []);
+
   // ── Initial load + auto-refresh 30s ──
   useEffect(() => {
     fetchAdvanced();
     fetchEngagement();
     fetchAdminDetail();
+    fetchPlatformSummary();
     const id = setInterval(() => {
       void refetchSite();
       fetchAdvanced();
       fetchAdminDetail();
+      fetchPlatformSummary();
     }, 30_000);
     return () => clearInterval(id);
-  }, [fetchAdvanced, fetchEngagement, fetchAdminDetail, refetchSite]);
+  }, [fetchAdvanced, fetchEngagement, fetchAdminDetail, fetchPlatformSummary, refetchSite]);
 
   // ── Account detail modal ──
   useEffect(() => {
@@ -405,9 +428,92 @@ export default function AdminStats() {
           <SummaryCard icon={<Zap className="w-5 h-5" />}          label="نشطون الآن"            value={siteLoading ? "…" : activeNow}           color="text-emerald-600" bg="bg-emerald-500/5 border-emerald-500/20" sub="آخر 5 دقائق" />
         </div>
 
-        {/* ── Platform breakdown ──────────────────────────────────────── */}
-        {platformFilter === "all" && (
-          <Panel title="أكثر المنصات مشاهدة" icon={<SiTiktok className="w-4 h-4" />}>
+        {/* ── Platform Summary: Today / Week / Month ──────────────────── */}
+        <div>
+          <h2 className="text-base font-bold mb-4 flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-primary" /> إحصاءات كل منصة — اليوم / الأسبوع / الشهر
+          </h2>
+          {pltLoading ? (
+            <div className="grid grid-cols-1 gap-3">
+              {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-2xl" />)}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-3">
+              {platformSummary.map(row => {
+                const PLT_COLOR: Record<string, { bg: string; border: string; text: string; bar: string }> = {
+                  tiktok:           { bg: "bg-slate-500/5",  border: "border-slate-500/20",  text: "text-slate-700 dark:text-slate-300",  bar: "bg-slate-500" },
+                  tiktok_monetized: { bg: "bg-green-500/5",  border: "border-green-500/20",  text: "text-green-700 dark:text-green-400",  bar: "bg-green-500" },
+                  instagram:        { bg: "bg-pink-500/5",   border: "border-pink-500/20",   text: "text-pink-700 dark:text-pink-400",    bar: "bg-pink-500"  },
+                  facebook:         { bg: "bg-blue-500/5",   border: "border-blue-500/20",   text: "text-blue-700 dark:text-blue-400",    bar: "bg-blue-500"  },
+                  snapchat:         { bg: "bg-yellow-500/5", border: "border-yellow-500/20", text: "text-yellow-700 dark:text-yellow-400", bar: "bg-yellow-500" },
+                };
+                const c = PLT_COLOR[row.platform] ?? PLT_COLOR.tiktok;
+                const maxViews = Math.max(row.month.pageViews, 1);
+                const maxClicks = Math.max(row.month.urlClicks + row.month.waClicks, 1);
+
+                const Cell = ({ label, period }: { label: string; period: PeriodStats }) => (
+                  <div className="flex flex-col items-center gap-0.5 text-center min-w-0">
+                    <span className="text-[10px] text-muted-foreground font-medium">{label}</span>
+                    <span className="text-lg font-black leading-none">{period.pageViews.toLocaleString("ar-EG")}</span>
+                    <span className="text-[10px] text-muted-foreground">مشاهدة</span>
+                    <span className="text-xs font-bold text-purple-600 mt-0.5">{(period.urlClicks + period.waClicks).toLocaleString("ar-EG")} نقرة</span>
+                  </div>
+                );
+
+                return (
+                  <div key={row.platform} className={`${c.bg} ${c.border} border rounded-2xl p-4`}>
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className={c.text}>{PLT_ICON[row.platform] ?? <SiTiktok className="w-4 h-4" />}</span>
+                        <span className={`font-bold text-sm ${c.text}`}>{platformAr(row.platform)}</span>
+                        <span className="text-xs text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-full">{row.accounts} حساب</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-xs text-muted-foreground">الشهر: </span>
+                        <span className="font-black text-sm">{row.month.pageViews.toLocaleString("ar-EG")}</span>
+                        <span className="text-xs text-muted-foreground"> مشاهدة · </span>
+                        <span className="font-bold text-xs text-purple-600">{(row.month.urlClicks + row.month.waClicks).toLocaleString("ar-EG")} نقرة</span>
+                      </div>
+                    </div>
+
+                    {/* مقارنة اليوم/الأسبوع/الشهر */}
+                    <div className="grid grid-cols-3 gap-3 mb-3">
+                      <Cell label="اليوم" period={row.today} />
+                      <Cell label="7 أيام" period={row.week} />
+                      <Cell label="30 يوم" period={row.month} />
+                    </div>
+
+                    {/* شريط مرئي */}
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                        <Eye className="w-3 h-3" />
+                        <span>مشاهدات</span>
+                        <div className="flex-1 h-1.5 bg-muted/60 rounded-full overflow-hidden">
+                          <div className={`h-full rounded-full ${c.bar} opacity-70`}
+                            style={{ width: `${Math.round((row.month.pageViews / maxViews) * 100)}%` }} />
+                        </div>
+                        <span className="font-bold w-6 text-left">{row.month.pageViews}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                        <ExternalLink className="w-3 h-3" />
+                        <span>نقرات</span>
+                        <div className="flex-1 h-1.5 bg-muted/60 rounded-full overflow-hidden">
+                          <div className="h-full rounded-full bg-purple-500 opacity-70"
+                            style={{ width: `${Math.round(((row.month.urlClicks + row.month.waClicks) / maxClicks) * 100)}%` }} />
+                        </div>
+                        <span className="font-bold w-6 text-left">{row.month.urlClicks + row.month.waClicks}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* ── Platform breakdown (existing — keeps the period-filtered view) ─ */}
+        {platformFilter === "all" && (advanced?.platforms?.length ?? 0) > 0 && (
+          <Panel title="أكثر المنصات مشاهدة (الفترة المحددة)" icon={<SiTiktok className="w-4 h-4" />}>
             {advLoading ? <Skeleton className="h-24 w-full" /> : (
               <div className="space-y-2">
                 {(advanced?.platforms ?? []).map(p => (
@@ -421,7 +527,6 @@ export default function AdminStats() {
                     </div>
                   </div>
                 ))}
-                {!(advanced?.platforms?.length) && <p className="text-sm text-muted-foreground text-center py-4">لا توجد بيانات للفترة المحددة</p>}
               </div>
             )}
           </Panel>

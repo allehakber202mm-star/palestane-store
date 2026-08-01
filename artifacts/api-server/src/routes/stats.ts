@@ -432,6 +432,106 @@ router.get("/accounts-engagement", requireAuth, async (req, res) => {
   res.json(result);
 });
 
+// ── Platform summary: today / week / month per platform ──────────────────────
+router.get("/platform-summary", requireAuth, async (_req, res) => {
+  const now   = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const d7    = new Date(now.getTime() - 7  * 24 * 60 * 60 * 1000);
+  const d30   = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+  const platforms = ["tiktok", "tiktok_monetized", "instagram", "facebook", "snapchat"] as const;
+
+  // Count accounts per platform
+  const accountCounts = await db
+    .select({
+      platform: accountsTable.platform,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(accountsTable)
+    .groupBy(accountsTable.platform);
+
+  const accMap: Record<string, number> = {};
+  for (const r of accountCounts) accMap[String(r.platform)] = Number(r.count);
+
+  // For each time period, get page_view + account_url_click + whatsapp_click per platform
+  async function getPlatformStats(from: Date) {
+    const rows = await db.execute<{
+      platform: string;
+      page_views: string;
+      url_clicks: string;
+      wa_clicks:  string;
+    }>(sql`
+      SELECT
+        a.platform,
+        COUNT(*) FILTER (WHERE s.event_type = 'page_view')         AS page_views,
+        COUNT(*) FILTER (WHERE s.event_type = 'account_url_click') AS url_clicks,
+        COUNT(*) FILTER (WHERE s.event_type = 'whatsapp_click')    AS wa_clicks
+      FROM stats s
+      JOIN accounts a ON a.id = s.account_id
+      WHERE s.created_at >= ${from}
+        AND s.account_id IS NOT NULL
+      GROUP BY a.platform
+    `);
+    const map: Record<string, { pageViews: number; urlClicks: number; waClicks: number }> = {};
+    for (const r of rows.rows) {
+      map[String(r.platform)] = {
+        pageViews: Number(r.page_views),
+        urlClicks: Number(r.url_clicks),
+        waClicks:  Number(r.wa_clicks),
+      };
+    }
+    return map;
+  }
+
+  // Site visits per platform (via /account/:id URL pattern)
+  async function getSiteVisitsPerPlatform(from: Date) {
+    const rows = await db.execute<{ platform: string; count: string }>(sql`
+      SELECT a.platform, COUNT(sv.id)::int AS count
+      FROM site_visits sv
+      JOIN accounts a ON sv.page = '/account/' || a.id::text
+      WHERE sv.created_at >= ${from}
+      GROUP BY a.platform
+    `);
+    const map: Record<string, number> = {};
+    for (const r of rows.rows) map[String(r.platform)] = Number(r.count);
+    return map;
+  }
+
+  const [todayStats, weekStats, monthStats, todaySV, weekSV, monthSV] = await Promise.all([
+    getPlatformStats(today),
+    getPlatformStats(d7),
+    getPlatformStats(d30),
+    getSiteVisitsPerPlatform(today),
+    getSiteVisitsPerPlatform(d7),
+    getSiteVisitsPerPlatform(d30),
+  ]);
+
+  const result = platforms.map(p => ({
+    platform: p,
+    accounts: accMap[p] ?? 0,
+    today: {
+      siteVisits: todaySV[p]  ?? 0,
+      pageViews:  todayStats[p]?.pageViews ?? 0,
+      urlClicks:  todayStats[p]?.urlClicks ?? 0,
+      waClicks:   todayStats[p]?.waClicks  ?? 0,
+    },
+    week: {
+      siteVisits: weekSV[p]  ?? 0,
+      pageViews:  weekStats[p]?.pageViews ?? 0,
+      urlClicks:  weekStats[p]?.urlClicks ?? 0,
+      waClicks:   weekStats[p]?.waClicks  ?? 0,
+    },
+    month: {
+      siteVisits: monthSV[p]  ?? 0,
+      pageViews:  monthStats[p]?.pageViews ?? 0,
+      urlClicks:  monthStats[p]?.urlClicks ?? 0,
+      waClicks:   monthStats[p]?.waClicks  ?? 0,
+    },
+  }));
+
+  res.json(result);
+});
+
 // ── Per-account detail (admin only) ─────────────────────────────────────────
 router.get("/account/:id/details", requireAuth, async (req, res) => {
   const accountId = parseInt(String(req.params.id), 10);
