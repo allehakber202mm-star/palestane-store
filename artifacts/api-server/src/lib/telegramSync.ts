@@ -1195,6 +1195,29 @@ export async function runTelegramSync(): Promise<SyncResult> {
             { telegramMessageId: post.message_id, ocrUsername, accountUrl: p.accountUrl },
             "[OCR] ✅ username ورابط تم إنشاؤهما تلقائياً من الصورة",
           );
+
+          // ── Re-check for duplicates now that we have the OCR username/URL ──
+          // The batch dedup sets were built before OCR ran, so we must check
+          // here again to catch accounts that exist in the DB but had no URL
+          // in the Telegram post text (URL was hidden in the image).
+          const ocrUrlKey  = p.accountUrl?.trim().toLowerCase() ?? null;
+          const ocrUpKey   = `${p.platform}::${ocrUsername.toLowerCase()}`;
+          if (
+            (ocrUrlKey && existingUrls.has(ocrUrlKey)) ||
+            existingUsernamePlatformKeys.has(ocrUpKey)
+          ) {
+            logger.info(
+              {
+                telegramMessageId: post.message_id,
+                ocrUsername,
+                accountUrl: p.accountUrl,
+                reason: "حساب OCR مكرر — URL أو username موجود مسبقاً في قاعدة البيانات",
+              },
+              "Telegram sync: 🔁 حساب OCR مكرر — تم التخطي",
+            );
+            skipped++;
+            continue;
+          }
         }
       }
     }
