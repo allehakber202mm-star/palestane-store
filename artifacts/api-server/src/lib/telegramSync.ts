@@ -1277,6 +1277,16 @@ export async function runTelegramSync(): Promise<SyncResult> {
       platform:   accountsTable.platform,
     });
 
+    // ── Update in-batch dedup sets so the next post in this same sync cycle
+    //    doesn't re-import the same account (catches duplicates posted within
+    //    the same 30-second window before sync runs)
+    if (p.accountUrl) {
+      existingUrls.add(p.accountUrl.trim().toLowerCase());
+    }
+    if (upKey) {
+      existingUsernamePlatformKeys.add(upKey);
+    }
+
     // ══════════════════════════════════════════════════════════════════════
     // [DIAG] DATA_SAVED_IN_DB — ما تم حفظه فعلياً في قاعدة البيانات
     // ══════════════════════════════════════════════════════════════════════
