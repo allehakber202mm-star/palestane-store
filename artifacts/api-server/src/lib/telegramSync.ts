@@ -1197,27 +1197,53 @@ export async function runTelegramSync(): Promise<SyncResult> {
           );
 
           // ── Re-check for duplicates now that we have the OCR username/URL ──
-          // The batch dedup sets were built before OCR ran, so we must check
-          // here again to catch accounts that exist in the DB but had no URL
-          // in the Telegram post text (URL was hidden in the image).
-          const ocrUrlKey  = p.accountUrl?.trim().toLowerCase() ?? null;
-          const ocrUpKey   = `${p.platform}::${ocrUsername.toLowerCase()}`;
-          if (
-            (ocrUrlKey && existingUrls.has(ocrUrlKey)) ||
-            existingUsernamePlatformKeys.has(ocrUpKey)
-          ) {
+          // The batch dedup sets were built BEFORE OCR ran (the URL was null
+          // at that point), so existingUrls / existingUsernamePlatformKeys are
+          // empty for this account. We must query the DB directly here.
+          const ocrUrlLower = p.accountUrl!.trim().toLowerCase();
+          const ocrUpKey    = `${p.platform}::${ocrUsername.toLowerCase()}`;
+
+          const [dupByUrl] = await db
+            .select({ id: accountsTable.id })
+            .from(accountsTable)
+            .where(inArray(sql`lower(${accountsTable.accountUrl})`, [ocrUrlLower]))
+            .limit(1);
+
+          const [dupByUsername] = dupByUrl
+            ? [dupByUrl]
+            : await db
+                .select({ id: accountsTable.id })
+                .from(accountsTable)
+                .where(
+                  and(
+                    inArray(sql`lower(${accountsTable.username})`, [ocrUsername.toLowerCase()]),
+                    eq(accountsTable.platform, p.platform),
+                  ),
+                )
+                .limit(1);
+
+          if (dupByUrl || dupByUsername) {
             logger.info(
               {
                 telegramMessageId: post.message_id,
                 ocrUsername,
                 accountUrl: p.accountUrl,
+                existingId: (dupByUrl ?? dupByUsername)!.id,
                 reason: "حساب OCR مكرر — URL أو username موجود مسبقاً في قاعدة البيانات",
               },
               "Telegram sync: 🔁 حساب OCR مكرر — تم التخطي",
             );
+            // Also update in-batch sets so subsequent posts in this cycle
+            // are caught without another DB round-trip.
+            existingUrls.add(ocrUrlLower);
+            existingUsernamePlatformKeys.add(ocrUpKey);
             skipped++;
             continue;
           }
+
+          // Not a duplicate — seed the in-batch sets for subsequent posts.
+          existingUrls.add(ocrUrlLower);
+          existingUsernamePlatformKeys.add(ocrUpKey);
         }
       }
     }
