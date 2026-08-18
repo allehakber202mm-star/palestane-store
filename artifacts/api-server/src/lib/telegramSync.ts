@@ -944,16 +944,20 @@ export async function runTelegramSync(): Promise<SyncResult> {
   );
 
   // ── Duplicate detection by accountUrl ────────────────────────────────────
-  // Catches re-posts of the same account with a new Telegram message_id
+  // Catches re-posts of the same account with a new Telegram message_id.
+  // We lowercase both sides so the check is case-insensitive (PostgreSQL
+  // text comparisons are case-sensitive by default, so @User ≠ @user).
   const batchUrls = parsed
     .map(({ parsed: p }) => p.accountUrl)
     .filter((u): u is string => !!u && u.trim() !== "");
 
-  const existingByUrlRows = batchUrls.length
+  const batchUrlsLower = batchUrls.map(u => u.trim().toLowerCase());
+
+  const existingByUrlRows = batchUrlsLower.length
     ? await db
         .select({ accountUrl: accountsTable.accountUrl })
         .from(accountsTable)
-        .where(inArray(accountsTable.accountUrl, batchUrls))
+        .where(inArray(sql`lower(${accountsTable.accountUrl})`, batchUrlsLower))
     : [];
 
   const existingUrls = new Set(
@@ -961,16 +965,19 @@ export async function runTelegramSync(): Promise<SyncResult> {
   );
 
   // ── Duplicate detection by username+platform ──────────────────────────────
-  // Fallback when URL is auto-generated from username
+  // Fallback when URL is auto-generated from username.
+  // Also case-insensitive for the same reason.
   const batchUsernames = parsed
     .map(({ parsed: p }) => p.username)
     .filter((u): u is string => !!u && u.trim() !== "");
 
-  const existingByUsernameRows = batchUsernames.length
+  const batchUsernamesLower = batchUsernames.map(u => u.trim().toLowerCase());
+
+  const existingByUsernameRows = batchUsernamesLower.length
     ? await db
         .select({ username: accountsTable.username, platform: accountsTable.platform })
         .from(accountsTable)
-        .where(inArray(accountsTable.username, batchUsernames))
+        .where(inArray(sql`lower(${accountsTable.username})`, batchUsernamesLower))
     : [];
 
   const existingUsernamePlatformKeys = new Set(
