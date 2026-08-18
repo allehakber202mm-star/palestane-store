@@ -18,6 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Plus, Edit2, Trash2, Image as ImageIcon, DollarSign, Users,
   Link2, Check, X, Loader2, UploadCloud, ExternalLink, TrendingUp, Send, Star, AlertTriangle,
+  ShieldCheck, RotateCcw,
 } from "lucide-react";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
@@ -205,13 +206,14 @@ export default function AdminAccounts() {
     },
   );
 
-  // Sort: available first (followers desc), then sold (followers desc)
-  const sortedAccounts = useMemo(() => {
-    if (!accounts) return accounts;
+  // Separate available from sold accounts
+  const { availableAccounts, soldAccounts } = useMemo(() => {
+    if (!accounts) return { availableAccounts: [], soldAccounts: [] };
     const byFollowers = (a: typeof accounts[0], b: typeof accounts[0]) => b.followers - a.followers;
-    const available = accounts.filter(a => a.status !== "sold").sort(byFollowers);
-    const sold      = accounts.filter(a => a.status === "sold").sort(byFollowers);
-    return [...available, ...sold];
+    return {
+      availableAccounts: accounts.filter(a => a.status !== "sold").sort(byFollowers),
+      soldAccounts:      accounts.filter(a => a.status === "sold").sort(byFollowers),
+    };
   }, [accounts]);
 
   // Debug report in console
@@ -246,6 +248,20 @@ export default function AdminAccounts() {
   const toggleFeatured = (acc: AccRow) => {
     updateMut.mutate({ id: acc.id, data: { featured: !acc.featured } as AccountUpdate }, {
       onSuccess: () => toast({ title: acc.featured ? "تم إلغاء التثبيت" : "⭐ تم التثبيت" }),
+      onSettled: invalidate,
+    });
+  };
+
+  const markSold = (acc: AccRow) => {
+    updateMut.mutate({ id: acc.id, data: { status: "sold" } as AccountUpdate }, {
+      onSuccess: () => toast({ title: "❌ تم تحديد الحساب كمباع", description: "الحساب محفوظ ولن يُحذف تلقائياً — فقط أنت من يحذفه يدوياً" }),
+      onSettled: invalidate,
+    });
+  };
+
+  const markAvailable = (acc: AccRow) => {
+    updateMut.mutate({ id: acc.id, data: { status: "available" } as AccountUpdate }, {
+      onSuccess: () => toast({ title: "✅ تم إرجاع الحساب كمتاح" }),
       onSettled: invalidate,
     });
   };
@@ -537,7 +553,7 @@ export default function AdminAccounts() {
               <Skeleton key={i} className="h-64 rounded-xl" />
             ))}
           </div>
-        ) : !sortedAccounts?.length ? (
+        ) : availableAccounts.length === 0 && soldAccounts.length === 0 ? (
           <div className="text-center py-20 border border-dashed rounded-xl text-muted-foreground">
             <p className="text-lg mb-1">لا يوجد حسابات</p>
             <p className="text-sm opacity-60">
@@ -545,133 +561,69 @@ export default function AdminAccounts() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-            {sortedAccounts.map((acc) => {
-              const plt = PLT[acc.platform] ?? PLT.tiktok;
-              const isSold = acc.status === "sold";
-              return (
-                <div
-                  key={acc.id}
-                  className="group relative bg-card border rounded-xl overflow-hidden shadow-sm hover:shadow-md hover:border-primary/30 transition-all flex flex-col"
-                >
-                  {/* ── Image area ── */}
-                  <div className="relative flex items-center justify-center shrink-0 overflow-hidden bg-muted" style={{ aspectRatio: "4/3" }}>
-                    <CardImage
-                      src={acc.imageUrl}
-                      alt={acc.name}
+          <>
+          {/* ── Available accounts grid ── */}
+          {availableAccounts.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+              {availableAccounts.map((acc) => {
+                const plt = PLT[acc.platform] ?? PLT.tiktok;
+                return (
+                  <AccountCardAdmin
+                    key={acc.id}
+                    acc={acc as AccRow}
+                    plt={plt}
+                    onEdit={() => openEdit(acc as AccRow)}
+                    onQuickPrice={() => openQuick(acc as AccRow, "price")}
+                    onQuickFollowers={() => openQuick(acc as AccRow, "followers")}
+                    onImage={() => openImage(acc as AccRow)}
+                    onLink={() => openLink(acc as AccRow)}
+                    onFeatured={() => toggleFeatured(acc as AccRow)}
+                    onDelete={() => setDeleteId(acc.id)}
+                    onMarkSold={() => markSold(acc as AccRow)}
+                    onMarkAvailable={() => markAvailable(acc as AccRow)}
+                    onZoom={setLightboxUrl}
+                  />
+                );
+              })}
+            </div>
+          )}
+
+          {/* ── Sold accounts section ── */}
+          {soldAccounts.length > 0 && (
+            <div className="mt-6">
+              <div className="flex items-center gap-3 mb-3 p-3 bg-red-500/5 border border-red-500/20 rounded-xl">
+                <ShieldCheck className="w-5 h-5 text-red-500 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-sm text-red-600">حسابات تم بيعها — {soldAccounts.length} حساب</p>
+                  <p className="text-xs text-muted-foreground">محفوظة بشكل دائم · لن تُحذف تلقائياً · فقط أنت من يحذفها يدوياً</p>
+                </div>
+                <Badge className="bg-red-500/15 text-red-600 border-red-500/30 text-xs shrink-0">🔒 محمية</Badge>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                {soldAccounts.map((acc) => {
+                  const plt = PLT[acc.platform] ?? PLT.tiktok;
+                  return (
+                    <AccountCardAdmin
+                      key={acc.id}
+                      acc={acc as AccRow}
+                      plt={plt}
+                      onEdit={() => openEdit(acc as AccRow)}
+                      onQuickPrice={() => openQuick(acc as AccRow, "price")}
+                      onQuickFollowers={() => openQuick(acc as AccRow, "followers")}
+                      onImage={() => openImage(acc as AccRow)}
+                      onLink={() => openLink(acc as AccRow)}
+                      onFeatured={() => toggleFeatured(acc as AccRow)}
+                      onDelete={() => setDeleteId(acc.id)}
+                      onMarkSold={() => markSold(acc as AccRow)}
+                      onMarkAvailable={() => markAvailable(acc as AccRow)}
                       onZoom={setLightboxUrl}
                     />
-
-                    {/* Featured badge only */}
-                    {acc.featured && (
-                      <div className="absolute top-2 right-2">
-                        <Badge className="text-[10px] px-1.5 py-0 bg-yellow-500/90 text-white border-none leading-5">★</Badge>
-                      </div>
-                    )}
-
-                    {/* No-URL / No-username warning badge */}
-                    {!(acc as AccRow).accountUrl && !(acc as AccRow).username && (
-                      <div className="absolute bottom-2 right-2">
-                        <Badge className="text-[10px] px-1.5 py-0 bg-orange-500/90 text-white border-none leading-5 flex items-center gap-0.5">
-                          <AlertTriangle className="w-2.5 h-2.5" />
-                          {acc.platform === "snapchat" ? "بدون يوزرنيم" : "بدون رابط"}
-                        </Badge>
-                      </div>
-                    )}
-
-                    {/* Followers badge */}
-                    <div className="absolute top-2 left-2">
-                      <Badge className="bg-black/60 text-white border-none text-[10px] px-1.5 py-0 leading-5">
-                        {fmt(acc.followers)}
-                      </Badge>
-                    </div>
-
-                    {/* Hover overlay — desktop: pointer-events-none when invisible */}
-                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity hidden sm:flex items-center justify-center pointer-events-none group-hover:pointer-events-auto">
-                      <div className="grid grid-cols-4 gap-1.5 px-2">
-                        {[
-                          { icon: <Edit2 className="w-3.5 h-3.5" />,    label: "تعديل",    action: () => openEdit(acc as AccRow),              cls: "hover:bg-primary hover:text-white" },
-                          { icon: <DollarSign className="w-3.5 h-3.5" />, label: "السعر",  action: () => openQuick(acc as AccRow, "price"),    cls: "hover:bg-yellow-500 hover:text-white" },
-                          { icon: <TrendingUp className="w-3.5 h-3.5" />, label: "متابعين",action: () => openQuick(acc as AccRow, "followers"), cls: "hover:bg-purple-500 hover:text-white" },
-                          { icon: <ImageIcon className="w-3.5 h-3.5" />, label: "صورة",    action: () => openImage(acc as AccRow),             cls: "hover:bg-pink-500 hover:text-white" },
-                          { icon: <Link2 className="w-3.5 h-3.5" />,    label: "رابط",    action: () => openLink(acc as AccRow),              cls: "hover:bg-blue-500 hover:text-white" },
-                          { icon: <Star className="w-3.5 h-3.5" />,     label: (acc as AccRow).featured ? "إلغاء تثبيت" : "تثبيت", action: () => toggleFeatured(acc as AccRow), cls: "hover:bg-yellow-400 hover:text-white" },
-                          { icon: <Trash2 className="w-3.5 h-3.5" />,   label: "حذف",     action: () => setDeleteId(acc.id),                  cls: "hover:bg-destructive hover:text-white" },
-                        ].map((btn, i) => (
-                          <button
-                            key={i}
-                            onClick={btn.action}
-                            className={`flex flex-col items-center gap-0.5 bg-white/95 text-foreground rounded-lg px-2 py-1.5 text-[10px] font-bold transition-colors ${btn.cls}`}
-                          >
-                            {btn.icon}
-                            <span>{btn.label}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* ── Body ── */}
-                  <div className="p-2.5 flex flex-col gap-2 flex-1">
-                    {/* Name + platform */}
-                    <div className="flex items-center gap-1 min-w-0">
-                      <span className={`text-xs shrink-0 ${plt.color}`}>{plt.icon}</span>
-                      <span className="font-bold text-xs line-clamp-1 min-w-0" dir="ltr">{acc.name}</span>
-                    </div>
-
-                    {/* Username */}
-                    {(acc as AccRow).username && (
-                      <div className="text-[10px] text-muted-foreground truncate" dir="ltr">
-                        @{(acc as AccRow).username}
-                      </div>
-                    )}
-
-                    {/* Price */}
-                    <div className="flex items-center justify-between">
-                      <span className="font-black text-sm text-primary">{acc.price}₪</span>
-                    </div>
-
-                    {/* Mobile action buttons (always visible on mobile) */}
-                    <div className="grid grid-cols-4 gap-1 sm:hidden">
-                      <button onClick={() => openEdit(acc as AccRow)}
-                        className="flex flex-col items-center gap-0.5 border rounded-lg py-1.5 text-[10px] font-bold hover:bg-primary/10 hover:border-primary hover:text-primary transition-colors">
-                        <Edit2 className="w-3 h-3" /> تعديل
-                      </button>
-                      <button onClick={() => openQuick(acc as AccRow, "price")}
-                        className="flex flex-col items-center gap-0.5 border rounded-lg py-1.5 text-[10px] font-bold hover:bg-yellow-500/10 hover:border-yellow-500 hover:text-yellow-600 transition-colors">
-                        <DollarSign className="w-3 h-3" /> سعر
-                      </button>
-                      <button onClick={() => openQuick(acc as AccRow, "followers")}
-                        className="flex flex-col items-center gap-0.5 border rounded-lg py-1.5 text-[10px] font-bold hover:bg-purple-500/10 hover:border-purple-500 hover:text-purple-600 transition-colors">
-                        <Users className="w-3 h-3" /> متابعين
-                      </button>
-                      <button onClick={() => openImage(acc as AccRow)}
-                        className="flex flex-col items-center gap-0.5 border rounded-lg py-1.5 text-[10px] font-bold hover:bg-pink-500/10 hover:border-pink-500 hover:text-pink-600 transition-colors">
-                        <ImageIcon className="w-3 h-3" /> صورة
-                      </button>
-                      <button onClick={() => openLink(acc as AccRow)}
-                        className="flex flex-col items-center gap-0.5 border rounded-lg py-1.5 text-[10px] font-bold hover:bg-blue-500/10 hover:border-blue-500 hover:text-blue-600 transition-colors">
-                        <Link2 className="w-3 h-3" /> رابط
-                      </button>
-                      <button onClick={() => toggleFeatured(acc as AccRow)}
-                        className={`flex flex-col items-center gap-0.5 border rounded-lg py-1.5 text-[10px] font-bold transition-colors ${
-                          (acc as AccRow).featured
-                            ? "bg-yellow-50 border-yellow-400 text-yellow-600 dark:bg-yellow-900/20"
-                            : "hover:bg-yellow-500/10 hover:border-yellow-500 hover:text-yellow-600"
-                        }`}>
-                        <Star className={`w-3 h-3 ${(acc as AccRow).featured ? "fill-yellow-500 text-yellow-500" : ""}`} />
-                        {(acc as AccRow).featured ? "مثبّت" : "تثبيت"}
-                      </button>
-                      <button onClick={() => setDeleteId(acc.id)}
-                        className="flex flex-col items-center gap-0.5 border rounded-lg py-1.5 text-[10px] font-bold text-destructive hover:bg-destructive/10 hover:border-destructive transition-colors">
-                        <Trash2 className="w-3 h-3" /> حذف
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          </>
         )}
       </div>
 
@@ -1075,5 +1027,143 @@ export default function AdminAccounts() {
         </AlertDialogContent>
       </AlertDialog>
     </AdminLayout>
+  );
+}
+
+// ── Account card sub-component ─────────────────────────────────────────────
+function AccountCardAdmin({
+  acc, plt, onEdit, onQuickPrice, onQuickFollowers, onImage, onLink,
+  onFeatured, onDelete, onMarkSold, onMarkAvailable, onZoom,
+}: {
+  acc: AccRow;
+  plt: { label: string; icon: React.ReactNode; color: string };
+  onEdit: () => void; onQuickPrice: () => void; onQuickFollowers: () => void;
+  onImage: () => void; onLink: () => void; onFeatured: () => void;
+  onDelete: () => void; onMarkSold: () => void; onMarkAvailable: () => void;
+  onZoom: (url: string) => void;
+}) {
+  const isSold = acc.status === "sold";
+  return (
+    <div className={`group relative bg-card border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col ${isSold ? "border-red-500/30 opacity-80" : "hover:border-primary/30"}`}>
+      {/* ── Image area ── */}
+      <div className="relative flex items-center justify-center shrink-0 overflow-hidden bg-muted" style={{ aspectRatio: "4/3" }}>
+        <CardImage src={acc.imageUrl} alt={acc.name} onZoom={onZoom} />
+
+        {/* Sold overlay */}
+        {isSold && (
+          <div className="absolute inset-0 bg-red-900/40 flex items-center justify-center pointer-events-none">
+            <span className="bg-red-600 text-white text-xs font-black px-3 py-1 rounded-full rotate-[-8deg] shadow-lg">❌ تم البيع</span>
+          </div>
+        )}
+
+        {/* Featured badge */}
+        {acc.featured && !isSold && (
+          <div className="absolute top-2 right-2">
+            <Badge className="text-[10px] px-1.5 py-0 bg-yellow-500/90 text-white border-none leading-5">★</Badge>
+          </div>
+        )}
+
+        {/* No-URL warning */}
+        {!acc.accountUrl && !acc.username && !isSold && (
+          <div className="absolute bottom-2 right-2">
+            <Badge className="text-[10px] px-1.5 py-0 bg-orange-500/90 text-white border-none leading-5 flex items-center gap-0.5">
+              <AlertTriangle className="w-2.5 h-2.5" />
+              {acc.platform === "snapchat" ? "بدون يوزرنيم" : "بدون رابط"}
+            </Badge>
+          </div>
+        )}
+
+        {/* Followers badge */}
+        <div className="absolute top-2 left-2">
+          <Badge className="bg-black/60 text-white border-none text-[10px] px-1.5 py-0 leading-5">
+            {fmt(acc.followers)}
+          </Badge>
+        </div>
+
+        {/* Hover overlay — desktop */}
+        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity hidden sm:flex items-center justify-center pointer-events-none group-hover:pointer-events-auto">
+          <div className="grid grid-cols-4 gap-1.5 px-2">
+            {[
+              { icon: <Edit2 className="w-3.5 h-3.5" />,       label: "تعديل",    action: onEdit,          cls: "hover:bg-primary hover:text-white" },
+              { icon: <DollarSign className="w-3.5 h-3.5" />,  label: "السعر",    action: onQuickPrice,    cls: "hover:bg-yellow-500 hover:text-white" },
+              { icon: <TrendingUp className="w-3.5 h-3.5" />,  label: "متابعين",  action: onQuickFollowers, cls: "hover:bg-purple-500 hover:text-white" },
+              { icon: <ImageIcon className="w-3.5 h-3.5" />,   label: "صورة",     action: onImage,         cls: "hover:bg-pink-500 hover:text-white" },
+              { icon: <Link2 className="w-3.5 h-3.5" />,       label: "رابط",     action: onLink,          cls: "hover:bg-blue-500 hover:text-white" },
+              ...(!isSold ? [
+                { icon: <Star className="w-3.5 h-3.5" />,        label: acc.featured ? "إلغاء تثبيت" : "تثبيت", action: onFeatured, cls: "hover:bg-yellow-400 hover:text-white" },
+                { icon: <X className="w-3.5 h-3.5" />,           label: "تم البيع", action: onMarkSold,    cls: "hover:bg-red-500 hover:text-white" },
+              ] : [
+                { icon: <RotateCcw className="w-3.5 h-3.5" />,   label: "إرجاع متاح", action: onMarkAvailable, cls: "hover:bg-green-500 hover:text-white" },
+                { icon: <ShieldCheck className="w-3.5 h-3.5" />, label: "محمي 🔒",   action: () => {},       cls: "text-red-400 cursor-default" },
+              ]),
+              { icon: <Trash2 className="w-3.5 h-3.5" />,      label: "حذف",      action: onDelete,        cls: "hover:bg-destructive hover:text-white" },
+            ].map((btn, i) => (
+              <button key={i} onClick={btn.action}
+                className={`flex flex-col items-center gap-0.5 bg-white/95 text-foreground rounded-lg px-2 py-1.5 text-[10px] font-bold transition-colors ${btn.cls}`}>
+                {btn.icon}
+                <span>{btn.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Body ── */}
+      <div className="p-2.5 flex flex-col gap-2 flex-1">
+        {/* Name + platform */}
+        <div className="flex items-center gap-1 min-w-0">
+          <span className={`text-xs shrink-0 ${plt.color}`}>{plt.icon}</span>
+          <span className="font-bold text-xs line-clamp-1 min-w-0" dir="ltr">{acc.name}</span>
+        </div>
+
+        {/* Username */}
+        {acc.username && (
+          <div className="text-[10px] text-muted-foreground truncate" dir="ltr">
+            @{acc.username}
+          </div>
+        )}
+
+        {/* Price */}
+        <div className="flex items-center justify-between">
+          <span className={`font-black text-sm ${isSold ? "text-muted-foreground line-through" : "text-primary"}`}>{acc.price}₪</span>
+          {isSold && <span className="text-[10px] text-red-500 font-bold">مباع</span>}
+        </div>
+
+        {/* Mobile action buttons */}
+        <div className={`grid gap-1 sm:hidden ${isSold ? "grid-cols-3" : "grid-cols-4"}`}>
+          <button onClick={onEdit}
+            className="flex flex-col items-center gap-0.5 border rounded-lg py-1.5 text-[10px] font-bold hover:bg-primary/10 hover:border-primary hover:text-primary transition-colors">
+            <Edit2 className="w-3 h-3" /> تعديل
+          </button>
+          {!isSold ? (
+            <>
+              <button onClick={onQuickPrice}
+                className="flex flex-col items-center gap-0.5 border rounded-lg py-1.5 text-[10px] font-bold hover:bg-yellow-500/10 hover:border-yellow-500 hover:text-yellow-600 transition-colors">
+                <DollarSign className="w-3 h-3" /> سعر
+              </button>
+              <button onClick={onMarkSold}
+                className="flex flex-col items-center gap-0.5 border rounded-lg py-1.5 text-[10px] font-bold hover:bg-red-500/10 hover:border-red-500 hover:text-red-600 transition-colors">
+                <X className="w-3 h-3" /> بيع
+              </button>
+              <button onClick={onDelete}
+                className="flex flex-col items-center gap-0.5 border rounded-lg py-1.5 text-[10px] font-bold hover:bg-destructive/10 hover:border-destructive hover:text-destructive transition-colors">
+                <Trash2 className="w-3 h-3" /> حذف
+              </button>
+            </>
+          ) : (
+            <>
+              <button onClick={onMarkAvailable}
+                className="flex flex-col items-center gap-0.5 border rounded-lg py-1.5 text-[10px] font-bold hover:bg-green-500/10 hover:border-green-500 hover:text-green-600 transition-colors">
+                <RotateCcw className="w-3 h-3" /> إرجاع
+              </button>
+              <button onClick={onDelete}
+                className="flex flex-col items-center gap-0.5 border rounded-lg py-1.5 text-[10px] font-bold hover:bg-destructive/10 hover:border-destructive hover:text-destructive transition-colors">
+                <Trash2 className="w-3 h-3" /> حذف
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
