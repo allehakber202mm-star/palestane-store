@@ -263,7 +263,12 @@ export default function AccountDetails() {
   const [lightboxOpen, setLightboxOpen]   = useState(false);
   const [galleryIndex, setGalleryIndex]   = useState(0);
 
-  const { data: account, isLoading, isError } = useGetAccount(id);
+  const { data: account, isLoading, isError } = useGetAccount(id, {
+    query: {
+      refetchInterval: 15_000,
+      refetchIntervalInBackground: true,
+    },
+  });
   const { data: settings } = useGetSettings();
   const trackClick = useTrackAccountClick();
 

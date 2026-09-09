@@ -49,6 +49,11 @@ export default function Accounts() {
   const { data: accounts, isLoading } = useListAccounts({
     platform: active as ListAccountsPlatform,
     sort,
+  }, {
+    query: {
+      refetchInterval: 15_000,
+      refetchIntervalInBackground: true,
+    },
   });
 
   const activeFilter = filters.find((f) => f.value === active)!;

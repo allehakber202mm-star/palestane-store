@@ -144,11 +144,12 @@ const features = [
 export default function Home() {
   const { data: settings } = useGetSettings();
 
-  const { data: tiktok,    isLoading: isLoadingTiktok }     = useListAccounts({ platform: "tiktok",            sort: "followers_desc", limit: 8 });
-  const { data: monetized, isLoading: isLoadingMonetized }  = useListAccounts({ platform: "tiktok_monetized",  sort: "followers_desc", limit: 8 });
-  const { data: instagram, isLoading: isLoadingInstagram }  = useListAccounts({ platform: "instagram",         sort: "followers_desc", limit: 8 });
-  const { data: facebook,  isLoading: isLoadingFacebook }   = useListAccounts({ platform: "facebook",          sort: "followers_desc", limit: 8 });
-  const { data: snapchat,  isLoading: isLoadingSnapchat }   = useListAccounts({ platform: "snapchat",          sort: "followers_desc", limit: 8 });
+  const liveQuery = { query: { refetchInterval: 15_000, refetchIntervalInBackground: true } };
+  const { data: tiktok,    isLoading: isLoadingTiktok }     = useListAccounts({ platform: "tiktok",            sort: "followers_desc", limit: 8 }, liveQuery);
+  const { data: monetized, isLoading: isLoadingMonetized }  = useListAccounts({ platform: "tiktok_monetized",  sort: "followers_desc", limit: 8 }, liveQuery);
+  const { data: instagram, isLoading: isLoadingInstagram }  = useListAccounts({ platform: "instagram",         sort: "followers_desc", limit: 8 }, liveQuery);
+  const { data: facebook,  isLoading: isLoadingFacebook }   = useListAccounts({ platform: "facebook",          sort: "followers_desc", limit: 8 }, liveQuery);
+  const { data: snapchat,  isLoading: isLoadingSnapchat }   = useListAccounts({ platform: "snapchat",          sort: "followers_desc", limit: 8 }, liveQuery);
 
   const phone = settings?.whatsapp?.replace(/\D/g, "") || "970566112031";
 

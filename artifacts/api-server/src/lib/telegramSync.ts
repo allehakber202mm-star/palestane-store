@@ -19,12 +19,15 @@ const TG_FILE = (token: string, filePath: string) =>
 // ── Types ──────────────────────────────────────────────────────────────────
 export type TgPhoto  = { file_id: string; width: number; height: number };
 export type TgVideo  = { file_id: string; width: number; height: number; duration: number; mime_type?: string; file_size?: number };
+export type TgMessageEntity = { type: string; offset: number; length: number };
 export type TgPost   = {
   message_id: number;
   date: number;
   chat: { id?: number; username?: string; title?: string };
   text?: string;
   caption?: string;
+  entities?: TgMessageEntity[];
+  caption_entities?: TgMessageEntity[];
   photo?: TgPhoto[];
   video?: TgVideo;
   media_group_id?: string;
@@ -568,6 +571,11 @@ export function isSoldPost(text: string): boolean {
   return SOLD_PATTERN.test(text);
 }
 
+function hasStrikethrough(post: TgPost): boolean {
+  return [...(post.entities ?? []), ...(post.caption_entities ?? [])]
+    .some(entity => entity.type === "strikethrough");
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // fixMisclassifiedAccounts
 //
@@ -811,7 +819,8 @@ export async function runTelegramSync(): Promise<SyncResult> {
       }
 
       const rawText = (post.caption ?? post.text ?? "").trim();
-      const sold = isSoldPost(rawText);
+      const struckThrough = hasStrikethrough(post);
+      const sold = isSoldPost(rawText) || struckThrough;
 
       // ── حماية الحالة اليدوية ──────────────────────────────────────────────
       // إذا كان الحساب مباعاً يدوياً ولا يوجد كلمة "مباع" في المنشور المعدّل،
@@ -847,6 +856,7 @@ export async function runTelegramSync(): Promise<SyncResult> {
           oldStatus: account.status,
           newStatus,
           sold,
+          struckThrough,
           textPreview: rawText.slice(0, 80),
         },
         sold
