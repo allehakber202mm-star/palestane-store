@@ -32,7 +32,13 @@ export type TgPost   = {
   video?: TgVideo;
   media_group_id?: string;
 };
-export type TgUpdate = { update_id: number; channel_post?: TgPost; edited_channel_post?: TgPost };
+export type TgUpdate = {
+  update_id: number;
+  message?: TgPost;
+  edited_message?: TgPost;
+  channel_post?: TgPost;
+  edited_channel_post?: TgPost;
+};
 
 export interface SyncResult {
   imported:       number;
@@ -571,9 +577,42 @@ export function isSoldPost(text: string): boolean {
   return SOLD_PATTERN.test(text);
 }
 
-function hasStrikethrough(post: TgPost): boolean {
-  return [...(post.entities ?? []), ...(post.caption_entities ?? [])]
-    .some(entity => entity.type === "strikethrough");
+function getStrikethroughSegments(post: TgPost): Array<{
+  source: "entities" | "caption_entities";
+  offset: number;
+  length: number;
+  text: string;
+}> {
+  const segments: Array<{
+    source: "entities" | "caption_entities";
+    offset: number;
+    length: number;
+    text: string;
+  }> = [];
+
+  for (const entity of post.entities ?? []) {
+    if (entity.type === "strikethrough") {
+      segments.push({
+        source: "entities",
+        offset: entity.offset,
+        length: entity.length,
+        text: (post.text ?? "").slice(entity.offset, entity.offset + entity.length),
+      });
+    }
+  }
+
+  for (const entity of post.caption_entities ?? []) {
+    if (entity.type === "strikethrough") {
+      segments.push({
+        source: "caption_entities",
+        offset: entity.offset,
+        length: entity.length,
+        text: (post.caption ?? "").slice(entity.offset, entity.offset + entity.length),
+      });
+    }
+  }
+
+  return segments;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -666,7 +705,12 @@ export async function runTelegramSync(): Promise<SyncResult> {
   // Fetch updates (accounts + feedback channels)
   const params = new URLSearchParams({
     limit: "100",
-    allowed_updates: JSON.stringify(["channel_post", "edited_channel_post"]),
+    allowed_updates: JSON.stringify([
+      "message",
+      "edited_message",
+      "channel_post",
+      "edited_channel_post",
+    ]),
   });
   if (storedOffset > 0) params.set("offset", String(storedOffset + 1));
 
@@ -687,16 +731,29 @@ export async function runTelegramSync(): Promise<SyncResult> {
       storedOffset,
       expectedAccountChannel: channel,
       expectedFeedbackChannel: feedbackChannel,
-      updateSummary: updates.map(u => ({
-        update_id: u.update_id,
-        type: u.channel_post ? "channel_post" : u.edited_channel_post ? "edited_channel_post" : "other",
-        chat_username: u.channel_post?.chat?.username ?? u.edited_channel_post?.chat?.username ?? "N/A",
-        chat_id: u.channel_post?.chat?.id ?? u.edited_channel_post?.chat?.id ?? "N/A",
-        message_id: u.channel_post?.message_id ?? u.edited_channel_post?.message_id,
-        has_photo: !!(u.channel_post?.photo?.length ?? u.edited_channel_post?.photo?.length),
-        has_video: !!(u.channel_post?.video ?? u.edited_channel_post?.video),
-        text_preview: (u.channel_post?.text ?? u.channel_post?.caption ?? u.edited_channel_post?.text ?? u.edited_channel_post?.caption ?? "").slice(0, 60),
-      })),
+      updateSummary: updates.map(u => {
+        const updateType =
+          u.edited_channel_post ? "edited_channel_post"
+          : u.channel_post ? "channel_post"
+          : u.edited_message ? "edited_message"
+          : u.message ? "message"
+          : Object.keys(u).filter(key => key !== "update_id").join(",") || "unknown";
+        const post = u.edited_channel_post ?? u.channel_post ?? u.edited_message ?? u.message;
+        return {
+          update_id: u.update_id,
+          update_type: updateType,
+          update_keys: Object.keys(u),
+          chat_username: post?.chat?.username ?? "N/A",
+          chat_id: post?.chat?.id ?? "N/A",
+          message_id: post?.message_id,
+          entity_types: post
+            ? [...(post.entities ?? []), ...(post.caption_entities ?? [])].map(entity => entity.type)
+            : [],
+          has_photo: !!post?.photo?.length,
+          has_video: !!post?.video,
+          text_preview: (post?.text ?? post?.caption ?? "").slice(0, 120),
+        };
+      }),
     },
     "Telegram sync: RAW updates من Telegram",
   );
@@ -705,20 +762,28 @@ export async function runTelegramSync(): Promise<SyncResult> {
 
   // ── Separate by channel ───────────────────────────────────────────────────
   const accountPosts = updates
-    .filter(u => u.channel_post?.chat.username?.toLowerCase() === channel.toLowerCase())
-    .map(u => ({ update_id: u.update_id, post: u.channel_post! }));
+    .map(u => ({ update_id: u.update_id, post: u.channel_post ?? u.message }))
+    .filter((u): u is { update_id: number; post: TgPost } =>
+      u.post?.chat.username?.toLowerCase() === channel.toLowerCase(),
+    );
 
   const accountEditedPosts = updates
-    .filter(u => u.edited_channel_post?.chat.username?.toLowerCase() === channel.toLowerCase())
-    .map(u => ({ update_id: u.update_id, post: u.edited_channel_post! }));
+    .map(u => ({ update_id: u.update_id, post: u.edited_channel_post ?? u.edited_message }))
+    .filter((u): u is { update_id: number; post: TgPost } =>
+      u.post?.chat.username?.toLowerCase() === channel.toLowerCase(),
+    );
 
   const feedbackNewPosts = updates
-    .filter(u => u.channel_post?.chat.username?.toLowerCase() === feedbackChannel.toLowerCase())
-    .map(u => ({ update_id: u.update_id, post: u.channel_post! }));
+    .map(u => ({ update_id: u.update_id, post: u.channel_post ?? u.message }))
+    .filter((u): u is { update_id: number; post: TgPost } =>
+      u.post?.chat.username?.toLowerCase() === feedbackChannel.toLowerCase(),
+    );
 
   const feedbackEditedPosts = updates
-    .filter(u => u.edited_channel_post?.chat.username?.toLowerCase() === feedbackChannel.toLowerCase())
-    .map(u => ({ update_id: u.update_id, post: u.edited_channel_post! }));
+    .map(u => ({ update_id: u.update_id, post: u.edited_channel_post ?? u.edited_message }))
+    .filter((u): u is { update_id: number; post: TgPost } =>
+      u.post?.chat.username?.toLowerCase() === feedbackChannel.toLowerCase(),
+    );
 
   logger.info(
     {
@@ -809,18 +874,50 @@ export async function runTelegramSync(): Promise<SyncResult> {
     const accountByMsgId = new Map(editedAccounts.map(a => [a.telegramMessageId, a]));
 
     for (const { post } of accountEditedPosts) {
+      const strikethroughSegments = getStrikethroughSegments(post);
+      logger.info(
+        {
+          updateType: post === undefined ? "unknown" : "edited Telegram message",
+          telegramMessageId: post.message_id,
+          telegramChatId: post.chat.id ?? null,
+          chatUsername: post.chat.username ?? null,
+          entities: post.entities ?? [],
+          captionEntities: post.caption_entities ?? [],
+          strikethroughSegments,
+        },
+        "Account edit sync: فحص رسالة معدّلة وربط تنسيق الشطب",
+      );
+
       const account = accountByMsgId.get(post.message_id);
       if (!account) {
-        logger.info(
-          { telegramMessageId: post.message_id },
+        logger.warn(
+          {
+            telegramMessageId: post.message_id,
+            telegramChatId: post.chat.id ?? null,
+            strikethroughSegments,
+            databaseMatch: false,
+          },
           "Account edit sync: لم يُعثر على حساب بهذا message_id — تم التخطي",
         );
         continue;
       }
 
       const rawText = (post.caption ?? post.text ?? "").trim();
-      const struckThrough = hasStrikethrough(post);
+      const struckThrough = strikethroughSegments.length > 0;
       const sold = isSoldPost(rawText) || struckThrough;
+
+      logger.info(
+        {
+          telegramMessageId: post.message_id,
+          telegramChatId: post.chat.id ?? null,
+          accountId: account.id,
+          databaseMatch: true,
+          currentStatus: account.status,
+          struckThrough,
+          strikethroughSegments,
+        },
+        "Account edit sync: نتيجة الربط مع قاعدة البيانات",
+      );
 
       // ── حماية الحالة اليدوية ──────────────────────────────────────────────
       // إذا كان الحساب مباعاً يدوياً ولا يوجد كلمة "مباع" في المنشور المعدّل،
@@ -848,6 +945,18 @@ export async function runTelegramSync(): Promise<SyncResult> {
         .update(accountsTable)
         .set({ status: newStatus, updatedAt: new Date() })
         .where(eq(accountsTable.id, account.id));
+
+      if (sold) {
+        logger.info(
+          {
+            accountId: account.id,
+            telegramMessageId: post.message_id,
+            telegramChatId: post.chat.id ?? null,
+            strikethroughSegments,
+          },
+          `تم اكتشاف شطب - الحساب ${account.id} تحول لمباع`,
+        );
+      }
 
       logger.info(
         {
@@ -1497,6 +1606,13 @@ async function tick() {
 
 export function startTelegramAutoSync() {
   if (syncTimer) return;
+  if (process.env.NODE_ENV !== "production") {
+    logger.info(
+      { nodeEnv: process.env.NODE_ENV ?? "undefined" },
+      "Telegram auto-sync: متوقف في التطوير لمنع سحب تحديثات بوت الإنتاج",
+    );
+    return;
+  }
   const token = BOT_TOKEN();
   if (!token) {
     logger.warn("Telegram auto-sync: TELEGRAM_BOT_TOKEN غير مضبوط — تم التخطي");
