@@ -22,7 +22,7 @@ const SIDEBAR_ITEMS: SidebarItem[] = [
   { kind: "internal", href: "/celebrity-ads",   label: "إعلانات المشاهير لمتجرنا",   icon: <Video className="w-5 h-5 text-purple-500" /> },
   { kind: "internal", href: "/about",           label: "تفاصيل عنا أكثر",            icon: <Info  className="w-5 h-5" /> },
   { kind: "separator" },
-  { kind: "external", hrefKey: "whatsapp",  label: "تواصل معنا",     icon: <Phone className="w-5 h-5 text-green-500" />, fallback: "972566112031" },
+  { kind: "external", hrefKey: "whatsapp",  label: "تواصل معنا",     icon: <Phone className="w-5 h-5 text-green-500" />, fallback: "970566112031" },
   { kind: "external", hrefKey: "telegram",  label: "قناة التليجرام", icon: <Send  className="w-5 h-5 text-sky-500" />,   fallback: "https://t.me/Palestine_storeL" },
 ];
 

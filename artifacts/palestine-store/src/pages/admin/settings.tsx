@@ -278,7 +278,7 @@ export default function AdminSettings() {
                   name="whatsapp"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>رقم الواتساب (مع رمز الدولة، مثلاً: 972566112031)</FormLabel>
+                      <FormLabel>رقم الواتساب (مع رمز الدولة، مثلاً: 970566112031)</FormLabel>
                       <FormControl>
                         <Input dir="ltr" className="text-left" {...field} />
                       </FormControl>

@@ -1148,7 +1148,7 @@ export default function AdminDashboard() {
                   <Label>رقم واتساب</Label>
                   <Input dir="ltr" className="text-left" value={settingsForm.whatsapp}
                     onChange={(e) => setSettingsForm((s) => s ? { ...s, whatsapp: e.target.value } : s)}
-                    placeholder="972566112031" />
+                    placeholder="970566112031" />
                 </div>
                 <div className="space-y-1.5">
                   <Label>عنوان البانر</Label>

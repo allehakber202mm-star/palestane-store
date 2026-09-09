@@ -18,7 +18,7 @@ export function WhatsAppButton() {
     setPressed(true);
     setTimeout(() => setPressed(false), 300);
     trackClick.mutate();
-    const phone = settings?.whatsapp?.replace(/\D/g, "") || "972566112031";
+    const phone = settings?.whatsapp?.replace(/\D/g, "") || "970566112031";
     window.open(`https://wa.me/${phone}`, "_blank");
   };
 

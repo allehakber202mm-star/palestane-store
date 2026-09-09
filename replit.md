@@ -38,7 +38,7 @@
 ## Architecture decisions
 
 - RTL Arabic interface throughout (dir="rtl", lang="ar", Tajawal Google Font)
-- No cart/checkout — all purchases routed via WhatsApp (wa.me/972566112031)
+- No cart/checkout — all purchases routed via WhatsApp (wa.me/970566112031)
 - JWT auth stored in localStorage ("admin_token") — admin panel at /admin only
 - Site settings stored as key-value pairs in PostgreSQL settings table
 - Image uploads served from /api/uploads/ via Express static middleware
