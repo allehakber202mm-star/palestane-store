@@ -10,7 +10,7 @@ const DEFAULT_SETTINGS = {
   storeName: "Palestine Store",
   storeNameAr: "متجر فلسطين",
   logoUrl: null,
-  whatsapp: "+972566112031",
+  whatsapp: "+970566112031",
   telegram: null as null,
   email: "palsetanestora@gmail.com",
   bannerTitle: "متجر فلسطين للحسابات",
@@ -28,11 +28,14 @@ async function getSettingsMap(): Promise<Record<string, string>> {
 
 function buildSettings(map: Record<string, string>) {
   const pm = map.paymentMethods ? JSON.parse(map.paymentMethods) : JSON.parse(DEFAULT_SETTINGS.paymentMethods);
+  const whatsapp = map.whatsapp === "+972566112031" || map.whatsapp === "972566112031"
+    ? DEFAULT_SETTINGS.whatsapp
+    : map.whatsapp ?? DEFAULT_SETTINGS.whatsapp;
   return {
     storeName: map.storeName ?? DEFAULT_SETTINGS.storeName,
     storeNameAr: map.storeNameAr ?? DEFAULT_SETTINGS.storeNameAr,
     logoUrl: map.logoUrl ?? null,
-    whatsapp: map.whatsapp ?? DEFAULT_SETTINGS.whatsapp,
+    whatsapp,
     telegram: map.telegram ?? null,
     email: map.email ?? DEFAULT_SETTINGS.email,
     bannerTitle: map.bannerTitle ?? DEFAULT_SETTINGS.bannerTitle,

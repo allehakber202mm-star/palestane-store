@@ -150,7 +150,7 @@ export default function Home() {
   const { data: facebook,  isLoading: isLoadingFacebook }   = useListAccounts({ platform: "facebook",          sort: "followers_desc", limit: 8 });
   const { data: snapchat,  isLoading: isLoadingSnapchat }   = useListAccounts({ platform: "snapchat",          sort: "followers_desc", limit: 8 });
 
-  const phone = settings?.whatsapp?.replace(/\D/g, "") || "972566112031";
+  const phone = settings?.whatsapp?.replace(/\D/g, "") || "970566112031";
 
   return (
     <PublicLayout>

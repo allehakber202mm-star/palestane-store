@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 export default function Contact() {
   const { data: settings } = useGetSettings();
 
-  const phone = settings?.whatsapp?.replace(/\D/g, "") || "972566112031";
+  const phone = settings?.whatsapp?.replace(/\D/g, "") || "970566112031";
   const telegram = settings?.telegram;
   const email = settings?.email;
 
@@ -25,7 +25,7 @@ export default function Contact() {
             </div>
             <div className="flex-1">
               <p className="font-bold text-base">واتساب</p>
-              <p className="text-muted-foreground text-sm">{settings?.whatsapp || "+972566112031"}</p>
+              <p className="text-muted-foreground text-sm">{settings?.whatsapp || "+970566112031"}</p>
             </div>
             <Button
               className="bg-green-500 hover:bg-green-600 text-white font-bold rounded-full"

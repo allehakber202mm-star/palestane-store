@@ -281,7 +281,7 @@ export default function AccountDetails() {
     if (!account) return;
     trackClick.mutate({ id: account.id });
     trackEvent("whatsapp_click", account.id);
-    const phone = settings?.whatsapp?.replace(/\D/g, "") || "972566112031";
+    const phone = settings?.whatsapp?.replace(/\D/g, "") || "970566112031";
     const platformAr =
       account.platform === "tiktok_monetized" ? "تيك توك أرباح المشاهدات"
       : account.platform === "tiktok" ? "تيك توك"
