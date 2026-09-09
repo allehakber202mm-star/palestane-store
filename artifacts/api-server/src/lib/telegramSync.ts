@@ -565,7 +565,7 @@ async function importVideo(fileId: string, token: string): Promise<string | null
 }
 
 // ── Sold keyword detection ─────────────────────────────────────────────────
-const SOLD_PATTERN = /مباع|تم\s+البيع|SOLD|❌/i;
+const SOLD_PATTERN = /مشطوب|مباع|تم\s+البيع|SOLD|❌/i;
 
 export function isSoldPost(text: string): boolean {
   return SOLD_PATTERN.test(text);

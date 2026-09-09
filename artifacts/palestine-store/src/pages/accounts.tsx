@@ -48,6 +48,7 @@ export default function Accounts() {
 
   const { data: accounts, isLoading } = useListAccounts({
     platform: active as ListAccountsPlatform,
+    status: "available",
     sort,
   }, {
     query: {
