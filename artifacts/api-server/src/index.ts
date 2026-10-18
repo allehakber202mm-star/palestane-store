@@ -1,6 +1,6 @@
 import app from "./app";
 import { logger } from "./lib/logger";
-import { startTelegramAutoSync } from "./lib/telegramSync";
+import { registerTelegramWebhook, startTelegramAutoSync } from "./lib/telegramSync";
 import { syncAccountUrls } from "./lib/accountUrlSync";
 import { statsHealthCheck } from "./lib/statsHealthCheck";
 import { ocrScanExistingAccounts } from "./lib/ocrScanAccounts";
@@ -27,7 +27,24 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
-  startTelegramAutoSync();
+  if (process.env.NODE_ENV === "production") {
+    const publicBaseUrl =
+      process.env.TELEGRAM_WEBHOOK_BASE_URL
+      ?? "https://palestinestore.online";
+    registerTelegramWebhook(publicBaseUrl)
+      .then((registered) => {
+        if (!registered) {
+          logger.warn("Telegram webhook: سيتم استخدام getUpdates كخطة احتياطية");
+          startTelegramAutoSync();
+        }
+      })
+      .catch((err) => {
+        logger.error({ err }, "Telegram webhook: فشل غير متوقع — تشغيل getUpdates احتياطياً");
+        startTelegramAutoSync();
+      });
+  } else {
+    startTelegramAutoSync();
+  }
   startDataPruning();
   syncAccountUrls("startup").catch((e) =>
     logger.error({ err: e }, "accountUrlSync failed on startup"),

@@ -1,7 +1,7 @@
 import { db, accountsTable, settingsTable, feedbackPostsTable } from "@workspace/db";
 import { eq, inArray, and, desc, sql } from "drizzle-orm";
 import { objectStorageClient } from "./objectStorage";
-import { randomUUID } from "crypto";
+import { createHash, randomUUID, timingSafeEqual } from "crypto";
 import { logger } from "./logger";
 import { syncAccountUrls } from "./accountUrlSync";
 import { extractUsernameFromImage, warmupOcr } from "./ocrExtract";
@@ -15,6 +15,12 @@ const TG_API  = (method: string, token: string) =>
   `https://api.telegram.org/bot${token}/${method}`;
 const TG_FILE = (token: string, filePath: string) =>
   `https://api.telegram.org/file/bot${token}/${filePath}`;
+const TELEGRAM_ALLOWED_UPDATES = [
+  "message",
+  "edited_message",
+  "channel_post",
+  "edited_channel_post",
+] as const;
 
 // ── Types ──────────────────────────────────────────────────────────────────
 export type TgPhoto  = { file_id: string; width: number; height: number };
@@ -679,7 +685,7 @@ async function fixMisclassifiedAccounts(): Promise<{ checked: number; fixed: num
 }
 
 // ── Core sync (used by route + background job) ─────────────────────────────
-export async function runTelegramSync(): Promise<SyncResult> {
+export async function runTelegramSync(providedUpdates?: TgUpdate[]): Promise<SyncResult> {
   const token   = BOT_TOKEN();
   const channel = CHANNEL();
   if (!token) throw new Error("TELEGRAM_BOT_TOKEN not configured");
@@ -702,32 +708,32 @@ export async function runTelegramSync(): Promise<SyncResult> {
 
   const feedbackChannel = FEEDBACK_CHANNEL();
 
-  // Fetch updates (accounts + feedback channels)
-  const params = new URLSearchParams({
-    limit: "100",
-    allowed_updates: JSON.stringify([
-      "message",
-      "edited_message",
-      "channel_post",
-      "edited_channel_post",
-    ]),
-  });
-  if (storedOffset > 0) params.set("offset", String(storedOffset + 1));
+  let updates: TgUpdate[];
+  if (providedUpdates) {
+    updates = providedUpdates;
+  } else {
+    // Fetch updates (accounts + feedback channels)
+    const params = new URLSearchParams({
+      limit: "100",
+      allowed_updates: JSON.stringify(TELEGRAM_ALLOWED_UPDATES),
+    });
+    if (storedOffset > 0) params.set("offset", String(storedOffset + 1));
 
-  const updatesRes = await fetch(TG_API(`getUpdates?${params.toString()}`, token), {
-    signal: AbortSignal.timeout(15_000),
-  });
-  if (!updatesRes.ok) throw new Error(`Telegram API HTTP ${updatesRes.status}`);
+    const updatesRes = await fetch(TG_API(`getUpdates?${params.toString()}`, token), {
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!updatesRes.ok) throw new Error(`Telegram API HTTP ${updatesRes.status}`);
 
-  const updatesData = await updatesRes.json() as { ok: boolean; result: TgUpdate[] };
-  if (!updatesData.ok) throw new Error("Telegram API returned ok:false");
-
-  const updates = updatesData.result;
+    const updatesData = await updatesRes.json() as { ok: boolean; result: TgUpdate[] };
+    if (!updatesData.ok) throw new Error("Telegram API returned ok:false");
+    updates = updatesData.result;
+  }
 
   // ── Log ALL raw updates before any filtering ───────────────────────────────
   logger.info(
     {
       totalUpdates: updates.length,
+      deliveryMode: providedUpdates ? "webhook" : "getUpdates",
       storedOffset,
       expectedAccountChannel: channel,
       expectedFeedbackChannel: feedbackChannel,
@@ -1503,15 +1509,17 @@ export async function runTelegramSync(): Promise<SyncResult> {
     }
   }
 
-  // Advance stored offset
-  const maxUpdateId = Math.max(...updates.map(u => u.update_id));
-  await db
-    .insert(settingsTable)
-    .values({ key: "telegram_update_offset", value: String(maxUpdateId) })
-    .onConflictDoUpdate({
-      target: settingsTable.key,
-      set:    { value: String(maxUpdateId) },
-    });
+  // Polling needs a persisted offset. Webhooks are acknowledged by HTTP 200.
+  if (!providedUpdates) {
+    const maxUpdateId = Math.max(...updates.map(u => u.update_id));
+    await db
+      .insert(settingsTable)
+      .values({ key: "telegram_update_offset", value: String(maxUpdateId) })
+      .onConflictDoUpdate({
+        target: settingsTable.key,
+        set:    { value: String(maxUpdateId) },
+      });
+  }
 
   // ── Sort log: show follower order per platform ─────────────────────────────
   if (imported > 0 || accountPosts.length > 0) {
@@ -1567,6 +1575,61 @@ export async function runTelegramSync(): Promise<SyncResult> {
 const POLL_INTERVAL_MS = 30_000;
 let syncTimer: ReturnType<typeof setInterval> | null = null;
 let running = false;
+
+export function getTelegramWebhookSecret(): string {
+  const token = BOT_TOKEN();
+  return token ? createHash("sha256").update(token).digest("hex") : "";
+}
+
+export function isValidTelegramWebhookSecret(value: string | undefined): boolean {
+  const expected = getTelegramWebhookSecret();
+  if (!expected || !value || value.length !== expected.length) return false;
+  return timingSafeEqual(Buffer.from(value), Buffer.from(expected));
+}
+
+export async function registerTelegramWebhook(publicBaseUrl: string): Promise<boolean> {
+  if (process.env.NODE_ENV !== "production") return false;
+
+  const token = BOT_TOKEN();
+  const secret = getTelegramWebhookSecret();
+  if (!token || !secret) {
+    logger.warn("Telegram webhook: الرمز غير مضبوط — تعذر التسجيل");
+    return false;
+  }
+
+  const webhookUrl = `${publicBaseUrl.replace(/\/+$/, "")}/api/telegram/webhook`;
+  try {
+    const response = await fetch(TG_API("setWebhook", token), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        url: webhookUrl,
+        secret_token: secret,
+        allowed_updates: TELEGRAM_ALLOWED_UPDATES,
+        max_connections: 1,
+        drop_pending_updates: false,
+      }),
+      signal: AbortSignal.timeout(15_000),
+    });
+    const data = await response.json() as { ok?: boolean; description?: string };
+    if (!response.ok || !data.ok) {
+      logger.error(
+        { status: response.status, description: data.description ?? "unknown" },
+        "Telegram webhook: فشل التسجيل",
+      );
+      return false;
+    }
+
+    logger.info(
+      { webhookUrl, allowedUpdates: TELEGRAM_ALLOWED_UPDATES },
+      "Telegram webhook: تم التسجيل بنجاح — تم تعطيل getUpdates",
+    );
+    return true;
+  } catch (err) {
+    logger.error({ err }, "Telegram webhook: خطأ أثناء التسجيل");
+    return false;
+  }
+}
 
 async function tick() {
   if (running) return;
